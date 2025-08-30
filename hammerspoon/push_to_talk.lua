@@ -8,6 +8,10 @@ local M = {}
 local log = hs.logger.new("push_to_talk", "info")
 local json = require("hs.json")
 
+-- Optional external config
+local cfg_ok, cfg = pcall(require, "ptt_config")
+if not cfg_ok then cfg = {} end
+
 -- Logger level compatibility (avoid warnings across Hammerspoon versions)
 local function setLogLevelCompat(lg, levelStr)
   -- Try string first
@@ -35,6 +39,10 @@ local HOME = os.getenv("HOME") or ""
 local NOTES_DIR = HOME .. "/Documents/VoiceNotes"
 local FFMPEG = "/opt/homebrew/bin/ffmpeg"         -- absolute path for reliability
 local WHISPER = HOME .. "/.local/bin/whisper"      -- pipx-installed whisper CLI
+
+-- Logging configuration (defaults; can be overridden via ptt_config)
+local LOG_DIR = (cfg.LOG_DIR and tostring(cfg.LOG_DIR)) or (NOTES_DIR .. "/tx_logs")
+local LOG_ENABLED = (cfg.LOG_ENABLED ~= false)
 local MODEL = "base.en"                             -- faster local model (English)
 local LANG = "en"
 local HOLD_THRESHOLD_MS = 150                       -- ignore ultra-short taps
@@ -43,8 +51,8 @@ local BUILTIN_SCREEN_PATTERN = "Built%-in"          -- choose the MacBook's buil
 
 -- Transcript reflow options
 local REFLOW_MODE = "gap"                           -- "gap" (use segment time gaps) or "singleline" (collapse single newlines)
-local GAP_NEWLINE_SEC = 1.25                        -- insert newline if gap between segments >= this
-local GAP_DOUBLE_NEWLINE_SEC = 2.50                 -- insert blank line if gap >= this (paragraph)
+local GAP_NEWLINE_SEC = cfg.GAP_NEWLINE_SEC or 1.75 -- newline if sentence end or gap >= this
+local GAP_DOUBLE_NEWLINE_SEC = cfg.GAP_DOUBLE_NEWLINE_SEC or 2.50 -- paragraph break
 
 -- Accuracy/perf tuning
 local BEAM_SIZE = 3                                  -- beam search width (speed/accuracy balance)
@@ -100,6 +108,50 @@ local function truncateMiddle(s, maxLen)
   return s:sub(1, head) .. "\n...[truncated]...\n" .. s:sub(-tail)
 end
 
+local function isoNow()
+  return os.date("!%Y-%m-%dT%H:%M:%SZ")
+end
+
+local function appendJSONL(path, obj)
+  local ok, encoded = pcall(function() return json.encode(obj) end)
+  if not ok then return false end
+  local f = io.open(path, "a")
+  if not f then return false end
+  f:write(encoded)
+  f:write("\n")
+  f:close()
+  return true
+end
+
+local function logEvent(kind, data)
+  if not LOG_ENABLED then return end
+  -- Ensure log directory exists
+  ensureDir(LOG_DIR)
+  local daily = string.format("%s/tx-%s.jsonl", LOG_DIR, os.date("%Y-%m-%d"))
+  local payload = {
+    ts = isoNow(),
+    kind = kind,
+    app = "macos-ptt-dictation",
+    model = MODEL,
+    device = WHISPER_DEVICE,
+    beam_size = BEAM_SIZE,
+    lang = LANG,
+    config = {
+      reflow_mode = REFLOW_MODE,
+      gap_newline_sec = GAP_NEWLINE_SEC,
+      gap_double_newline_sec = GAP_DOUBLE_NEWLINE_SEC,
+      preprocess_min_sec = PREPROCESS_MIN_SEC,
+      timeout_ms = TIMEOUT_MS,
+      disfluencies = cfg.DISFLUENCIES,
+      initial_prompt_len = (cfg.INITIAL_PROMPT and #cfg.INITIAL_PROMPT or 0),
+    }
+  }
+  if data then
+    for k, v in pairs(data) do payload[k] = v end
+  end
+  appendJSONL(daily, payload)
+end
+
 -- File helpers
 local function readAll(path)
   local f = io.open(path, "r")
@@ -121,7 +173,8 @@ local function rstrip(s)
   return (s or ""):gsub("%s+$", "")
 end
 
--- Reflow: join Whisper segments using time gaps to create line/paragraph breaks
+-- Reflow: join Whisper segments into readable text.
+-- Newline only at sentence end or sufficiently large gaps; otherwise prefer spaces.
 local function reflowFromSegments(segments)
   if not segments or #segments == 0 then return "" end
   local out = {}
@@ -131,18 +184,16 @@ local function reflowFromSegments(segments)
     txt = txt:gsub("^%s+", "") -- trim leading spaces that segments often carry
     if lastEnd ~= nil and seg.start then
       local gap = (seg.start or 0) - (lastEnd or 0)
+      local prev = (#out > 0) and out[#out] or ""
+      local lastChar = prev:sub(-1)
+      local sentenceEnd = lastChar and lastChar:match("[%.%!%?]")
       if gap >= GAP_DOUBLE_NEWLINE_SEC then
         table.insert(out, "\n\n")
-      elseif gap >= GAP_NEWLINE_SEC then
+      elseif sentenceEnd or gap >= GAP_NEWLINE_SEC then
         table.insert(out, "\n")
       else
-        -- space if needed
-        if #out > 0 then
-          local prev = out[#out]
-          local lastChar = prev:sub(-1)
-          if lastChar and not lastChar:match("%s") and not txt:match("^[,%.!%?;:]" ) then
-            table.insert(out, " ")
-          end
+        if #out > 0 and lastChar and not lastChar:match("%s") and not txt:match("^[,%.!%?;:]" ) then
+          table.insert(out, " ")
         end
       end
     end
@@ -156,6 +207,20 @@ local function reflowFromSegments(segments)
   joined = joined:gsub("\n%s+", "\n")
   -- Collapse 3+ newlines into 2
   joined = joined:gsub("\n\n+", "\n\n")
+  
+  -- Strip common disfluencies as standalone words (edges or punctuation-bound)
+  local function stripDisfluencies(s)
+    local words = cfg.DISFLUENCIES or {}
+    for _, w in ipairs(words) do
+      -- beginning of string or whitespace before + optional punctuation after
+      s = s:gsub("(^%s*" .. w .. ")([%s,%.%!%?])", "%2")
+      s = s:gsub("([%s])" .. w .. "([%s,%.%!%?])", "%1%2")
+    end
+    -- normalize spaces again
+    s = s:gsub("%s+([,%.!%?;:])", "%1"):gsub("[ \t]+", " ")
+    return s
+  end
+  joined = stripDisfluencies(joined)
   return rstrip(joined)
 end
 
@@ -336,7 +401,7 @@ local function startRecording()
 
   ffStdoutBuf, ffStderrBuf = {}, {}
 
-  local function onFFExit(code, stdout, stderr)
+local function onFFExit(code, stdout, stderr)
     if isTestMode() then
       log.d(string.format("[TEST] ffmpeg exit code=%s", tostring(code)))
     end
@@ -378,7 +443,7 @@ local function startRecording()
         return
       end
 
-      local function runWhisper(audioPath)
+local function runWhisper(audioPath)
         local fp16Arg = (WHISPER_DEVICE == "mps") and "True" or "False"
         local wargs = {
           audioPath,
@@ -392,6 +457,10 @@ local function startRecording()
           "--verbose", "False",
           "--temperature", "0",
         }
+        if cfg and cfg.INITIAL_PROMPT and #cfg.INITIAL_PROMPT > 0 then
+          table.insert(wargs, "--initial_prompt")
+          table.insert(wargs, cfg.INITIAL_PROMPT)
+        end
 
         if isTestMode() then
           local basePath = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
@@ -414,6 +483,17 @@ local function startRecording()
           if tonumber(wcode) ~= 0 then
             local wsErrStr = (table.concat(whStderrBuf)):gsub("%s+$","")
             log.e(string.format("TX failed: code=%s, %.0fms, stderr=%s", tostring(wcode), ms, truncateMiddle(wsErrStr, 2000)))
+            -- Log error event
+            logEvent("error", {
+              wav = wavPath,
+              duration_sec = dur,
+              wav_bytes = bytes,
+              preprocess_used = doPre,
+              audio_used = audioPath,
+              tx_ms = ms,
+              tx_code = wcode,
+              stderr = truncateMiddle(wsErrStr, 1000),
+            })
           else
             log.i(string.format("TX done: code=%s, %.0fms", tostring(wcode), ms))
           end
@@ -454,6 +534,16 @@ local function startRecording()
           if not transcript or transcript:gsub("%s+", "") == "" then
             hs.alert.show("No transcript produced")
             playSound("Funk")
+            -- Log empty transcript event
+            logEvent("no_transcript", {
+              wav = wavPath,
+              duration_sec = dur,
+              wav_bytes = bytes,
+              preprocess_used = doPre,
+              audio_used = audioPath,
+              tx_ms = ms,
+              tx_code = wcode,
+            })
             return
           end
           -- Write our reflowed transcript to the standard .txt path (use normalized base if used)
@@ -467,6 +557,23 @@ local function startRecording()
           end)
           playSound("Glass")
           log.i(string.format("PASTED %d chars", #transcript))
+
+          -- Log success event (must match pasted transcript)
+          local baseNoExt = audioPath:gsub("%.wav$", "")
+          local jsonPath = baseNoExt .. ".json"
+          logEvent("success", {
+            wav = wavPath,
+            duration_sec = dur,
+            wav_bytes = bytes,
+            preprocess_used = doPre,
+            audio_used = audioPath,
+            json_path = jsonPath,
+            tx_ms = ms,
+            tx_code = wcode,
+            transcript_chars = #transcript,
+            transcript = transcript,
+          })
+
           updateIndicator("off")
           stopBlink()
         end, function(task, stdOut, stdErr)
@@ -487,6 +594,15 @@ local function startRecording()
         if TIMEOUT_MS and TIMEOUT_MS > 0 then
           whisperTimeoutTimer = hs.timer.doAfter(TIMEOUT_MS/1000, function()
             log.e(string.format("TX timeout after %dms (device=%s, model=%s, beam=%d)", TIMEOUT_MS, WHISPER_DEVICE, tostring(chosenModel), tonumber(chosenBeam) or -1))
+            -- Log timeout event
+            logEvent("timeout", {
+              wav = wavPath,
+              duration_sec = dur,
+              wav_bytes = bytes,
+              preprocess_used = doPre,
+              tx_ms = TIMEOUT_MS,
+              tx_code = -1,
+            })
             if whisperTask then
               local ok = pcall(function() whisperTask:sendSignal(2) end)
               if not ok then pcall(function() whisperTask:terminate() end) end
