@@ -1,4 +1,4 @@
-# hs-ptt-whisper
+# macos-ptt-dictation
 
 Press-and-hold F13 to record; release to transcribe offline (openai-whisper via pipx) and paste at the cursor. Audio is captured with ffmpeg (avfoundation :0 -> 16 kHz mono s16 WAV). Transcripts are reflowed from Whisper JSON segments and pasted, with files saved under ~/Documents/VoiceNotes.
 
@@ -16,9 +16,9 @@ Architecture (current)
 
 Install (fresh machine)
 1) Clone repo
-   git clone <your-private-remote-url> ~/code/hs-ptt-whisper
+   git clone <your-private-remote-url> ~/code/macos-ptt-dictation
 2) Run installer (installs ffmpeg via Brewfile, ensures pipx + openai-whisper, creates symlink)
-   bash ~/code/hs-ptt-whisper/scripts/install.sh
+   bash ~/code/macos-ptt-dictation/scripts/install.sh
 3) Reload Hammerspoon
    - Hammerspoon menu bar icon → Reload Config
 4) Test
@@ -26,7 +26,7 @@ Install (fresh machine)
 
 Uninstall / rollback
 - Run:
-  bash ~/code/hs-ptt-whisper/scripts/uninstall.sh
+  bash ~/code/macos-ptt-dictation/scripts/uninstall.sh
 - This removes the symlink and restores the latest backup of ~/.hammerspoon/push_to_talk.lua if available.
 
 Source of truth policy
@@ -41,19 +41,19 @@ Recommended workflows
 
 - Making changes (safe, reviewable)
   1) Edit the module in the repo
-     - File: ~/code/hs-ptt-whisper/hammerspoon/push_to_talk.lua
+     - File: ~/code/macos-ptt-dictation/hammerspoon/push_to_talk.lua
      - The ~/.hammerspoon symlink ensures Hammerspoon loads the updated code.
   2) Reload Hammerspoon and test
      - Menu → Reload Config
      - Quick smoke tests: short clip (2–4s), medium (10–15s). Confirm .json/.txt outputs and paste.
   3) Stage and commit changes with a clear message
-     - git -C ~/code/hs-ptt-whisper add -p
-     - git -C ~/code/hs-ptt-whisper commit -m "ptt: <concise change summary>"
+     - git -C ~/code/macos-ptt-dictation add -p
+     - git -C ~/code/macos-ptt-dictation commit -m "ptt: <concise change summary>"
   4) Push to your private remote
-     - git -C ~/code/hs-ptt-whisper push origin main
+     - git -C ~/code/macos-ptt-dictation push origin main
 
 - Versioning milestones
-  - Optionally tag stable versions: git -C ~/code/hs-ptt-whisper tag -a v0.1.0 -m "initial extraction" && git -C ~/code/hs-ptt-whisper push origin v0.1.0
+  - Optionally tag stable versions: git -C ~/code/macos-ptt-dictation tag -a v0.1.0 -m "initial extraction" && git -C ~/code/macos-ptt-dictation push origin v0.1.0
 
 Config tips
 - Device stability: currently device=cpu for reliability on macOS/PyTorch 3.13. If you enable MPS, also set --fp16 True in the invocation.
