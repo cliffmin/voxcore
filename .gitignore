@@ -1,0 +1,8 @@
+# See README for usage
+.DS_Store
+*.swp
+*.swo
+# Never include runtime notes
+Documents/
+VoiceNotes/
+
