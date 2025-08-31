@@ -52,6 +52,22 @@ return {
   -- Use Cmd+Alt+Ctrl+I to list devices; typical built-in mic is :1 on laptops
   AUDIO_DEVICE_INDEX = 1,
 
+  -- Reflow and post-processing toggles
+  DISFLUENCY_BEGIN_STRIP = true,
+  BEGIN_DISFLUENCIES = { "so", "um", "uh", "like", "you know", "okay", "yeah", "well" },
+  AUTO_CAPITALIZE_SENTENCES = true,
+  DEDUPE_IMMEDIATE_REPEATS = true,
+  DROP_LOWCONF_SEGMENTS = true,
+  LOWCONF_NO_SPEECH_PROB = 0.5,
+  LOWCONF_AVG_LOGPROB = -1.0,
+  DICTIONARY_REPLACE = {
+    ["reposits"] = "repositories",
+    ["camera positories"] = "repositories",
+    ["github"] = "GitHub",
+  },
+  PASTE_TRAILING_NEWLINE = false,
+  ENSURE_TRAILING_PUNCT = false,
+
   -- Logging
   LOG_ENABLED = true,               -- append JSONL logs per transcription event
   LOG_DIR = nil,                    -- default: NOTES_DIR/tx_logs (set in code)

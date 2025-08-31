@@ -75,11 +75,21 @@ Config tips
 - Notes directory: override NOTES_DIR in ptt_config.lua (default ~/Documents/VoiceNotes).
 - Hotkeys (Fn combos): Fn+T toggle test/live logs; Fn+R reloads Hammerspoon config; Fn+O opens ~/.hammerspoon/init.lua in VS Code.
 
+Reflow and post-processing (ptt_config.lua)
+- DISFLUENCY_BEGIN_STRIP=true: strip common starters at the beginning of lines ("so", "um", "uh", "like", "you know", "okay", "yeah", "well"). Configure the list via BEGIN_DISFLUENCIES.
+- AUTO_CAPITALIZE_SENTENCES=true: capitalize at the start of text, after punctuation, and after newlines.
+- DEDUPE_IMMEDIATE_REPEATS=true: collapse immediate repeats like "word, word" or "word word".
+- DROP_LOWCONF_SEGMENTS=true: drop segments with high no_speech_prob or very low avg_logprob (thresholds via LOWCONF_NO_SPEECH_PROB and LOWCONF_AVG_LOGPROB).
+- DICTIONARY_REPLACE={ ... }: domain-specific replacements (e.g., reposits -> repositories, github -> GitHub).
+- PASTE_TRAILING_NEWLINE=false: when pasting, optionally ensure a trailing newline.
+- ENSURE_TRAILING_PUNCT=false: when pasting, optionally ensure sentence-ending punctuation.
+
 Portability checklist
 - Brewfile installs ffmpeg; whisper-cpp is optional and not used in this flow.
 - Installer ensures pipx and (re)installs openai-whisper in its own venv.
 - Symlink keeps ~/.hammerspoon/push_to_talk.lua pointing at the repo.
 - Migration utilities: scripts/migrate_voicenotes_names.zsh and scripts/migrate_voicenotes_to_folders.zsh can rename old files and reorganize to the per-recording folder layout.
+- Archiving utility: scripts/archive_by_date_voicenotes.zsh moves all sessions older than today to ~/Library/Application Support/macos-ptt-dictation/Archive, preserving tx_logs and refined.
 
 Logging (JSONL)
 - Default path: ~/Documents/VoiceNotes/tx_logs/tx-YYYY-MM-DD.jsonl
@@ -140,13 +150,18 @@ Single-file audio policy (canonical output)
   - PREPROCESS_KEEP_RAW = false (delete raw when normalization succeeds)
   - CANONICALIZE_NORMALIZED_TO_WAV = true (rename normalized file to <timestamp>.wav)
 
-Integration test (local long-form WAV; no audio in git)
+Integration tests and smoke
 - Script: tests/integration/longform_to_markdown.sh
   - Uses LONGFORM_WAV_PATH env var or tests/fixtures/local_longform.wav symlink to your local WAV.
   - Steps: Whisper → temp JSON/TXT → VoxCompose → Markdown → basic structure assertion.
+- Script: tests/integration/whisper_on_samples.sh
+  - Runs Whisper on sample WAVs in tests/fixtures/samples or tests/fixtures/samples_current.
+- Script: tests/integration/reflow_on_latest_samples.sh
+  - Uses internal reflow hook to validate post-processing (disfluency strip, capitalization, dedupe, dictionary fixes) on latest-behavior samples.
+  - Populate tests/fixtures/samples_current via tests/util/select_latest_behavior_samples.zsh.
 - Smoke tests: tests/smoke/*.sh (module loads, hotkeys bound)
 - Docs: tests/README.md
-- Gitignore excludes tests/fixtures/*.wav so personal audio stays out of version control.
+- Gitignore excludes tests/fixtures/*.wav and tests/fixtures/samples_current/ so personal audio and recent transcripts stay out of version control.
 
 Requirements summary
 - This repo: Hammerspoon, ffmpeg (Brewfile), pipx-installed whisper CLI.

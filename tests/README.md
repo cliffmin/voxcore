@@ -52,3 +52,7 @@ Run:
 
 This executes your `~/.hammerspoon/init.lua` inside the Hammerspoon runtime and reports a pass/fail for load-time errors (e.g., syntax errors). Hotkey registration warnings from other parts of your config may still appear in Hammerspoon’s Console, but they should not fail the test.
 
+3) Refine self-test (LLM layer only)
+
+From a running Hammerspoon session, press Cmd+Alt+Ctrl+R to run the refiner self-test. This does not record audio; it invokes the VoxCompose refiner with a sample text and logs a `refine_probe` JSONL event under `~/Documents/VoiceNotes/tx_logs/tx-YYYY-MM-DD.jsonl`. An on-screen alert reports success/failure. Ensure `LLM_REFINER.ENABLED=true` in `ptt_config.lua`.
+

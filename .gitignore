@@ -9,4 +9,6 @@ VoiceNotes/
 # Local test fixtures (do not check in personal audio)
 tests/fixtures/*.wav
 tests/fixtures/*.norm.wav
+# Ephemeral latest-behavior samples (JSON/TXT/WAV) kept out of git
+/tests/fixtures/samples_current/
 

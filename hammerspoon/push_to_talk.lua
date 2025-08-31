@@ -59,6 +59,18 @@ local REFLOW_MODE = "gap"                           -- "gap" (use segment time g
 local GAP_NEWLINE_SEC = cfg.GAP_NEWLINE_SEC or 1.75 -- newline if sentence end or gap >= this
 local GAP_DOUBLE_NEWLINE_SEC = cfg.GAP_DOUBLE_NEWLINE_SEC or 2.50 -- paragraph break
 
+-- Post-processing toggles
+local DISFLUENCY_BEGIN_STRIP = (cfg.DISFLUENCY_BEGIN_STRIP ~= false)
+local BEGIN_DISFLUENCIES = cfg.BEGIN_DISFLUENCIES or { "so", "um", "uh", "like", "you know", "okay", "yeah", "well" }
+local AUTO_CAPITALIZE_SENTENCES = (cfg.AUTO_CAPITALIZE_SENTENCES ~= false)
+local DEDUPE_IMMEDIATE_REPEATS = (cfg.DEDUPE_IMMEDIATE_REPEATS ~= false)
+local DROP_LOWCONF_SEGMENTS = (cfg.DROP_LOWCONF_SEGMENTS ~= false)
+local LOWCONF_NO_SPEECH_PROB = tonumber(cfg.LOWCONF_NO_SPEECH_PROB) or 0.5
+local LOWCONF_AVG_LOGPROB = tonumber(cfg.LOWCONF_AVG_LOGPROB) or -1.0
+local DICTIONARY_REPLACE = cfg.DICTIONARY_REPLACE or { reposits = "repositories", ["camera positories"] = "repositories", github = "GitHub" }
+local PASTE_TRAILING_NEWLINE = (cfg.PASTE_TRAILING_NEWLINE == true)
+local ENSURE_TRAILING_PUNCT = (cfg.ENSURE_TRAILING_PUNCT == true)
+
 -- Accuracy/perf tuning
 local BEAM_SIZE = 3                                  -- beam search width (speed/accuracy balance)
 local BEAM_SIZE_LONG = 3                             -- same for long audio
@@ -130,6 +142,70 @@ end
 
 local function isoNow()
   return os.date("!%Y-%m-%dT%H:%M:%SZ")
+end
+
+-- Text post-processing helpers
+local function applyDictionary(s)
+  local out = s
+  for k, v in pairs(DICTIONARY_REPLACE or {}) do
+    -- word boundary via frontier patterns
+    local patt = "%f[%w]" .. k .. "%f[%W]"
+    out = out:gsub(patt, v)
+  end
+  return out
+end
+
+local function stripBeginDisfluencies(s)
+  if not DISFLUENCY_BEGIN_STRIP then return s end
+  local out = s
+  for _, w in ipairs(BEGIN_DISFLUENCIES) do
+    local patt1 = "^%s*" .. w .. "[,%.:]?%s+" -- start of string
+    local patt2 = "\n%s*" .. w .. "[,%.:]?%s+" -- after newline
+    out = out:gsub(patt1, "")
+    out = out:gsub(patt2, "\n")
+  end
+  return out
+end
+
+local function capitalizeSentences(s)
+  if not AUTO_CAPITALIZE_SENTENCES then return s end
+  local out = s
+  -- Start of text
+  out = out:gsub("^%s*([a-z])", function(c) return string.upper(c) end)
+  -- After punctuation + space/newline
+  out = out:gsub("([%.%!%?]%s+)([a-z])", function(pre, c) return pre .. string.upper(c) end)
+  -- After newline
+  out = out:gsub("(\n%s*)([a-z])", function(pre, c) return pre .. string.upper(c) end)
+  return out
+end
+
+local function dedupeImmediateRepeats(s)
+  if not DEDUPE_IMMEDIATE_REPEATS then return s end
+  local out = s
+  -- Collapse "word, word" or "word word" immediate repeats (simple heuristic)
+  out = out:gsub("(%a[%w%-]+),?%s+%1", "%1")
+  return out
+end
+
+local function ensureTrailingPunct(s)
+  if not ENSURE_TRAILING_PUNCT then return s end
+  if s:match("[%.%!%?]%s*$") then return s end
+  return s .. "."
+end
+
+local function addTrailingNewline(s)
+  if not PASTE_TRAILING_NEWLINE then return s end
+  if s:sub(-1) == "\n" then return s end
+  return s .. "\n"
+end
+
+local function postProcessText(s)
+  local out = s or ""
+  out = applyDictionary(out)
+  out = stripBeginDisfluencies(out)
+  out = dedupeImmediateRepeats(out)
+  out = capitalizeSentences(out)
+  return out
 end
 
 -- Human-friendly file naming helpers
@@ -236,6 +312,20 @@ end
 -- Reflow: join Whisper segments into readable text.
 -- Newline only at sentence end or sufficiently large gaps; otherwise prefer spaces.
 local function reflowFromSegments(segments)
+  -- Optionally filter low-confidence/no-speech segments first
+  local filtered = {}
+  for _, seg in ipairs(segments or {}) do
+    local keep = true
+    if DROP_LOWCONF_SEGMENTS then
+      local nsp = tonumber(seg.no_speech_prob)
+      local alp = tonumber(seg.avg_logprob)
+      if (nsp and nsp >= LOWCONF_NO_SPEECH_PROB) or (alp and alp <= LOWCONF_AVG_LOGPROB) then
+        keep = false
+      end
+    end
+    if keep then table.insert(filtered, seg) end
+  end
+  segments = filtered
   if not segments or #segments == 0 then return "" end
   local out = {}
   local lastEnd = nil
@@ -267,20 +357,19 @@ local function reflowFromSegments(segments)
   joined = joined:gsub("\n%s+", "\n")
   -- Collapse 3+ newlines into 2
   joined = joined:gsub("\n\n+", "\n\n")
-  
-  -- Strip common disfluencies as standalone words (edges or punctuation-bound)
+
+  -- Existing disfluency strip (as standalone words)
   local function stripDisfluencies(s)
     local words = cfg.DISFLUENCIES or {}
     for _, w in ipairs(words) do
-      -- beginning of string or whitespace before + optional punctuation after
       s = s:gsub("(^%s*" .. w .. ")([%s,%.%!%?])", "%2")
       s = s:gsub("([%s])" .. w .. "([%s,%.%!%?])", "%1%2")
     end
-    -- normalize spaces again
     s = s:gsub("%s+([,%.!%?;:])", "%1"):gsub("[ \t]+", " ")
     return s
   end
   joined = stripDisfluencies(joined)
+  joined = postProcessText(joined)
   return rstrip(joined)
 end
 
@@ -299,6 +388,7 @@ local function reflowPlainText(txt)
   txt = txt:gsub("[ \t]+", " ")
   -- Remove trailing spaces before newlines
   txt = txt:gsub("[ \t]+\n", "\n")
+  txt = postProcessText(txt)
   return rstrip(txt)
 end
 
@@ -533,6 +623,51 @@ local function showInfo()
   log.i(table.concat(info, "\n"))
   listDevices()
   hs.alert.show("push_to_talk info logged")
+end
+
+-- Run a self-test of the LLM refiner (no audio involved)
+local function refineSelfTest()
+  local refCfg = cfg.LLM_REFINER or {}
+  if not refCfg.ENABLED then
+    hs.alert.show("LLM refine disabled in ptt_config.lua")
+    return
+  end
+  local cmd = refCfg.CMD or {}
+  if type(cmd) ~= "table" or #cmd == 0 then
+    hs.alert.show("LLM refiner CMD not configured")
+    return
+  end
+  local argv = {}
+  for _,p in ipairs(cmd) do table.insert(argv, p) end
+  for _,a in ipairs(refCfg.ARGS or {}) do table.insert(argv, a) end
+  log.i("Running refine self-test via VoxCompose…")
+  local sample = [[Draft test note: demonstrate Markdown structure with a heading and bullet list.
+- item one
+- item two]]
+  local outBuf, errBuf = {}, {}
+  local t0 = nowMs()
+  local t = hs.task.new(argv[1], function(rc, so, se)
+    local ms = nowMs() - t0
+    local out = table.concat(outBuf)
+    local ok = (tonumber(rc) == 0 and out and out:gsub("%s+", "") ~= "")
+    logEvent("refine_probe", {
+      ok = ok,
+      rc = rc,
+      ms = ms,
+      cmd = argv[1],
+      out_chars = #(out or ""),
+      sample = (out or ""):sub(1, 200)
+    })
+    hs.alert.show(ok and "LLM refine self-test OK" or "LLM refine self-test failed (see logs)")
+  end, function(task, so, se)
+    if so and #so>0 then table.insert(outBuf, so) end
+    if se and #se>0 then table.insert(errBuf, se) end
+    return true
+  end, {table.unpack(argv, 2)})
+  t:setInput(true)
+  t:start()
+  t:write(sample)
+  if t.closeInput then t:closeInput() end
 end
 
 -- ffmpeg management
@@ -802,6 +937,10 @@ local function runWhisper(audioPath)
           end
 
           local function finishWithText(finalText, extra)
+            -- Optional terminal tweaks
+            if ENSURE_TRAILING_PUNCT then finalText = ensureTrailingPunct(finalText) end
+            if PASTE_TRAILING_NEWLINE then finalText = addTrailingNewline(finalText) end
+
             if sessionKind == "toggle" and modeCfg.mode == "editor" and (modeCfg.format == "md" or modeCfg.format == "markdown") then
               local mdPath = saveAndOpenMarkdown(finalText)
               doLogSuccess(finalText, { output_path = mdPath })
@@ -1097,13 +1236,26 @@ end
 function M.start()
   startTaps()
   detectWhisperDevice()
-  -- Optional: bind an info key (matches style of other modules using Cmd+Alt+Ctrl+I)
+  -- Optional: bind info and refine self-test keys (Cmd+Alt+Ctrl)
   hs.hotkey.bind({"cmd", "alt", "ctrl"}, "I", function() showInfo() end)
+  hs.hotkey.bind({"cmd", "alt", "ctrl"}, "R", function() refineSelfTest() end)
 end
 
 function M.stop()
   if keyTap then keyTap:stop() end
   if flagTap then flagTap:stop() end
+end
+
+-- Test hooks (for integration testing reflow)
+function M._reflowFromSegments(segments)
+  return reflowFromSegments(segments or {})
+end
+function M._reflowFromJson(jsonPath)
+  local jtxt = readAll(jsonPath)
+  if not jtxt then return "" end
+  local ok, parsed = pcall(function() return json.decode(jtxt) end)
+  if not ok or not parsed or not parsed.segments then return "" end
+  return reflowFromSegments(parsed.segments)
 end
 
 return M
