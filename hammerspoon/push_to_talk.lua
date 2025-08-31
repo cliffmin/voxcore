@@ -10,7 +10,7 @@ local json = require("hs.json")
 
 -- Optional external config
 local cfg_ok, cfg = pcall(require, "ptt_config")
-if not cfg_ok then cfg = {} end
+if not (cfg_ok and type(cfg) == "table") then cfg = {} end
 
 -- Logger level compatibility (avoid warnings across Hammerspoon versions)
 local function setLogLevelCompat(lg, levelStr)
@@ -36,9 +36,12 @@ end
 
 -- Config
 local HOME = os.getenv("HOME") or ""
-local NOTES_DIR = HOME .. "/Documents/VoiceNotes"
+local NOTES_DIR = (cfg.NOTES_DIR and tostring(cfg.NOTES_DIR)) or (HOME .. "/Documents/VoiceNotes")
 local FFMPEG = "/opt/homebrew/bin/ffmpeg"         -- absolute path for reliability
 local WHISPER = HOME .. "/.local/bin/whisper"      -- pipx-installed whisper CLI
+
+-- Wave meter mode: 'inline' (default; parse ffmpeg stderr), 'monitor' (second ffmpeg), or 'off'
+local WAVE_METER_MODE = cfg.WAVE_METER_MODE or "inline"
 
 -- Logging configuration (defaults; can be overridden via ptt_config)
 local LOG_DIR = (cfg.LOG_DIR and tostring(cfg.LOG_DIR)) or (NOTES_DIR .. "/tx_logs")
@@ -62,7 +65,7 @@ local VENV_PY = HOME .. "/.local/pipx/venvs/openai-whisper/bin/python"  -- pytho
 local MODEL_FAST = "base.en"                          -- keep base for long audio as well
 local LONG_AUDIO_SEC = 1e9                           -- effectively disable model switching
 local PREPROCESS_MIN_SEC = 12.0                      -- preprocess only if reasonably long
-local TIMEOUT_MS = 15000                             -- 15s timeout for faster fail on hangs
+local TIMEOUT_MS = tonumber(cfg.TIMEOUT_MS) or 120000 -- 2 minutes transcription timeout
 
 -- State
 local keyTap
@@ -78,6 +81,20 @@ local startMs = 0
 local heldMs = 0
 local wavPath = nil
 local txtPath = nil
+local sessionDir = nil
+
+-- Session mode: "hold" (default) or "toggle" (Shift+F13)
+local sessionKind = "hold"
+local ignoreHoldThreshold = false
+
+-- Live level indicator state
+local levelIndicator = nil
+local levelTimer = nil
+local levelTask = nil
+local levelVal = 0.0    -- instantaneous [0..1]
+local levelEma = 0.0    -- smoothed [0..1]
+local levelT = 0.0      -- time for fallback animation
+local levelUseFallback = false
 
 -- Debug buffers
 local ffStdoutBuf, ffStderrBuf = {}, {}
@@ -110,6 +127,29 @@ end
 
 local function isoNow()
   return os.date("!%Y-%m-%dT%H:%M:%SZ")
+end
+
+-- Human-friendly file naming helpers
+local function ordinal(n)
+  n = tonumber(n) or 0
+  local v = n % 100
+  if v >= 11 and v <= 13 then return tostring(n) .. "th" end
+  local last = n % 10
+  if last == 1 then return tostring(n) .. "st"
+  elseif last == 2 then return tostring(n) .. "nd"
+  elseif last == 3 then return tostring(n) .. "rd"
+  else return tostring(n) .. "th" end
+end
+
+local function humanTimestampName()
+  local t = os.date("*t") -- local time
+  local months = { "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec" }
+  local mon = months[t.month] or tostring(t.month)
+  local hour12 = t.hour % 12
+  if hour12 == 0 then hour12 = 12 end
+  local ampm = (t.hour < 12) and "AM" or "PM"
+  -- Format: YYYY-Mon-DD_HH.MM.SS_AM
+  return string.format("%04d-%s-%02d_%02d.%02d.%02d_%s", t.year, mon, t.day, hour12, t.min, t.sec, ampm)
 end
 
 local function appendJSONL(path, obj)
@@ -271,7 +311,9 @@ local function updateIndicator(state)
   indicator = nil
   stopBlink()
   if state == "off" then return end
-  indicator = hs.canvas.new({x = x, y = y, w = size, h = size}):level(hs.canvas.windowLevels.overlay)
+  indicator = hs.canvas.new({x = x, y = y, w = size, h = size})
+  local lvl = (hs.canvas.windowLevels and hs.canvas.windowLevels.overlay) or ((hs.drawing and hs.drawing.windowLevels and hs.drawing.windowLevels.modalPanel) or nil)
+  if lvl then pcall(function() indicator:level(lvl) end) end
   local baseColor = (state == "transcribing") and { red = 1, green = 0.6, blue = 0 } or { red = 1, green = 0, blue = 0 }
   local alpha = (state == "transcribing") and 0.85 or 0.90
   indicator:appendElements({
@@ -297,6 +339,113 @@ local function updateIndicator(state)
       if a >= 0.95 then a = 0.95; dir = -1 end
       indicator["dot"].fillColor = { red = baseColor.red, green = baseColor.green, blue = baseColor.blue, alpha = a }
     end)
+  end
+end
+
+-- Live audio/wave indicator helpers
+local function mapDbToLevel(db)
+  if not db then return 0.0 end
+  if db > 0 then db = 0 end
+  if db < -60 then db = -60 end
+  return (db + 60) / 60 -- -60..0 -> 0..1
+end
+
+local function showLevelIndicator()
+  -- Create a bar-wave indicator near top-center
+  if levelIndicator then pcall(function() levelIndicator:delete() end) end
+  local scr = builtinScreen():frame()
+  local W, H = math.floor(scr.w * 0.28), 44
+  local x = math.floor(scr.x + scr.w / 2 - W / 2)
+  local y = scr.y + 28
+  levelIndicator = hs.canvas.new({x=x, y=y, w=W, h=H}):level(hs.canvas.windowLevels.overlay)
+  levelIndicator:appendElements({
+    id="bg", type="rectangle", action="fill", roundedRectRadii = {xRadius=8, yRadius=8},
+    fillColor={red=0,green=0,blue=0,alpha=0.25}, strokeColor={red=1,green=1,blue=1,alpha=0.15}, strokeWidth=1
+  })
+  local bars = 28
+  local pad = 2
+  local bw = math.floor((W - (bars+1)*pad) / bars)
+  for i=1,bars do
+    local bx = pad + (i-1)*(bw+pad)
+    levelIndicator:appendElements({
+      id = "bar"..i, type="rectangle", action="fill",
+      frame = { x=bx, y=H/2, w=bw, h=2 },
+      fillColor={red=1,green=0,blue=0,alpha=0.85},
+      strokeColor={red=1,green=1,blue=1,alpha=0.0}, strokeWidth=0
+    })
+  end
+  levelIndicator:show()
+
+  if levelTimer then levelTimer:stop(); levelTimer=nil end
+  levelTimer = hs.timer.doEvery(1/60, function()
+    -- Smooth to EMA
+    local alpha = 0.25
+    levelEma = levelEma + alpha * (levelVal - levelEma)
+    levelT = levelT + 0.10
+    local amp = levelUseFallback and (0.35 + 0.25*math.sin(levelT)) or levelEma
+    -- Update bars as a symmetrical wave
+    if levelIndicator then
+      local H = levelIndicator:frame().h
+      local bars = 28
+      for i=1,bars do
+        local phase = (i - (bars/2)) / (bars/2)
+        local localAmp = amp * (0.25 + 0.75*(1 - math.abs(phase)))
+        local h = math.max(2, math.floor(localAmp * (H - 8)))
+        local y = math.floor(H/2 - h/2)
+        local id = "bar"..i
+        levelIndicator[id].frame = { x=levelIndicator[id].frame.x, y=y, w=levelIndicator[id].frame.w, h=h }
+      end
+    end
+  end)
+end
+
+local function hideLevelIndicator()
+  if levelTimer then levelTimer:stop(); levelTimer=nil end
+  if levelIndicator then pcall(function() levelIndicator:delete() end); levelIndicator=nil end
+  levelVal, levelEma, levelT = 0,0,0
+end
+
+local function startLevelMonitor()
+  levelUseFallback = false
+  levelVal, levelEma = 0,0
+  -- Attempt an ffmpeg astats-based monitor (may fail if device is exclusive)
+  local deviceSpec = ":" .. tostring(AUDIO_DEVICE_INDEX)
+  local args = { "-hide_banner", "-loglevel", "error", "-f", "avfoundation", "-i", deviceSpec, "-af", "astats=metadata=1:reset=0.2", "-f", "null", "-" }
+  if isTestMode() then
+    -- In test mode, just fallback animate
+    levelUseFallback = true
+    return
+  end
+  local errBuf = {}
+  levelTask = hs.task.new(FFMPEG, function(code, so, se)
+    if tonumber(code) ~= 0 then
+      -- Likely device busy; use fallback animation
+      levelUseFallback = true
+    end
+    levelTask = nil
+  end, function(task, so, se)
+    if se and #se > 0 then
+      -- Parse RMS_level from stderr lines like: "RMS_level: -23.1 dB"
+      local line = se
+      local db = line:match("RMS_level:%s*([%-%d%.]+)%s*dB")
+      if db then
+        local val = mapDbToLevel(tonumber(db))
+        if val and val==val then levelVal = val end
+      end
+      table.insert(errBuf, se)
+    end
+    return true
+  end, args)
+  -- If PATH issues occur, still okay; we handle on exit
+  pcall(function() levelTask:start() end)
+end
+
+local function stopLevelMonitor()
+  levelUseFallback = false
+  if levelTask then
+    pcall(function() levelTask:sendSignal(2) end)
+    pcall(function() levelTask:terminate() end)
+    levelTask = nil
   end
 end
 
@@ -368,17 +517,20 @@ local function startRecording()
   if recording then return end
   ensureDir(NOTES_DIR)
 
-  local ts = os.date("%Y-%m-%d_%H-%M-%S")
-  local base = string.format("%s/%s", NOTES_DIR, ts)
+  local baseName = humanTimestampName()
+  sessionDir = string.format("%s/%s", NOTES_DIR, baseName)
+  ensureDir(sessionDir)
+  local base = string.format("%s/%s", sessionDir, baseName)
   wavPath = base .. ".wav"
   txtPath = base .. ".txt"
 
   local deviceSpec = ":" .. tostring(AUDIO_DEVICE_INDEX)
 
   -- Build ffmpeg args: audio-only, default input, 16k mono s16le WAV
+  local loglevel = (isTestMode() and "info" or ((WAVE_METER_MODE == "inline") and "info" or "error"))
   local args = {
     "-hide_banner",
-    (isTestMode() and "-loglevel" or "-loglevel"), (isTestMode() and "info" or "error"),
+    "-loglevel", loglevel,
     "-nostats",
     "-y",
     "-f", "avfoundation",
@@ -386,9 +538,12 @@ local function startRecording()
     "-ac", "1",
     "-ar", "16000",
     "-sample_fmt", "s16",
-    "-vn",
-    wavPath,
   }
+  if WAVE_METER_MODE == "inline" then
+    table.insert(args, "-af"); table.insert(args, "astats=metadata=1:reset=0.2")
+  end
+  table.insert(args, "-vn")
+  table.insert(args, wavPath)
 
   if isTestMode() then
     local basePath = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
@@ -409,8 +564,8 @@ local function onFFExit(code, stdout, stderr)
     updateIndicator("transcribing")
     recording = false
 
-    -- Ignore micro-taps
-    if heldMs < HOLD_THRESHOLD_MS then
+    -- Ignore micro-taps unless in toggle mode
+    if (not ignoreHoldThreshold) and heldMs < HOLD_THRESHOLD_MS then
       log.i("Hold below threshold; discarding recording")
       if wavPath and hs.fs.attributes(wavPath) then pcall(function() os.remove(wavPath) end) end
       return
@@ -450,7 +605,7 @@ local function runWhisper(audioPath)
           "--model", chosenModel,
           "--language", LANG,
           "--output_format", "json",
-          "--output_dir", NOTES_DIR,
+          "--output_dir", sessionDir,
           "--beam_size", tostring(chosenBeam),
           "--device", WHISPER_DEVICE,
           "--fp16", fp16Arg,
@@ -551,31 +706,122 @@ local function runWhisper(audioPath)
           writeAll(outTxt, transcript)
           txtPath = outTxt
 
-          hs.pasteboard.setContents(transcript)
-          hs.timer.doAfter(0.02, function()
-            hs.eventtap.keyStroke({"cmd"}, "v", 0)
-          end)
-          playSound("Glass")
-          log.i(string.format("PASTED %d chars", #transcript))
+          -- Decide output behavior per session kind
+          local DEFAULT_OUTPUT = {
+            HOLD = { mode = "paste",  format = "txt" },
+            TOGGLE = { mode = "editor", format = "md" },
+          }
+          local outputCfg = (type(cfg.OUTPUT) == "table") and cfg.OUTPUT or DEFAULT_OUTPUT
+          local modeCfg = (sessionKind == "toggle") and (outputCfg.TOGGLE or DEFAULT_OUTPUT.TOGGLE) or (outputCfg.HOLD or DEFAULT_OUTPUT.HOLD)
 
-          -- Log success event (must match pasted transcript)
-          local baseNoExt = audioPath:gsub("%.wav$", "")
-          local jsonPath = baseNoExt .. ".json"
-          logEvent("success", {
-            wav = wavPath,
-            duration_sec = dur,
-            wav_bytes = bytes,
-            preprocess_used = doPre,
-            audio_used = audioPath,
-            json_path = jsonPath,
-            tx_ms = ms,
-            tx_code = wcode,
-            transcript_chars = #transcript,
-            transcript = transcript,
-          })
+          local function doLogSuccess(finalText, extra)
+            local baseNoExt = audioPath:gsub("%.wav$", "")
+            local jsonPath = baseNoExt .. ".json"
+            local payload = {
+              wav = wavPath,
+              duration_sec = dur,
+              wav_bytes = bytes,
+              preprocess_used = doPre,
+              audio_used = audioPath,
+              json_path = jsonPath,
+              tx_ms = ms,
+              tx_code = wcode,
+              transcript_chars = #finalText,
+              transcript = finalText,
+              session_kind = sessionKind,
+              output_mode = modeCfg.mode,
+              output_format = modeCfg.format,
+            }
+            if extra then for k,v in pairs(extra) do payload[k]=v end end
+            logEvent("success", payload)
+          end
 
-          updateIndicator("off")
-          stopBlink()
+          local function slugify(s)
+            s = tostring(s or "")
+            -- Trim whitespace
+            s = s:gsub("^%s+", ""):gsub("%s+$", "")
+            -- Replace control characters (including newlines) with space
+            s = s:gsub("[%z\1-\31]", " ")
+            -- Normalize to lowercase
+            s = s:lower()
+            -- Keep alphanumerics, dashes and spaces; replace others with space
+            s = s:gsub("[^%w%-%s]", " ")
+            -- Collapse spaces to single dash
+            s = s:gsub("%s+", "-")
+            -- Collapse multiple dashes
+            s = s:gsub("%-+", "-")
+            -- Trim leading/trailing dashes
+            s = s:gsub("^%-", ""):gsub("%-$", "")
+            return (s == "" and "note") or s
+          end
+
+          local function saveAndOpenMarkdown(finalText)
+            ensureDir(NOTES_DIR .. "/refined")
+            local tsname = os.date("%Y-%m-%d_%H-%M")
+            local firstLine = finalText:match("^([^\n]+)") or "note"
+            local name = tsname .. "_" .. slugify(firstLine):sub(1,60) .. ".md"
+            local mdPath = NOTES_DIR .. "/refined/" .. name
+            writeAll(mdPath, finalText)
+            -- Open with OS default handler for .md
+            hs.execute(string.format([[open %q]], mdPath))
+            playSound("Glass")
+            log.i(string.format("OPENED MD (%d chars): %s", #finalText, name))
+            return mdPath
+          end
+
+          local function finishWithText(finalText, extra)
+            if sessionKind == "toggle" and modeCfg.mode == "editor" and (modeCfg.format == "md" or modeCfg.format == "markdown") then
+              local mdPath = saveAndOpenMarkdown(finalText)
+              doLogSuccess(finalText, { output_path = mdPath })
+            else
+              -- HOLD flow: paste
+              hs.pasteboard.setContents(finalText)
+              hs.timer.doAfter(0.02, function() hs.eventtap.keyStroke({"cmd"}, "v", 0) end)
+              playSound("Glass")
+              log.i(string.format("PASTED %d chars", #finalText))
+              doLogSuccess(finalText)
+            end
+            updateIndicator("off")
+            stopBlink()
+          end
+
+          -- Optionally refine for TOGGLE sessions
+          local refCfg = cfg.LLM_REFINER or {}
+          if sessionKind == "toggle" and refCfg.ENABLED then
+            local argv = {}
+            for _,p in ipairs(refCfg.CMD or {}) do table.insert(argv, p) end
+            for _,a in ipairs(refCfg.ARGS or {}) do table.insert(argv, a) end
+            if #argv == 0 then finishWithText(transcript); return end
+            local outBuf, errBuf = {}, {}
+            local refineStart = nowMs()
+            local refineTask
+            refineTask = hs.task.new(argv[1], function(rc,so,se)
+              local refined = table.concat(outBuf)
+              if tonumber(rc) ~= 0 or refined:gsub("%s+","") == "" then refined = transcript end
+              local rMs = nowMs() - refineStart
+              logEvent("refine", { cmd = argv[1], args = table.concat(argv, " "), rc = rc, ms = rMs, out_chars = #refined })
+              finishWithText(refined)
+            end, function(t, so, se)
+              if so and #so>0 then table.insert(outBuf, so) end
+              if se and #se>0 then table.insert(errBuf, se) end
+              return true
+            end, {table.unpack(argv, 2)})
+            refineTask:setInput(true)
+            -- Provide PATH and HOME in env
+            pcall(function() refineTask:setEnvironment({ PATH = os.getenv("PATH"), HOME = HOME }) end)
+            refineTask:start()
+            refineTask:write(transcript)
+            if refineTask.closeInput then refineTask:closeInput() end
+            -- Optional timeout
+            local to = tonumber(refCfg.TIMEOUT_MS or 0) or 0
+            if to > 0 then
+              hs.timer.doAfter(to/1000, function()
+                if refineTask then pcall(function() refineTask:sendSignal(2) end); pcall(function() refineTask:terminate() end) end
+              end)
+            end
+          else
+            finishWithText(transcript)
+          end
         end, function(task, stdOut, stdErr)
           if stdOut and #stdOut > 0 then table.insert(whStdoutBuf, stdOut) end
           if stdErr and #stdErr > 0 then table.insert(whStderrBuf, stdErr) end
@@ -593,7 +839,16 @@ local function runWhisper(audioPath)
         -- Set a timeout to avoid hanging transcriptions
         if TIMEOUT_MS and TIMEOUT_MS > 0 then
           whisperTimeoutTimer = hs.timer.doAfter(TIMEOUT_MS/1000, function()
-            log.e(string.format("TX timeout after %dms (device=%s, model=%s, beam=%d)", TIMEOUT_MS, WHISPER_DEVICE, tostring(chosenModel), tonumber(chosenBeam) or -1))
+            local limitSec = math.floor((TIMEOUT_MS or 0)/1000)
+            local bn = baseName or (wavPath and wavPath:match("([^/]+)%.wav$")) or "recording"
+            local msg
+            if dur and dur > limitSec then
+              msg = string.format("'%s' is %.0fs long, exceeding the %ds transcription limit. Transcript not produced.", bn, dur, limitSec)
+            else
+              msg = string.format("Transcription timed out after %ds for '%s'. Transcript not produced.", limitSec, bn)
+            end
+            log.e(string.format("TX timeout after %dms (device=%s, model=%s, beam=%d): %s", TIMEOUT_MS, WHISPER_DEVICE, tostring(chosenModel), tonumber(chosenBeam) or -1, bn))
+            hs.alert.show(msg)
             -- Log timeout event
             logEvent("timeout", {
               wav = wavPath,
@@ -602,6 +857,8 @@ local function runWhisper(audioPath)
               preprocess_used = doPre,
               tx_ms = TIMEOUT_MS,
               tx_code = -1,
+              base_name = bn,
+              reason = "timeout",
             })
             if whisperTask then
               local ok = pcall(function() whisperTask:sendSignal(2) end)
@@ -618,7 +875,26 @@ local function runWhisper(audioPath)
       -- Preprocess then run whisper (only for longer clips)
       if doPre then
         preprocessAudio(wavPath, function(ok, usePath)
-          runWhisper(usePath or wavPath)
+          local chosenAudio = usePath or wavPath
+          if ok and usePath and usePath ~= wavPath then
+            if cfg.CANONICALIZE_NORMALIZED_TO_WAV == true then
+              -- Canonicalize: remove raw, rename normalized to original name
+              if hs.fs.attributes(wavPath) then pcall(function() os.remove(wavPath) end) end
+              local renamed = pcall(function() os.rename(usePath, wavPath) end)
+              if renamed then
+                chosenAudio = wavPath
+              else
+                -- Fallback: keep normalized path; optionally remove raw if configured
+                chosenAudio = usePath
+                if (cfg.PREPROCESS_KEEP_RAW ~= true) and hs.fs.attributes(wavPath) then pcall(function() os.remove(wavPath) end) end
+              end
+            else
+              -- Keep normalized path; optionally remove raw
+              if (cfg.PREPROCESS_KEEP_RAW ~= true) and hs.fs.attributes(wavPath) then pcall(function() os.remove(wavPath) end) end
+              chosenAudio = usePath
+            end
+          end
+          runWhisper(chosenAudio)
         end)
       else
         runWhisper(wavPath)
@@ -630,7 +906,17 @@ local function runWhisper(audioPath)
 
   ffTask = hs.task.new(FFMPEG, onFFExit, function(task, stdOut, stdErr)
     if stdOut and #stdOut > 0 then table.insert(ffStdoutBuf, stdOut) end
-    if stdErr and #stdErr > 0 then table.insert(ffStderrBuf, stdErr) end
+    if stdErr and #stdErr > 0 then
+      -- Inline wave meter: parse RMS level from stderr in real-time
+      if WAVE_METER_MODE == "inline" then
+        local db = stdErr:match("RMS_level:%s*([%-%d%.]+)%s*dB")
+        if db then
+          local val = mapDbToLevel(tonumber(db))
+          if val and val==val then levelVal = val end
+        end
+      end
+      table.insert(ffStderrBuf, stdErr)
+    end
     return true
   end, args)
 
@@ -643,9 +929,16 @@ local function runWhisper(audioPath)
   startMs = nowMs()
   heldMs = 0
   recording = true
+  -- UI: wave indicator + dot
+  if WAVE_METER_MODE ~= "off" then
+    showLevelIndicator()
+    if WAVE_METER_MODE == "monitor" then
+      startLevelMonitor()
+    end
+  end
   updateIndicator("recording")
   playSound("Pop")
-  log.i("Recording started: " .. wavPath .. " via device " .. deviceSpec)
+  log.i("Recording started: " .. wavPath .. " via device " .. deviceSpec .. ", session=" .. tostring(sessionKind))
 end
 
 local function stopRecording()
@@ -662,6 +955,9 @@ local function stopRecording()
     return
   end
   if ffTask then
+    -- Stop level indicator/monitor immediately
+    hideLevelIndicator()
+    stopLevelMonitor()
     -- Try sending 'q' via stdin for graceful finalize
     local wrote = pcall(function()
       ffTask:setInput(true)
@@ -678,10 +974,12 @@ end
 
 -- Key handling: Press-and-hold F13 and Fn+T test toggle
 local f13Hotkey
+local shiftF13Hotkey
 local function startTaps()
   if keyTap then keyTap:stop() end
   if flagTap then flagTap:stop() end
   if f13Hotkey then f13Hotkey:delete() end
+  if shiftF13Hotkey then shiftF13Hotkey:delete() end
 
   flagTap = hs.eventtap.new({ hs.eventtap.event.types.flagsChanged }, function(evt)
     local f = evt:getFlags()
@@ -696,11 +994,27 @@ local function startTaps()
 
   keyTap = hs.eventtap.new({ hs.eventtap.event.types.keyDown, hs.eventtap.event.types.keyRepeat }, function(evt)
     local code = evt:getKeyCode()
+    local et = evt:getType()
 
-    -- Fn+T: toggle GLOBAL test/live mode
-    if fnHeld and code == hs.keycodes.map.t and evt:getType() == hs.eventtap.event.types.keyDown then
-      setTestMode(not isTestMode())
-      return true
+    -- Grouped Fn combos: T (toggle test), R (reload), O (open init.lua)
+    if fnHeld and et == hs.eventtap.event.types.keyDown then
+      if code == hs.keycodes.map.t then
+        setTestMode(not isTestMode())
+        return true
+      elseif code == hs.keycodes.map.r then
+        hs.reload()
+        hs.alert.show("Hammerspoon reloaded")
+        return true
+      elseif code == hs.keycodes.map.o then
+        local initPath = (os.getenv("HOME") or "") .. "/.hammerspoon/init.lua"
+        if hs.fs.attributes(initPath) then
+          hs.execute(string.format([[open -a "Visual Studio Code" %q]], initPath))
+          hs.alert.show("Opened init.lua in VS Code")
+        else
+          hs.alert.show("init.lua not found at ~/.hammerspoon/init.lua")
+        end
+        return true
+      end
     end
 
     return false
@@ -711,7 +1025,7 @@ local function startTaps()
   f13Hotkey = hs.hotkey.bind({}, "f13",
     function() -- pressed
       log.i("F13 pressed")
-      if not recording then startRecording() end
+      if not recording then sessionKind = "hold"; ignoreHoldThreshold = false; startRecording() end
     end,
     function() -- released
       log.i("F13 released")
@@ -719,7 +1033,23 @@ local function startTaps()
     end
   )
 
-  log.i("push_to_talk: F13 press-and-hold armed (testMode=" .. tostring(isTestMode()) .. ")")
+  -- Shift+F13: toggle on press
+  if (cfg.SHIFT_TOGGLE_ENABLED ~= false) then
+    shiftF13Hotkey = hs.hotkey.bind({"shift"}, "f13",
+      function() -- pressed
+        log.i("Shift+F13 pressed")
+        if not recording then
+          sessionKind = "toggle"; ignoreHoldThreshold = true; startRecording()
+        else
+          if sessionKind == "toggle" then stopRecording() end
+        end
+      end,
+      function() -- released (no-op)
+      end
+    )
+  end
+
+  log.i("push_to_talk: F13 hold + Shift+F13 toggle armed (testMode=" .. tostring(isTestMode()) .. ")")
 
   -- Initialize logger level according to current mode
   do

@@ -6,3 +6,7 @@
 Documents/
 VoiceNotes/
 
+# Local test fixtures (do not check in personal audio)
+tests/fixtures/*.wav
+tests/fixtures/*.norm.wav
+
