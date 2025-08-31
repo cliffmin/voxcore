@@ -170,3 +170,7 @@ Requirements summary
 License
 - MIT (see LICENSE)
 
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md)
+
