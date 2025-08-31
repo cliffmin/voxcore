@@ -48,6 +48,10 @@ return {
   -- Set this to change where audio and transcripts are saved
   NOTES_DIR = (os.getenv("HOME") or "") .. "/Documents/VoiceNotes",
 
+  -- Audio device index (avfoundation): set to your preferred input
+  -- Use Cmd+Alt+Ctrl+I to list devices; typical built-in mic is :1 on laptops
+  AUDIO_DEVICE_INDEX = 1,
+
   -- Logging
   LOG_ENABLED = true,               -- append JSONL logs per transcription event
   LOG_DIR = nil,                    -- default: NOTES_DIR/tx_logs (set in code)
