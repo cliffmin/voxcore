@@ -42,6 +42,8 @@ local WHISPER = HOME .. "/.local/bin/whisper"      -- pipx-installed whisper CLI
 
 -- Wave meter mode: 'inline' (default; parse ffmpeg stderr), 'monitor' (second ffmpeg), or 'off'
 local WAVE_METER_MODE = cfg.WAVE_METER_MODE or "inline"
+-- Sounds (start/finish/error). Default off.
+local SOUND_ENABLED = (cfg.SOUND_ENABLED == true)
 
 -- Logging configuration (defaults; can be overridden via ptt_config)
 local LOG_DIR = (cfg.LOG_DIR and tostring(cfg.LOG_DIR)) or (NOTES_DIR .. "/tx_logs")
@@ -49,7 +51,7 @@ local LOG_ENABLED = (cfg.LOG_ENABLED ~= false)
 local MODEL = "base.en"                             -- faster local model (English)
 local LANG = "en"
 local HOLD_THRESHOLD_MS = 150                       -- ignore ultra-short taps
-local AUDIO_DEVICE_INDEX = 0                        -- avfoundation audio index (":0" by default)
+local AUDIO_DEVICE_INDEX = (type(cfg.AUDIO_DEVICE_INDEX) == "number" and cfg.AUDIO_DEVICE_INDEX) or 0 -- avfoundation audio index (":0" by default)
 local BUILTIN_SCREEN_PATTERN = "Built%-in"          -- choose the MacBook's built-in display by default
 
 -- Transcript reflow options
@@ -95,6 +97,7 @@ local levelVal = 0.0    -- instantaneous [0..1]
 local levelEma = 0.0    -- smoothed [0..1]
 local levelT = 0.0      -- time for fallback animation
 local levelUseFallback = false
+local recordPeak = 0.0  -- max level seen during recording
 
 -- Debug buffers
 local ffStdoutBuf, ffStderrBuf = {}, {}
@@ -161,6 +164,23 @@ local function appendJSONL(path, obj)
   f:write("\n")
   f:close()
   return true
+end
+
+-- Unified failure finalizer with user-friendly messages and logging
+local function finalizeFailure(kind, msg, opts)
+  opts = opts or {}
+  if opts.deleteWav and wavPath and hs.fs.attributes(wavPath) then pcall(function() os.remove(wavPath) end) end
+  updateIndicator("off")
+  stopBlink()
+  local payload = {
+    wav = wavPath,
+    session_kind = sessionKind,
+    held_ms = heldMs,
+    peak_level = recordPeak,
+  }
+  for k, v in pairs(opts.extra or {}) do payload[k] = v end
+  logEvent(kind, payload)
+  if msg and #msg > 0 then hs.alert.show(msg) end
 end
 
 local function logEvent(kind, data)
@@ -430,7 +450,10 @@ local function startLevelMonitor()
       local db = line:match("RMS_level:%s*([%-%d%.]+)%s*dB")
       if db then
         local val = mapDbToLevel(tonumber(db))
-        if val and val==val then levelVal = val end
+        if val and val==val then
+          levelVal = val
+          if val > recordPeak then recordPeak = val end
+        end
       end
       table.insert(errBuf, se)
     end
@@ -564,26 +587,34 @@ local function onFFExit(code, stdout, stderr)
     updateIndicator("transcribing")
     recording = false
 
+    -- Track early-condition reasons without aborting output
+    local fallbackReason = nil
+
     -- Ignore micro-taps unless in toggle mode
     if (not ignoreHoldThreshold) and heldMs < HOLD_THRESHOLD_MS then
-      log.i("Hold below threshold; discarding recording")
-      if wavPath and hs.fs.attributes(wavPath) then pcall(function() os.remove(wavPath) end) end
-      return
+      log.i("Hold below threshold; proceeding anyway (will insert fallback text)")
+      fallbackReason = "too_short"
+      -- continue to attempt transcription; fallback will be inserted if none
     end
 
     -- Validate WAV exists and non-trivial size
     local attr = wavPath and hs.fs.attributes(wavPath)
     if not attr or (attr.size or 0) < 8000 then -- ~0.5s of 16kHz mono s16
       log.e("Audio not captured; wav too small: size=" .. tostring(attr and attr.size))
-      hs.alert.show("Audio not captured; check mic permission/device")
-      playSound("Funk")
-      return
+      fallbackReason = fallbackReason or "no_audio"
+      -- continue; transcription may fail → we'll insert a fallback message
     end
 
     -- Concise: report duration and size
     local bytes = attr.size or 0
     local dur = math.max(0, (bytes - 44) / 32000) -- 16kHz * 2 bytes * 1 ch
     log.i(string.format("REC done: %.2fs, %d KiB", dur, math.floor(bytes/1024)))
+
+    -- "No voice" detection: for clips >= 1s with very low peak level
+    if (dur >= 1.0) and (recordPeak < 0.08) then
+      fallbackReason = fallbackReason or "no_voice"
+      -- continue; transcription may still produce something; else fallback text
+    end
 
     -- Decide model/beam and whether to preprocess based on duration
     local chosenModel = MODEL
@@ -594,7 +625,7 @@ local function onFFExit(code, stdout, stderr)
     -- Kick off transcription
     local function startTranscribe()
       if not hs.fs.attributes(WHISPER) then
-        hs.alert.show("Whisper CLI not found at ~/.local/bin/whisper")
+        finalizeFailure("missing_cli", "Whisper CLI not found at ~/.local/bin/whisper. Install via pipx or update ptt_config.", { extra = { missing = WHISPER } })
         return
       end
 
@@ -687,18 +718,19 @@ local function runWhisper(audioPath)
             end
           end
           if not transcript or transcript:gsub("%s+", "") == "" then
-            hs.alert.show("No transcript produced")
-            playSound("Funk")
-            -- Log empty transcript event
-            logEvent("no_transcript", {
-              wav = wavPath,
-              duration_sec = dur,
-              wav_bytes = bytes,
-              preprocess_used = doPre,
-              audio_used = audioPath,
-              tx_ms = ms,
-              tx_code = wcode,
-            })
+            local reason = fallbackReason or "no_transcript"
+            local fallbackText = ""
+            if reason == "too_short" then
+              fallbackText = "[No transcript: recording too short]"
+            elseif reason == "no_audio" then
+              fallbackText = "[No transcript: no audio captured]"
+            elseif reason == "no_voice" then
+              fallbackText = "[No transcript: no voice detected]"
+            else
+              fallbackText = "[No transcript available]"
+            end
+            -- Insert fallback text according to session routing
+            finishWithText(fallbackText, { reason = reason })
             return
           end
           -- Write our reflowed transcript to the standard .txt path (use normalized base if used)
@@ -764,7 +796,7 @@ local function runWhisper(audioPath)
             writeAll(mdPath, finalText)
             -- Open with OS default handler for .md
             hs.execute(string.format([[open %q]], mdPath))
-            playSound("Glass")
+            if SOUND_ENABLED then playSound("Glass") end
             log.i(string.format("OPENED MD (%d chars): %s", #finalText, name))
             return mdPath
           end
@@ -777,7 +809,7 @@ local function runWhisper(audioPath)
               -- HOLD flow: paste
               hs.pasteboard.setContents(finalText)
               hs.timer.doAfter(0.02, function() hs.eventtap.keyStroke({"cmd"}, "v", 0) end)
-              playSound("Glass")
+              if SOUND_ENABLED then playSound("Glass") end
               log.i(string.format("PASTED %d chars", #finalText))
               doLogSuccess(finalText)
             end
@@ -866,7 +898,7 @@ local function runWhisper(audioPath)
             end
             updateIndicator("off")
             stopBlink()
-            playSound("Funk")
+            if SOUND_ENABLED then playSound("Funk") end
           end)
         end
         -- In normal mode, we already showed transcribing; upon completion we'll turn it off
@@ -912,7 +944,10 @@ local function runWhisper(audioPath)
         local db = stdErr:match("RMS_level:%s*([%-%d%.]+)%s*dB")
         if db then
           local val = mapDbToLevel(tonumber(db))
-          if val and val==val then levelVal = val end
+          if val and val==val then
+            levelVal = val
+            if val > recordPeak then recordPeak = val end
+          end
         end
       end
       table.insert(ffStderrBuf, stdErr)
@@ -923,12 +958,14 @@ local function runWhisper(audioPath)
 
   local ok, err = pcall(function() ffTask:start() end)
   if not ok then
-    hs.alert.show("Failed to start ffmpeg: " .. tostring(err))
+    hs.alert.show("Failed to start audio capture: " .. tostring(err))
     return
   end
   startMs = nowMs()
   heldMs = 0
+  recordPeak = 0.0
   recording = true
+  recordPeak = 0.0
   -- UI: wave indicator + dot
   if WAVE_METER_MODE ~= "off" then
     showLevelIndicator()
@@ -937,7 +974,7 @@ local function runWhisper(audioPath)
     end
   end
   updateIndicator("recording")
-  playSound("Pop")
+  if SOUND_ENABLED then playSound("Pop") end
   log.i("Recording started: " .. wavPath .. " via device " .. deviceSpec .. ", session=" .. tostring(sessionKind))
 end
 
