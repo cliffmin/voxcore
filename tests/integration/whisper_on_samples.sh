@@ -5,7 +5,10 @@ set -euo pipefail
 # Asserts that whisper exits 0 and produces non-empty JSON or TXT for each.
 
 root="$(cd "$(dirname "$0")/../.." && pwd)"
-SAMPLES_DIR="$root/tests/fixtures/samples"
+SAMPLES_DIR="${SAMPLES_DIR:-$root/tests/fixtures/samples_current}"
+if [[ ! -d "$SAMPLES_DIR" ]]; then
+  SAMPLES_DIR="$root/tests/fixtures/samples"
+fi
 WHISPER=${WHISPER:-"$HOME/.local/bin/whisper"}
 
 if [[ ! -x "$WHISPER" ]]; then
