@@ -8,6 +8,8 @@ IFS=$'\n\t'
 bash "$(dirname "$0")/../integration/selector_complex_smoke.sh"
 bash "$(dirname "$0")/../integration/fixture_sidecar_smoke.sh"
 bash "$(dirname "$0")/../integration/benchmark_smoke.sh"
+# Compare unrefined vs refined on same dataset (long bucket)
+bash "$(dirname "$0")/../integration/compare_unrefined_vs_refined_smoke.sh"
 
 echo "ALL_TESTS_OK"
 root="$(cd "$(dirname "$0")/../.." && pwd)"

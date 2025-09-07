@@ -186,12 +186,21 @@ New test utilities and smokes
   - Invoked from tests/smoke/all.sh
 
 Compare short vs long (with/without refine)
+A) From logs (HOLD vs TOGGLE)
 - Ensure you have at least one TOGGLE session with refine enabled (start Ollama and record with Shift+F13); HOLD runs are your short-form.
 - Run the report:
 
   python3 tests/util/report_short_vs_long.py
 
-- Output includes HOLD vs TOGGLE latency (p50/p90/avg), TOGGLE refine_ms (if available), and a few sample structure diffs (headings/bullets/paragraphs) and character deltas between baseline .txt and refined .md.
+- Output includes HOLD vs TOGGLE latency (p50/p90/avg), TOGGLE refine_ms (if available), and a few sample structure diffs.
+
+B) On the SAME dataset (no live recordings)
+- Build a baseline: python3 tests/util/select_best_fixtures_complex.py --per-bucket 5
+- Compare refined vs unrefined on the long bucket using the same WAVs:
+
+  python3 tests/integration/compare_unrefined_vs_refined.py tests/fixtures/baselines/<baseline_id> --bucket long --vox-bin "/usr/bin/java -jar $HOME/code/voxcompose/build/libs/voxcompose-0.1.0-all.jar"
+
+- This runs Whisper once to get the baseline TXT, then runs VoxCompose refine on the same text and reports size and structure deltas.
 
 Requirements summary
 - This repo: Hammerspoon, ffmpeg (Brewfile), pipx-installed whisper CLI.
