@@ -176,11 +176,22 @@ New test utilities and smokes
 - Benchmarking:
   - tests/integration/benchmark_against_baseline.py runs Whisper on a baseline and writes a results file.
   - tests/util/summarize_benchmark.py summarizes latency metrics overall and per bucket.
+- Reporting (short vs long with refine):
+  - tests/util/report_short_vs_long.py reads your latest log and summarizes HOLD (F13) vs TOGGLE (Shift+F13+refine) latency and structure.
+  - For TOGGLE, it compares baseline .txt (next to the Whisper .json) vs refined Markdown (output_path) and reports headings/bullets/paragraphs + char deltas.
 - Smokes:
   - tests/integration/selector_complex_smoke.sh
   - tests/integration/fixture_sidecar_smoke.sh
   - tests/integration/benchmark_smoke.sh
   - Invoked from tests/smoke/all.sh
+
+Compare short vs long (with/without refine)
+- Ensure you have at least one TOGGLE session with refine enabled (start Ollama and record with Shift+F13); HOLD runs are your short-form.
+- Run the report:
+
+  python3 tests/util/report_short_vs_long.py
+
+- Output includes HOLD vs TOGGLE latency (p50/p90/avg), TOGGLE refine_ms (if available), and a few sample structure diffs (headings/bullets/paragraphs) and character deltas between baseline .txt and refined .md.
 
 Requirements summary
 - This repo: Hammerspoon, ffmpeg (Brewfile), pipx-installed whisper CLI.
