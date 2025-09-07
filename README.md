@@ -21,15 +21,21 @@ Architecture (current)
 - Storage layout: per-recording folder named like 2025-Jun-25_11.15.30_AM containing WAV/JSON/TXT for that session
 - UX: red dot (recording), orange blinking (transcribing), success/failure sounds; optional on-screen wave bars while recording
 
-Install (fresh machine)
-1) Clone repo
-   git clone <your-private-remote-url> ~/code/macos-ptt-dictation
-2) Run installer (installs ffmpeg via Brewfile, ensures pipx + openai-whisper, creates symlink)
-   bash ~/code/macos-ptt-dictation/scripts/install.sh
-3) Reload Hammerspoon
-   - Hammerspoon menu bar icon → Reload Config
-4) Test
-   - Press-and-hold F13 to record, release to transcribe and paste
+Install (MVP quickstart)
+- Prereqs
+  - brew install --cask hammerspoon
+  - brew install ffmpeg
+  - python3 -m pip install --user pipx && python3 -m pipx ensurepath || true
+  - pipx install --include-deps openai-whisper
+- Install module
+  - git clone https://github.com/cliffmin/macos-ptt-dictation ~/code/macos-ptt-dictation
+  - bash ~/code/macos-ptt-dictation/scripts/ptt-install
+- Reload Hammerspoon
+  - Hammerspoon menu bar → Reload Config
+- Test
+  - Press-and-hold F13 to record; release to transcribe and paste
+- Configure (optional)
+  - Copy and edit: ~/.hammerspoon/ptt_config.lua (a sample is copied by ptt-install)
 
 Uninstall / rollback
 - Run:
@@ -122,7 +128,8 @@ Repository hygiene
 
 Future (optional)
 - Migrate to faster-whisper or whisper.cpp backend for speed while keeping the same Hammerspoon wrapper.
-- Consider a config.lua to externalize tunables (device/model/thresholds) without editing code.
+- Provide a native Swift menubar app alternative (no Hammerspoon) for a broader audience.
+- Create a Homebrew Tap formula for convenience (see below).
 
 Interplay with VoxCompose (optional refine)
 - Long-form (Shift+F13) can optionally run a second-pass refinement via the separate VoxCompose Java CLI.
