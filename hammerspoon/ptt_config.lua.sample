@@ -1,0 +1,64 @@
+-- hammerspoon/ptt_config.lua.sample
+-- Safe defaults for public users. Copy to ~/.hammerspoon/ptt_config.lua and edit.
+
+return {
+  -- Prompt bias (safe, generic)
+  INITIAL_PROMPT = table.concat({
+    "Software and product operations; macOS automation; ",
+    "CLI; transcription; dictation; clipboard paste; symlink; complexity metrics; retest and commit."
+  }),
+
+  -- Reflow thresholds (seconds)
+  GAP_NEWLINE_SEC = 1.75,
+  GAP_DOUBLE_NEWLINE_SEC = 2.50,
+
+  -- Disfluencies (whole-word removal at boundaries)
+  DISFLUENCIES = { "uh", "um", "uhh", "uhm" },
+
+  -- Output modes per session type
+  SHIFT_TOGGLE_ENABLED = true,
+  OUTPUT = {
+    HOLD = { mode = "paste",  format = "txt" },
+    TOGGLE = { mode = "editor", format = "md" },
+  },
+
+  -- LLM refiner (VoxCompose) is disabled by default for public users
+  LLM_REFINER = {
+    ENABLED = false,
+    CMD = { "/usr/bin/java", "-jar", (os.getenv("HOME") or "") .. "/code/voxcompose/build/libs/voxcompose-0.1.0-all.jar" },
+    ARGS = { "--model", "llama3.1", "--timeout-ms", "8000" },
+    TIMEOUT_MS = 9000,
+  },
+
+  -- Audio retention/canonicalization
+  PREPROCESS_KEEP_RAW = false,
+  CANONICALIZE_NORMALIZED_TO_WAV = true,
+
+  -- Output directory (default)
+  NOTES_DIR = (os.getenv("HOME") or "") .. "/Documents/VoiceNotes",
+
+  -- Device index (use Cmd+Alt+Ctrl+I to list devices; built-in mic is often :1)
+  AUDIO_DEVICE_INDEX = 1,
+
+  -- Post-processing toggles
+  DISFLUENCY_BEGIN_STRIP = true,
+  BEGIN_DISFLUENCIES = { "so", "um", "uh", "like", "you know", "okay", "yeah", "well" },
+  AUTO_CAPITALIZE_SENTENCES = true,
+  DEDUPE_IMMEDIATE_REPEATS = true,
+  DROP_LOWCONF_SEGMENTS = true,
+  LOWCONF_NO_SPEECH_PROB = 0.5,
+  LOWCONF_AVG_LOGPROB = -1.0,
+  DICTIONARY_REPLACE = {
+    ["github"] = "GitHub",
+    ["lincoln"] = "symlink",
+    ["retaster"] = "retest",
+  },
+
+  -- UX
+  SOUND_ENABLED = false,
+  ARM_DELAY_MS = 700,
+
+  -- Logging (off by default for privacy)
+  LOG_ENABLED = false,
+  LOG_DIR = nil,
+}

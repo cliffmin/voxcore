@@ -6,7 +6,7 @@ return {
   INITIAL_PROMPT = table.concat({
     "Software and product operations; Hammerspoon/macOS automation; Raycast and Spotlight; ",
     "instruction precedence and consent gating; options, recommendations, flags, defaults; ",
-    "CLI, Brew, pipx, transcription, dictation, clipboard paste."
+    "CLI, Brew, pipx, transcription, dictation, clipboard paste; symlink; complexity metrics; retest and commit."
   }),
 
   -- Reflow thresholds (seconds)
@@ -27,7 +27,7 @@ return {
 
   -- UX cues
   SOUND_ENABLED = true,           -- play short cues on arm/finish
-  ARM_DELAY_MS = 300,             -- fallback arming delay before "speak now" cue
+  ARM_DELAY_MS = 700,             -- fallback arming delay before "speak now" cue (increased for reliability)
 
   -- Optional LLM refiner (VoxCompose CLI)
   -- Disabled by default. When enabled for TOGGLE sessions, the transcript will be
@@ -89,6 +89,7 @@ return {
     -- Recurring mishears observed in transcripts
     ["withe"] = "with the",
     ["sim links"] = "symlinks",
+    ["lincoln"] = "symlink",
     ["XDD"] = "XDG",
     ["Jura"] = "Jira",
     ["Jason"] = "JSON",
@@ -97,6 +98,8 @@ return {
     ["Abilare attacks"] = "Avalara tax",
     ["D-Doop"] = "dedupe",
     ["D Doop"] = "dedupe",
+    ["retaster"] = "retest",
+    ["complexity made metrics"] = "complexity metrics",
     ["deadly role"] = "lead role",
     ["pads"] = "paths",
   },

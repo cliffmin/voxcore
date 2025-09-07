@@ -97,7 +97,7 @@ local LOG_ENABLED = (cfg.LOG_ENABLED ~= false)
 local MODEL = "base.en"                             -- faster local model (English)
 local LANG = "en"
 local HOLD_THRESHOLD_MS = 150                       -- ignore ultra-short taps
-local ARM_DELAY_MS = tonumber(cfg.ARM_DELAY_MS) or 220 -- fallback arming delay before "speak now" cue
+local ARM_DELAY_MS = tonumber(cfg.ARM_DELAY_MS) or 700 -- fallback arming delay before "speak now" cue
 local AUDIO_DEVICE_INDEX = (type(cfg.AUDIO_DEVICE_INDEX) == "number" and cfg.AUDIO_DEVICE_INDEX) or 0 -- avfoundation audio index (":0" by default)
 local BUILTIN_SCREEN_PATTERN = "Built%-in"          -- choose the MacBook's built-in display by default
 
@@ -123,8 +123,10 @@ local BEAM_SIZE = 3                                  -- beam search width (speed
 local BEAM_SIZE_LONG = 3                             -- same for long audio
 local WHISPER_DEVICE = "cpu"                        -- set to "mps" on Apple Silicon if available (auto-detected)
 local VENV_PY = HOME .. "/.local/pipx/venvs/openai-whisper/bin/python"  -- python in pipx venv
-local MODEL_FAST = "base.en"                          -- keep base for long audio as well
-local LONG_AUDIO_SEC = 1e9                           -- effectively disable model switching
+local MODEL_FAST = "base.en"
+local MODEL_SHORT = cfg.MODEL_SHORT or "small.en"    -- higher accuracy for short clips
+local SHORT_SWITCH_SEC = tonumber(cfg.SHORT_SWITCH_SEC) or 12.0
+local LONG_AUDIO_SEC = 1e9                           -- not used now; switching on short instead
 local PREPROCESS_MIN_SEC = 12.0                      -- preprocess only if reasonably long
 local TIMEOUT_MS = tonumber(cfg.TIMEOUT_MS) or 120000 -- 2 minutes transcription timeout
 
@@ -919,10 +921,9 @@ local function startRecording()
   if armTimer then armTimer:stop(); armTimer=nil end
   armTimer = hs.timer.doAfter((ARM_DELAY_MS or 200)/1000, function()
     if not recordArmed then
-      recordArmed = true
-      if SOUND_ENABLED then playSound("Tink") end
+      -- On fallback, brighten dot only (no beep), to avoid misleading cue
       updateIndicator("recording")
-      log.d("Armed via fallback timer")
+      log.d("Armed via fallback timer (no beep)")
     end
   end)
 
@@ -968,7 +969,10 @@ local function onFFExit(code, stdout, stderr)
     local chosenModel = MODEL
     local chosenBeam = BEAM_SIZE
     local doPre = dur >= PREPROCESS_MIN_SEC
-    -- No model switch; base.en for all durations for speed
+    -- Switch to a slightly larger model for short clips to improve accuracy
+    if dur and dur > 0 and dur <= SHORT_SWITCH_SEC then
+      chosenModel = MODEL_SHORT or MODEL
+    end
 
     -- Kick off transcription
     local function startTranscribe()
@@ -979,18 +983,19 @@ local function onFFExit(code, stdout, stderr)
 
 local function runWhisper(audioPath)
         local fp16Arg = (WHISPER_DEVICE == "mps") and "True" or "False"
-        local wargs = {
-          audioPath,
-          "--model", chosenModel,
-          "--language", LANG,
-          "--output_format", "json",
-          "--output_dir", sessionDir,
-          "--beam_size", tostring(chosenBeam),
-          "--device", WHISPER_DEVICE,
-          "--fp16", fp16Arg,
-          "--verbose", "False",
-          "--temperature", "0",
-        }
+          local wargs = {
+            audioPath,
+            "--model", chosenModel,
+            "--language", LANG,
+            "--output_format", "json",
+            "--output_dir", sessionDir,
+            "--beam_size", tostring(chosenBeam),
+            "--device", WHISPER_DEVICE,
+            "--fp16", fp16Arg,
+            "--verbose", "False",
+            "--temperature", "0",
+            "--condition_on_previous_text", "False",
+          }
         if cfg and cfg.INITIAL_PROMPT and #cfg.INITIAL_PROMPT > 0 then
           table.insert(wargs, "--initial_prompt")
           table.insert(wargs, cfg.INITIAL_PROMPT)
