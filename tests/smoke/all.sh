@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
+IFS=$'\n\t'
 
+# Existing smokes assumed here
+
+# New tests
+bash "$(dirname "$0")/../integration/selector_complex_smoke.sh"
+bash "$(dirname "$0")/../integration/fixture_sidecar_smoke.sh"
+bash "$(dirname "$0")/../integration/benchmark_smoke.sh"
+
+echo "ALL_TESTS_OK"
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 
 run() {

@@ -9,8 +9,38 @@ local log = hs.logger.new("push_to_talk", "info")
 local json = require("hs.json")
 
 -- Optional external config
-local cfg_ok, cfg = pcall(require, "ptt_config")
-if not (cfg_ok and type(cfg) == "table") then cfg = {} end
+-- Enhanced config loader: prefer user config (~/.hammerspoon/ptt_config.lua),
+-- then fall back to repo-local hammerspoon/ptt_config.lua (alongside this file).
+local cfg, cfg_path_used, cfg_loaded = {}, nil, false
+local function loadConfig()
+  local ok, t = pcall(require, "ptt_config")
+  if ok and type(t) == "table" then
+    cfg = t
+    cfg_loaded = true
+    cfg_path_used = "require:ptt_config"
+    return
+  end
+  -- Fallback: load repo-local config next to this file
+  local src = debug.getinfo(1, "S").source or ""
+  local selfPath = src:match("^@(.*)$")
+  if selfPath then
+    local dir = selfPath:match("^(.*)/[^/]+$")
+    local cand = dir and (dir .. "/ptt_config.lua") or nil
+    if cand and hs.fs.attributes(cand) then
+      local ok2, t2 = pcall(dofile, cand)
+      if ok2 and type(t2) == "table" then
+        cfg = t2
+        cfg_loaded = true
+        cfg_path_used = cand
+        return
+      end
+    end
+  end
+  cfg = {}
+  cfg_loaded = false
+  cfg_path_used = nil
+end
+loadConfig()
 
 -- Logger level compatibility (avoid warnings across Hammerspoon versions)
 local function setLogLevelCompat(lg, levelStr)
@@ -32,6 +62,22 @@ local function setTestMode(v)
   local state = v and "TEST (dry-run)" or "LIVE"
   hs.alert.show("Fn mode: " .. state)
   log.i("Fn GLOBAL mode => " .. state)
+  -- Initialize a new test fixture batch id when entering TEST mode
+  if v then
+    local rr = repoRoot()
+    local shortSha = nil
+    if rr and rr ~= "" then
+      local cmd = string.format([[git -C %q rev-parse --short HEAD 2>/dev/null]], rr)
+      local out = hs.execute(cmd) or ""
+      out = out:gsub("%s+$", "")
+      if out ~= "" then shortSha = out end
+    end
+    local bid = os.date("%Y%m%d-%H%M") .. (shortSha and ("_" .. shortSha) or "")
+    hs.settings.set("ptt_fixture_batch_id", bid)
+    log.i("Test fixture batch id set: " .. bid)
+  else
+    -- Leaving test mode does not clear batch id, so you can keep exporting into the same batch if you toggle back soon
+  end
 end
 
 -- Config
@@ -51,6 +97,7 @@ local LOG_ENABLED = (cfg.LOG_ENABLED ~= false)
 local MODEL = "base.en"                             -- faster local model (English)
 local LANG = "en"
 local HOLD_THRESHOLD_MS = 150                       -- ignore ultra-short taps
+local ARM_DELAY_MS = tonumber(cfg.ARM_DELAY_MS) or 220 -- fallback arming delay before "speak now" cue
 local AUDIO_DEVICE_INDEX = (type(cfg.AUDIO_DEVICE_INDEX) == "number" and cfg.AUDIO_DEVICE_INDEX) or 0 -- avfoundation audio index (":0" by default)
 local BUILTIN_SCREEN_PATTERN = "Built%-in"          -- choose the MacBook's built-in display by default
 
@@ -111,9 +158,19 @@ local levelT = 0.0      -- time for fallback animation
 local levelUseFallback = false
 local recordPeak = 0.0  -- max level seen during recording
 
+-- Arming state (to avoid cutting off initial words): dot brightens when ready, optional beep
+local recordArmed = false
+local armTimer = nil
+
 -- Debug buffers
 local ffStdoutBuf, ffStderrBuf = {}, {}
 local whStdoutBuf, whStderrBuf = {}, {}
+
+-- Reflow metrics for logging
+local reflowStats = { total_segments = 0, dropped_segments = 0 }
+
+-- Test fixture export state
+local testFixtureNextCategory = nil
 
 -- Utils
 local function nowMs()
@@ -305,6 +362,132 @@ local function writeAll(path, content)
   return true
 end
 
+local function dirname(p)
+  return p and p:match("^(.*)/[^/]+$") or nil
+end
+
+local function basename(p)
+  return p and p:match("([^/]+)$") or nil
+end
+
+local function repoRoot()
+  local src = debug.getinfo(1, "S").source or ""
+  local selfPath = src:match("^@(.*)$")
+  if not selfPath then return nil end
+  local dir = dirname(selfPath) -- .../hammerspoon
+  return dir and dir:match("^(.*)/hammerspoon$") or nil
+end
+
+local function categorizeDuration(sec)
+  local tcfg = cfg.TEST_FIXTURE_EXPORT or {}
+  local micro = tonumber(tcfg.MICROTAP_MAX_SEC) or 1.0
+  local smax = tonumber(tcfg.SHORT_MAX_SEC) or 10
+  local mmax = tonumber(tcfg.MEDIUM_MAX_SEC) or 30
+  if sec <= micro then return "micro" end
+  if sec <= smax then return "short" end
+  if sec <= mmax then return "medium" end
+  return "long"
+end
+
+local function exportTestFixture(category, audioPath, jsonPath, txtPath)
+  local tcfg = cfg.TEST_FIXTURE_EXPORT or {}
+  local rr = repoRoot() or ""
+  local root = (type(tcfg.DEST_DIR) == "string" and #tcfg.DEST_DIR>0) and tcfg.DEST_DIR or (rr .. "/tests/fixtures/samples_current")
+  if not rr or rr == "" then return end
+  ensureDir(root)
+  -- Batch subfolder based on current batch id (or generate lightweight one if missing)
+  local bid = hs.settings.get("ptt_fixture_batch_id")
+  if not bid or bid == "" then
+    local cmd = string.format([[git -C %q rev-parse --short HEAD 2>/dev/null]], rr)
+    local out = hs.execute(cmd) or ""; out = out:gsub("%s+$", "")
+    bid = os.date("%Y%m%d-%H%M") .. ((out ~= "" and ("_"..out)) or "")
+    hs.settings.set("ptt_fixture_batch_id", bid)
+  end
+  local batchDir = string.format("%s/batches/%s", root, bid)
+  local dest = string.format("%s/%s", batchDir, category or "uncat")
+  ensureDir(batchDir)
+  ensureDir(dest)
+
+  -- Write batch metadata once
+  local metaPath = batchDir .. "/metadata.json"
+  if not hs.fs.attributes(metaPath) then
+    local git = { }
+    local shortSha = hs.execute(string.format([[git -C %q rev-parse --short HEAD 2>/dev/null]], rr)) or ""
+    local fullSha = hs.execute(string.format([[git -C %q rev-parse HEAD 2>/dev/null]], rr)) or ""
+    local branch = hs.execute(string.format([[git -C %q rev-parse --abbrev-ref HEAD 2>/dev/null]], rr)) or ""
+    local function trim(s) return (s or ""):gsub("%s+$", "") end
+    git.short = trim(shortSha)
+    git.full = trim(fullSha)
+    git.branch = trim(branch)
+
+    local meta = {
+      batch_id = bid,
+      ts = isoNow(),
+      repo_root = rr,
+      git = git,
+      config = {
+        gap_newline_sec = GAP_NEWLINE_SEC,
+        gap_double_newline_sec = GAP_DOUBLE_NEWLINE_SEC,
+        preprocess_min_sec = PREPROCESS_MIN_SEC,
+        timeout_ms = TIMEOUT_MS,
+        disfluencies = cfg.DISFLUENCIES,
+        initial_prompt_len = (cfg.INITIAL_PROMPT and #cfg.INITIAL_PROMPT or 0),
+      }
+    }
+    writeAll(metaPath, json.encode(meta))
+  end
+
+  local function ln_s(src)
+    if src and hs.fs.attributes(src) then
+      local dst = string.format("%s/%s", dest, basename(src))
+      hs.execute(string.format([[ln -sf %q %q]], src, dst))
+    end
+  end
+  ln_s(audioPath)
+  if (tcfg.LINK_JSON ~= false) then ln_s(jsonPath) end
+  if (tcfg.LINK_TXT ~= false) then ln_s(txtPath) end
+
+  -- Compute complexity score and write sidecar fixture.json
+  local chars = 0
+  local tricky = 0
+  local txt = (txtPath and readAll(txtPath)) or ""
+  if txt and #txt > 0 then
+    chars = #txt
+    local tokens = tcfg.TRICKY_TOKENS or {}
+    local ltxt = string.lower(txt)
+    for _, tok in ipairs(tokens) do
+      local patt = tostring(tok):gsub("[^%w]+"," ")
+      patt = patt:lower()
+      if patt ~= "" then
+        local _, n = ltxt:gsub(patt, "")
+        tricky = tricky + (n or 0)
+      end
+    end
+  end
+  local w = tcfg.SCORE_WEIGHTS or { CHARS = 1.0, TRICKY = 6.0 }
+  local score = (w.CHARS or 1.0) * chars + (w.TRICKY or 6.0) * tricky
+  local fix = {
+    category = category,
+    duration_sec = (jsonPath and (function()
+      local j = readAll(jsonPath)
+      local ok, o = pcall(function() return json.decode(j) end)
+      if ok and o and o.segments and #o.segments>0 then
+        local last = o.segments[#o.segments]
+        return tonumber(last["end"] or last.e or 0)
+      end
+      return nil
+    end)()) or nil,
+    transcript_chars = chars,
+    tricky_matches = tricky,
+    score = score,
+    batch_id = hs.settings.get("ptt_fixture_batch_id"),
+  }
+  local side = dest .. "/fixture.json"
+  writeAll(side, json.encode(fix))
+
+  logEvent("test_fixture_export", { category = category, dest_dir = dest, audio = audioPath, json = jsonPath, txt = txtPath, score = score, tricky = tricky, transcript_chars = chars })
+end
+
 local function rstrip(s)
   return (s or ""):gsub("%s+$", "")
 end
@@ -313,6 +496,7 @@ end
 -- Newline only at sentence end or sufficiently large gaps; otherwise prefer spaces.
 local function reflowFromSegments(segments)
   -- Optionally filter low-confidence/no-speech segments first
+  local totalCount = #(segments or {})
   local filtered = {}
   for _, seg in ipairs(segments or {}) do
     local keep = true
@@ -326,6 +510,8 @@ local function reflowFromSegments(segments)
     if keep then table.insert(filtered, seg) end
   end
   segments = filtered
+  reflowStats.total_segments = totalCount
+  reflowStats.dropped_segments = math.max(0, totalCount - #filtered)
   if not segments or #segments == 0 then return "" end
   local out = {}
   local lastEnd = nil
@@ -424,8 +610,18 @@ local function updateIndicator(state)
   indicator = hs.canvas.new({x = x, y = y, w = size, h = size})
   local lvl = (hs.canvas.windowLevels and hs.canvas.windowLevels.overlay) or ((hs.drawing and hs.drawing.windowLevels and hs.drawing.windowLevels.modalPanel) or nil)
   if lvl then pcall(function() indicator:level(lvl) end) end
-  local baseColor = (state == "transcribing") and { red = 1, green = 0.6, blue = 0 } or { red = 1, green = 0, blue = 0 }
-  local alpha = (state == "transcribing") and 0.85 or 0.90
+  local baseColor
+  local alpha
+  if state == "transcribing" then
+    baseColor = { red = 1, green = 0.6, blue = 0 }
+    alpha = 0.85
+  elseif state == "recording_dim" then
+    baseColor = { red = 1, green = 0, blue = 0 }
+    alpha = 0.55
+  else
+    baseColor = { red = 1, green = 0, blue = 0 }
+    alpha = 0.90
+  end
   indicator:appendElements({
     id = "dot",
     type = "circle",
@@ -520,7 +716,7 @@ local function startLevelMonitor()
   levelVal, levelEma = 0,0
   -- Attempt an ffmpeg astats-based monitor (may fail if device is exclusive)
   local deviceSpec = ":" .. tostring(AUDIO_DEVICE_INDEX)
-  local args = { "-hide_banner", "-loglevel", "error", "-f", "avfoundation", "-i", deviceSpec, "-af", "astats=metadata=1:reset=0.2", "-f", "null", "-" }
+  local args = { "-hide_banner", "-loglevel", "error", "-f", "avfoundation", "-thread_queue_size", "1024", "-i", deviceSpec, "-af", "astats=metadata=1:reset=0.2", "-f", "null", "-" }
   if isTestMode() then
     -- In test mode, just fallback animate
     levelUseFallback = true
@@ -619,6 +815,8 @@ local function showInfo()
     "  NOTES_DIR=" .. NOTES_DIR,
     "  AUDIO_DEVICE=" .. tostring(":" .. AUDIO_DEVICE_INDEX),
     "  MODEL=" .. MODEL .. " LANG=" .. LANG,
+    "  ptt_config_loaded=" .. tostring(cfg_loaded),
+    "  ptt_config_path=" .. tostring(cfg_path_used or "n/a"),
   }
   log.i(table.concat(info, "\n"))
   listDevices()
@@ -692,6 +890,7 @@ local function startRecording()
     "-nostats",
     "-y",
     "-f", "avfoundation",
+    "-thread_queue_size", "1024",
     "-i", deviceSpec,
     "-ac", "1",
     "-ar", "16000",
@@ -714,7 +913,21 @@ local function startRecording()
 
   ffStdoutBuf, ffStderrBuf = {}, {}
 
+  -- Arming: start with dim indicator; brighten and optional beep once ready
+  recordArmed = false
+  updateIndicator("recording_dim")
+  if armTimer then armTimer:stop(); armTimer=nil end
+  armTimer = hs.timer.doAfter((ARM_DELAY_MS or 200)/1000, function()
+    if not recordArmed then
+      recordArmed = true
+      if SOUND_ENABLED then playSound("Tink") end
+      updateIndicator("recording")
+      log.d("Armed via fallback timer")
+    end
+  end)
+
 local function onFFExit(code, stdout, stderr)
+  if armTimer then armTimer:stop(); armTimer=nil end
     if isTestMode() then
       log.d(string.format("[TEST] ffmpeg exit code=%s", tostring(code)))
     end
@@ -890,6 +1103,8 @@ local function runWhisper(audioPath)
               wav_bytes = bytes,
               preprocess_used = doPre,
               audio_used = audioPath,
+              canonical_wav = audioPath,
+              audio_processing_chain = audioProcessingChain,
               json_path = jsonPath,
               tx_ms = ms,
               tx_code = wcode,
@@ -898,9 +1113,23 @@ local function runWhisper(audioPath)
               session_kind = sessionKind,
               output_mode = modeCfg.mode,
               output_format = modeCfg.format,
+              reflow_total_segments = reflowStats.total_segments,
+              reflow_dropped_segments = reflowStats.dropped_segments,
             }
             if extra then for k,v in pairs(extra) do payload[k]=v end end
             logEvent("success", payload)
+
+            -- Export test fixture when in test mode
+            local tcfg = cfg.TEST_FIXTURE_EXPORT or {}
+            if isTestMode() and tcfg.ENABLED ~= false then
+              local category = testFixtureNextCategory
+              if not category or (tcfg.MODE == "auto") then
+                category = categorizeDuration(dur or 0)
+              end
+              -- txtPath is set earlier when we wrote out the transcript
+              exportTestFixture(category, audioPath, jsonPath, txtPath)
+              testFixtureNextCategory = nil
+            end
           end
 
           local function slugify(s)
@@ -943,14 +1172,16 @@ local function runWhisper(audioPath)
 
             if sessionKind == "toggle" and modeCfg.mode == "editor" and (modeCfg.format == "md" or modeCfg.format == "markdown") then
               local mdPath = saveAndOpenMarkdown(finalText)
-              doLogSuccess(finalText, { output_path = mdPath })
+              local e = extra or {}
+              e.output_path = mdPath
+              doLogSuccess(finalText, e)
             else
               -- HOLD flow: paste
               hs.pasteboard.setContents(finalText)
               hs.timer.doAfter(0.02, function() hs.eventtap.keyStroke({"cmd"}, "v", 0) end)
               if SOUND_ENABLED then playSound("Glass") end
               log.i(string.format("PASTED %d chars", #finalText))
-              doLogSuccess(finalText)
+              doLogSuccess(finalText, extra)
             end
             updateIndicator("off")
             stopBlink()
@@ -962,6 +1193,9 @@ local function runWhisper(audioPath)
             local argv = {}
             for _,p in ipairs(refCfg.CMD or {}) do table.insert(argv, p) end
             for _,a in ipairs(refCfg.ARGS or {}) do table.insert(argv, a) end
+            -- Sidecar path for refiner metrics
+            local sidecarPath = sessionDir .. "/refine.json"
+            table.insert(argv, "--sidecar"); table.insert(argv, sidecarPath)
             if #argv == 0 then finishWithText(transcript); return end
             local outBuf, errBuf = {}, {}
             local refineStart = nowMs()
@@ -970,8 +1204,20 @@ local function runWhisper(audioPath)
               local refined = table.concat(outBuf)
               if tonumber(rc) ~= 0 or refined:gsub("%s+","") == "" then refined = transcript end
               local rMs = nowMs() - refineStart
-              logEvent("refine", { cmd = argv[1], args = table.concat(argv, " "), rc = rc, ms = rMs, out_chars = #refined })
-              finishWithText(refined)
+              -- Try to read sidecar for provider/model/metrics
+              local extra = { }
+              if hs.fs.attributes(sidecarPath) then
+                local sctxt = readAll(sidecarPath)
+                local okSC, sc = pcall(function() return json.decode(sctxt) end)
+                if okSC and type(sc) == "table" then
+                  extra.refine_ms = tonumber(sc.refine_ms) or rMs
+                  extra.refine_provider = sc.provider
+                  extra.refine_model = sc.model
+                end
+              end
+              if not extra.refine_ms then extra.refine_ms = rMs end
+              logEvent("refine", { cmd = argv[1], args = table.concat(argv, " "), rc = rc, ms = extra.refine_ms, out_chars = #refined, provider = extra.refine_provider, model = extra.refine_model })
+              finishWithText(refined, extra)
             end, function(t, so, se)
               if so and #so>0 then table.insert(outBuf, so) end
               if se and #se>0 then table.insert(errBuf, se) end
@@ -1044,10 +1290,13 @@ local function runWhisper(audioPath)
       end
 
       -- Preprocess then run whisper (only for longer clips)
+      local audioProcessingChain = "raw"
       if doPre then
         preprocessAudio(wavPath, function(ok, usePath)
           local chosenAudio = usePath or wavPath
           if ok and usePath and usePath ~= wavPath then
+            -- Normalization succeeded
+            audioProcessingChain = "raw->norm"
             if cfg.CANONICALIZE_NORMALIZED_TO_WAV == true then
               -- Canonicalize: remove raw, rename normalized to original name
               if hs.fs.attributes(wavPath) then pcall(function() os.remove(wavPath) end) end
@@ -1064,6 +1313,9 @@ local function runWhisper(audioPath)
               if (cfg.PREPROCESS_KEEP_RAW ~= true) and hs.fs.attributes(wavPath) then pcall(function() os.remove(wavPath) end) end
               chosenAudio = usePath
             end
+          else
+            -- Normalization not used or failed
+            audioProcessingChain = "raw"
           end
           runWhisper(chosenAudio)
         end)
@@ -1086,6 +1338,13 @@ local function runWhisper(audioPath)
           if val and val==val then
             levelVal = val
             if val > recordPeak then recordPeak = val end
+            if (not recordArmed) then
+              recordArmed = true
+              if armTimer then armTimer:stop(); armTimer=nil end
+              if SOUND_ENABLED then playSound("Tink") end
+              updateIndicator("recording")
+              log.d("Armed via first RMS sample")
+            end
           end
         end
       end
@@ -1127,6 +1386,7 @@ local function stopRecording()
     log.d("[TEST] Would stop ffmpeg (heldMs=" .. tostring(heldMs) .. ") and transcribe")
     updateIndicator("off")
     stopBlink()
+    if armTimer then armTimer:stop(); armTimer=nil end
     recording = false
     return
   end
@@ -1134,6 +1394,7 @@ local function stopRecording()
     -- Stop level indicator/monitor immediately
     hideLevelIndicator()
     stopLevelMonitor()
+    if armTimer then armTimer:stop(); armTimer=nil end
     -- Try sending 'q' via stdin for graceful finalize
     local wrote = pcall(function()
       ffTask:setInput(true)
@@ -1172,7 +1433,7 @@ local function startTaps()
     local code = evt:getKeyCode()
     local et = evt:getType()
 
-    -- Grouped Fn combos: T (toggle test), R (reload), O (open init.lua)
+    -- Grouped Fn combos: T (toggle test), R (reload), O (open init.lua), 1/2/3 (fixture category override)
     if fnHeld and et == hs.eventtap.event.types.keyDown then
       if code == hs.keycodes.map.t then
         setTestMode(not isTestMode())
@@ -1189,6 +1450,22 @@ local function startTaps()
         else
           hs.alert.show("init.lua not found at ~/.hammerspoon/init.lua")
         end
+        return true
+      elseif code == hs.keycodes.map["1"] then
+        testFixtureNextCategory = "short"
+        hs.alert.show("Test fixture: next=short")
+        return true
+      elseif code == hs.keycodes.map["2"] then
+        testFixtureNextCategory = "medium"
+        hs.alert.show("Test fixture: next=medium")
+        return true
+      elseif code == hs.keycodes.map["3"] then
+        testFixtureNextCategory = "long"
+        hs.alert.show("Test fixture: next=long")
+        return true
+      elseif code == hs.keycodes.map["0"] then
+        testFixtureNextCategory = nil
+        hs.alert.show("Test fixture: next=auto")
         return true
       end
     end

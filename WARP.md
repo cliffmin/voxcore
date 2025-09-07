@@ -2,6 +2,10 @@
 
 This file provides guidance to WARP (warp.dev) when working with code in this repository.
 
+## Rules Precedence
+Global rules apply across prompts, but repository rules take precedence within this project. See canonical global rules at:
+~/ai/global-rules/GlobalRules.md
+
 ## Overview
 This repo delivers a macOS push-to-talk dictation workflow powered by Hammerspoon (Lua), ffmpeg audio capture, and the openai-whisper CLI via pipx. Hold F13 to record; on release the audio is transcribed offline and pasted at the cursor. Runtime artifacts (WAV, JSON, TXT, JSONL logs) live under ~/Documents/VoiceNotes and are not tracked in git.
 

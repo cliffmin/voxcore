@@ -1,0 +1,11 @@
+{
+  "baseline_id": "baseline_20250906-2012_be1d604_complex",
+  "created": "2025-09-07T03:12:58Z",
+  "complexity_weighted": true,
+  "per_bucket": {
+    "long": 3,
+    "medium": 3,
+    "short": 3,
+    "micro": 1
+  }
+}
