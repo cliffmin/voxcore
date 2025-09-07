@@ -163,6 +163,18 @@ Integration tests and smoke
 - Docs: tests/README.md
 - Gitignore excludes tests/fixtures/*.wav and tests/fixtures/samples_current/ so personal audio and recent transcripts stay out of version control.
 
+New test utilities and smokes
+- Selection (complexity-weighted):
+  - tests/util/select_best_fixtures_complex.py builds a baseline preferring Test-mode batch fixtures and weighting tricky tokens + transcript length. Buckets by duration (micro/short/medium/long).
+- Benchmarking:
+  - tests/integration/benchmark_against_baseline.py runs Whisper on a baseline and writes a results file.
+  - tests/util/summarize_benchmark.py summarizes latency metrics overall and per bucket.
+- Smokes:
+  - tests/integration/selector_complex_smoke.sh
+  - tests/integration/fixture_sidecar_smoke.sh
+  - tests/integration/benchmark_smoke.sh
+  - Invoked from tests/smoke/all.sh
+
 Requirements summary
 - This repo: Hammerspoon, ffmpeg (Brewfile), pipx-installed whisper CLI.
 - VoxCompose: Java 17+, Ollama with a pulled model (e.g., llama3.1), built jar at build/libs/voxcompose-0.1.0-all.jar.

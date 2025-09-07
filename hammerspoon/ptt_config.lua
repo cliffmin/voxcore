@@ -25,6 +25,10 @@ return {
     TOGGLE = { mode = "editor", format = "md" },
   },
 
+  -- UX cues
+  SOUND_ENABLED = true,           -- play short cues on arm/finish
+  ARM_DELAY_MS = 300,             -- fallback arming delay before "speak now" cue
+
   -- Optional LLM refiner (VoxCompose CLI)
   -- Disabled by default. When enabled for TOGGLE sessions, the transcript will be
   -- piped to the Java CLI, which returns refined Markdown to save + open.
@@ -33,6 +37,24 @@ return {
     CMD = { "/usr/bin/java", "-jar", (os.getenv("HOME") or "") .. "/code/voxcompose/build/libs/voxcompose-0.1.0-all.jar" },
     ARGS = { "--model", "llama3.1", "--timeout-ms", "8000", "--memory", (os.getenv("HOME") or "") .. "/Library/Application Support/voxcompose/memory.jsonl" },
     TIMEOUT_MS = 9000,
+  },
+
+  -- Test fixture export (local, never committed)
+  TEST_FIXTURE_EXPORT = {
+    ENABLED = true,               -- when in TEST mode, export fixtures automatically
+    MODE = "auto",                -- "auto" duration-based; "manual" = use Fn+1/2/3 override
+    MICROTAP_MAX_SEC = 1.0,       -- <= this -> micro bucket
+    SHORT_MAX_SEC = 10,
+    MEDIUM_MAX_SEC = 30,
+    DEST_DIR = nil,               -- default: <repo>/tests/fixtures/samples_current
+    LINK_JSON = true,
+    LINK_TXT = true,
+    -- Complexity scoring
+    TRICKY_TOKENS = {
+      "json", "jira", "nosql", "symlink", "symlinks", "xdg", "avalara", "tax", "dedupe", "lead role", "paths",
+      "dynamodb", "salesforce", "hyperdx", "postman", "oauth", "ffmpeg", "avfoundation", "base.en", "normalize", "loudnorm", "acompressor"
+    },
+    SCORE_WEIGHTS = { CHARS = 1.0, TRICKY = 6.0 },
   },
 
   -- Audio retention policy
@@ -64,6 +86,19 @@ return {
     ["reposits"] = "repositories",
     ["camera positories"] = "repositories",
     ["github"] = "GitHub",
+    -- Recurring mishears observed in transcripts
+    ["withe"] = "with the",
+    ["sim links"] = "symlinks",
+    ["XDD"] = "XDG",
+    ["Jura"] = "Jira",
+    ["Jason"] = "JSON",
+    ["no-sequel"] = "NoSQL",
+    ["no sequel"] = "NoSQL",
+    ["Abilare attacks"] = "Avalara tax",
+    ["D-Doop"] = "dedupe",
+    ["D Doop"] = "dedupe",
+    ["deadly role"] = "lead role",
+    ["pads"] = "paths",
   },
   PASTE_TRAILING_NEWLINE = false,
   ENSURE_TRAILING_PUNCT = false,
