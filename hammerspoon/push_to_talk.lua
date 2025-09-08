@@ -1195,6 +1195,17 @@ local function runWhisper(audioPath)
           -- Optionally refine for TOGGLE sessions
           local refCfg = cfg.LLM_REFINER or {}
           if sessionKind == "toggle" and refCfg.ENABLED then
+            -- Check if Ollama is running (for local LLM refinement)
+            local function ollamaAvailable()
+              local out = hs.execute([[curl -sS --max-time 0.5 http://127.0.0.1:11434/api/tags 2>/dev/null]]) or ""
+              return (out ~= nil and #out > 0)
+            end
+            if not ollamaAvailable() then
+              hs.alert.show("Refine unavailable: Ollama not running")
+              logEvent("refine_unavailable", { reason = "ollama_unreachable", wav = wavPath })
+              finishWithText(transcript)
+              return
+            end
             local argv = {}
             for _,p in ipairs(refCfg.CMD or {}) do table.insert(argv, p) end
             for _,a in ipairs(refCfg.ARGS or {}) do table.insert(argv, a) end
@@ -1487,7 +1498,17 @@ local function startTaps()
     end,
     function() -- released
       log.i("F13 released")
-      if recording or isTestMode() then stopRecording() end
+      if recording then 
+        stopRecording() 
+      elseif isTestMode() and recording then
+        stopRecording()
+      else
+        -- Clean up any stuck UI state from accidental tap
+        if indicator then
+          updateIndicator("off")
+          stopBlink()
+        end
+      end
     end
   )
 
