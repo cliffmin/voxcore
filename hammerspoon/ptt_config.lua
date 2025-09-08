@@ -28,6 +28,7 @@ return {
   -- UX cues
   SOUND_ENABLED = true,           -- play short cues on arm/finish
   ARM_DELAY_MS = 700,             -- fallback arming delay before "speak now" cue (increased for reliability)
+  WAVE_METER_MODE = "off",        -- disable broken wave meter ("inline", "monitor", or "off")
 
   -- Optional LLM refiner (VoxCompose CLI)
   -- Disabled by default. When enabled for TOGGLE sessions, the transcript will be
@@ -71,8 +72,8 @@ return {
   NOTES_DIR = (os.getenv("HOME") or "") .. "/Documents/VoiceNotes",
 
   -- Audio device index (avfoundation): set to your preferred input
-  -- Use Cmd+Alt+Ctrl+I to list devices; typical built-in mic is :1 on laptops
-  AUDIO_DEVICE_INDEX = 1,
+  -- Use Cmd+Alt+Ctrl+I to list devices; typical built-in mic is :0 when no external devices
+  AUDIO_DEVICE_INDEX = 0,
 
   -- Reflow and post-processing toggles
   DISFLUENCY_BEGIN_STRIP = true,
