@@ -25,7 +25,7 @@ brew install ffmpeg
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/macos-ptt-dictation.git
+git clone https://github.com/YOUR_USERNAME/macos-ptt-dictation.git
 cd macos-ptt-dictation
 
 # Install dependencies and set up

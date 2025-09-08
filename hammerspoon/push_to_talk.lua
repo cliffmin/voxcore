@@ -8,6 +8,7 @@ local M = {}
 local log = hs.logger.new("push_to_talk", "info")
 local json = require("hs.json")
 
+
 -- Optional external config
 -- Enhanced config loader: prefer user config (~/.hammerspoon/ptt_config.lua),
 -- then fall back to repo-local hammerspoon/ptt_config.lua (alongside this file).
@@ -50,6 +51,19 @@ local function setLogLevelCompat(lg, levelStr)
   -- Fallback numeric mapping
   local map = { debug = 4, info = 3, warning = 2, error = 1 }
   pcall(function() lg:setLogLevel(map[levelStr] or 3) end)
+end
+
+-- Helper functions needed early
+local function dirname(p)
+  return p and p:match("^(.*)/[^/]+$") or nil
+end
+
+local function repoRoot()
+  local src = debug.getinfo(1, "S").source or ""
+  local selfPath = src:match("^@(.*)$")
+  if not selfPath then return nil end
+  local dir = dirname(selfPath) -- .../hammerspoon
+  return dir and dir:match("^(.*)/hammerspoon$") or nil
 end
 
 -- Global test mode (shared with your other modules)
@@ -364,20 +378,8 @@ local function writeAll(path, content)
   return true
 end
 
-local function dirname(p)
-  return p and p:match("^(.*)/[^/]+$") or nil
-end
-
 local function basename(p)
   return p and p:match("([^/]+)$") or nil
-end
-
-local function repoRoot()
-  local src = debug.getinfo(1, "S").source or ""
-  local selfPath = src:match("^@(.*)$")
-  if not selfPath then return nil end
-  local dir = dirname(selfPath) -- .../hammerspoon
-  return dir and dir:match("^(.*)/hammerspoon$") or nil
 end
 
 local function categorizeDuration(sec)
@@ -825,6 +827,64 @@ local function showInfo()
   hs.alert.show("push_to_talk info logged")
 end
 
+-- Comprehensive diagnostic function
+local function runDiagnostics()
+  local results = {}
+  
+  -- Check ffmpeg
+  local ffmpegOk = hs.fs.attributes(FFMPEG) ~= nil
+  table.insert(results, (ffmpegOk and "✅" or "❌") .. " FFmpeg: " .. (ffmpegOk and "Found" or "MISSING at " .. FFMPEG))
+  
+  -- Check whisper
+  local whisperOk = hs.fs.attributes(WHISPER) ~= nil
+  table.insert(results, (whisperOk and "✅" or "❌") .. " Whisper: " .. (whisperOk and "Found" or "MISSING at " .. WHISPER))
+  
+  -- List audio devices
+  table.insert(results, "")
+  table.insert(results, "🎤 Audio Devices:")
+  
+  if ffmpegOk then
+    local task = hs.task.new(FFMPEG, nil, { "-hide_banner", "-f", "avfoundation", "-list_devices", "true", "-i", "" })
+    task:start()
+    task:waitUntilExit()
+    local stderr = task:standardError() or ""
+    
+    local audioDevices = {}
+    local inAudioSection = false
+    for line in stderr:gmatch("[^\r\n]+") do
+      if line:match("AVFoundation audio devices:") then
+        inAudioSection = true
+      elseif inAudioSection then
+        local index, name = line:match("%[AVFoundation[^%]]*%]%s*%[(%d+)%]%s*(.+)")
+        if index and name then
+          local idx = tonumber(index)
+          audioDevices[idx] = name
+          local marker = (idx == AUDIO_DEVICE_INDEX) and " ← CURRENT" or ""
+          table.insert(results, string.format("  [%d] %s%s", idx, name, marker))
+        end
+      end
+    end
+    
+    if not audioDevices[AUDIO_DEVICE_INDEX] then
+      table.insert(results, "")
+      table.insert(results, "⚠️ WARNING: No device at index " .. AUDIO_DEVICE_INDEX)
+      table.insert(results, "Update AUDIO_DEVICE_INDEX in ptt_config.lua")
+    end
+  else
+    table.insert(results, "  Cannot list - ffmpeg missing")
+  end
+  
+  table.insert(results, "")
+  table.insert(results, "Press Cmd+Alt+Ctrl+I for full info")
+  
+  -- Show results
+  local msg = table.concat(results, "\n")
+  hs.alert.show(msg, {textSize = 12, textFont = "Menlo"}, 5)
+  
+  -- Also log to console
+  log.i("Diagnostics:\n" .. msg)
+end
+
 -- Run a self-test of the LLM refiner (no audio involved)
 local function refineSelfTest()
   local refCfg = cfg.LLM_REFINER or {}
@@ -870,68 +930,10 @@ local function refineSelfTest()
   if t.closeInput then t:closeInput() end
 end
 
--- Helper function to validate audio device is MacBook Pro Microphone
-local function validateAudioDevice()
-  if isTestMode() then return true end
-  
-  local task = hs.task.new("/opt/homebrew/bin/ffmpeg", nil, { "-hide_banner", "-f", "avfoundation", "-list_devices", "true", "-i", "" })
-  task:start()
-  task:waitUntilExit()
-  local stderr = task:standardError() or ""
-  
-  -- Parse audio devices
-  local audioDevices = {}
-  local inAudioSection = false
-  for line in stderr:gmatch("[^\r\n]+") do
-    if line:match("AVFoundation audio devices:") then
-      inAudioSection = true
-    elseif inAudioSection then
-      local index, name = line:match("%[AVFoundation[^%]]*%]%s*%[(%d+)%]%s*(.+)")
-      if index and name then
-        audioDevices[tonumber(index)] = name
-      end
-    end
-  end
-  
-  -- Check if the configured device matches MacBook Pro Microphone
-  local configuredDevice = audioDevices[AUDIO_DEVICE_INDEX]
-  local isMacBookMic = configuredDevice and configuredDevice:match("MacBook Pro Microphone")
-  
-  if not isMacBookMic then
-    local errorMsg = string.format(
-      "Audio Device Error\n\n" ..
-      "Expected: MacBook Pro Microphone (index %d)\n" ..
-      "Current: %s\n\n" ..
-      "Available devices:\n",
-      AUDIO_DEVICE_INDEX,
-      configuredDevice or "Device not found"
-    )
-    
-    for i = 0, 10 do
-      if audioDevices[i] then
-        errorMsg = errorMsg .. string.format("[%d] %s\n", i, audioDevices[i])
-      end
-    end
-    
-    errorMsg = errorMsg .. "\nPlease update AUDIO_DEVICE_INDEX in ptt_config.lua or reconnect MacBook microphone."
-    
-    return false, errorMsg
-  end
-  
-  return true
-end
 
 -- ffmpeg management
 local function startRecording()
   if recording then return end
-  
-  -- Validate audio device before starting
-  local isValid, errorMsg = validateAudioDevice()
-  if not isValid then
-    hs.alert.show(errorMsg, {}, 5)
-    log.e("Audio device validation failed: " .. (errorMsg or "unknown error"))
-    return
-  end
   
   ensureDir(NOTES_DIR)
 
@@ -992,6 +994,26 @@ local function onFFExit(code, stdout, stderr)
     if isTestMode() then
       log.d(string.format("[TEST] ffmpeg exit code=%s", tostring(code)))
     end
+    
+    -- Check if ffmpeg failed
+    if tonumber(code) ~= 0 and tonumber(code) ~= 255 then  -- 255 is normal for interrupted
+      local errMsg = table.concat(ffStderrBuf)
+      log.e("FFmpeg exited with code " .. tostring(code) .. ": " .. errMsg)
+      
+      -- Check for common errors
+      if errMsg:match("Device not found") or errMsg:match("Input/output error") then
+        hs.alert.show(string.format("🎤 Device %d not available\n\nPress Cmd+Alt+Ctrl+D to see devices", AUDIO_DEVICE_INDEX), {textSize = 14}, 4)
+      elseif errMsg:match("Permission denied") then
+        hs.alert.show("🎤 Microphone permission denied\n\nCheck System Settings > Privacy", {textSize = 14}, 4)
+      else
+        hs.alert.show("🎤 Recording error\n\nCheck Console for details", {textSize = 14}, 3)
+      end
+      
+      updateIndicator("off")
+      recording = false
+      return
+    end
+    
     -- Switch to transcribing indicator
     updateIndicator("transcribing")
     recording = false
@@ -1432,7 +1454,26 @@ local function runWhisper(audioPath)
 
   local ok, err = pcall(function() ffTask:start() end)
   if not ok then
-    hs.alert.show("Failed to start audio capture: " .. tostring(err))
+    -- User-friendly error with actionable hint
+    local deviceMsg = string.format("🎤 Recording failed (device %d)\n\nPress Cmd+Alt+Ctrl+D to diagnose", AUDIO_DEVICE_INDEX)
+    hs.alert.show(deviceMsg, {textSize = 14}, 4)
+    
+    -- Detailed error in console
+    log.e("FFmpeg failed to start: " .. tostring(err))
+    log.e("Device spec: " .. deviceSpec)
+    log.e("FFmpeg path: " .. FFMPEG)
+    
+    -- Log event for tracking
+    logEvent("ffmpeg_start_error", {
+      error = tostring(err),
+      device_index = AUDIO_DEVICE_INDEX,
+      device_spec = deviceSpec,
+      ffmpeg_path = FFMPEG
+    })
+    
+    -- Clean up UI state
+    updateIndicator("off")
+    recording = false
     return
   end
   startMs = nowMs()
@@ -1554,7 +1595,11 @@ local function startTaps()
   f13Hotkey = hs.hotkey.bind({}, "f13",
     function() -- pressed
       log.i("F13 pressed")
-      if not recording then sessionKind = "hold"; ignoreHoldThreshold = false; startRecording() end
+      if not recording then 
+        sessionKind = "hold"
+        ignoreHoldThreshold = false
+        startRecording()
+      end
     end,
     function() -- released
       log.i("F13 released")
@@ -1599,9 +1644,10 @@ end
 function M.start()
   startTaps()
   detectWhisperDevice()
-  -- Optional: bind info and refine self-test keys (Cmd+Alt+Ctrl)
+  -- Optional: bind diagnostic keys (Cmd+Alt+Ctrl)
   hs.hotkey.bind({"cmd", "alt", "ctrl"}, "I", function() showInfo() end)
   hs.hotkey.bind({"cmd", "alt", "ctrl"}, "R", function() refineSelfTest() end)
+  hs.hotkey.bind({"cmd", "alt", "ctrl"}, "D", function() runDiagnostics() end)
 end
 
 function M.stop()
