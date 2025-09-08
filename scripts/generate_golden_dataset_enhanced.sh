@@ -62,8 +62,25 @@ EOF
 # Use 'say -v ?' to see all available voices
 VOICE_MALE="Daniel"        # British male
 VOICE_FEMALE="Samantha"    # American female
-VOICE_MALE_US="Alex"       # American male
-VOICE_FEMALE_UK="Kate"     # British female
+VOICE_MALE_US="Alex"       # American male (fallback to Daniel if unavailable)
+VOICE_FEMALE_UK="Kate"     # British female (fallback to Samantha if unavailable)
+
+# Voice availability check and fallbacks
+voice_available() {
+    local v="$1"
+    # Escape '?' for zsh/bash
+    say -v \? | awk '{print $1}' | grep -Fxq "$v"
+}
+
+# Apply fallbacks for voices not installed
+if ! voice_available "$VOICE_MALE_US"; then
+    echo "[gen-golden] Voice $VOICE_MALE_US not found, falling back to Daniel"
+    VOICE_MALE_US="Daniel"
+fi
+if ! voice_available "$VOICE_FEMALE_UK"; then
+    echo "[gen-golden] Voice $VOICE_FEMALE_UK not found, falling back to Samantha"
+    VOICE_FEMALE_UK="Samantha"
+fi
 
 # Speaking rates
 RATE_SLOW=150
