@@ -1,6 +1,29 @@
 # macos-ptt-dictation
 
-Press-and-hold F13 to record; release to transcribe offline (openai-whisper via pipx) and paste at the cursor. Audio is captured with ffmpeg (avfoundation :0 -> 16 kHz mono s16 WAV). Transcripts are reflowed from Whisper JSON segments and pasted.
+> Demo GIF coming soon
+
+Speak. Release. Paste. Local and offline.
+
+Highlights
+- Private by default: ffmpeg + Whisper CLI run locally
+- One key: hold F13 to record, release to paste
+- Clean outputs in ~/Documents/VoiceNotes
+
+Install
+- brew bundle --no-lock --file "$(pwd)/Brewfile"
+- python3 -m pip install --user pipx && python3 -m pipx ensurepath || true
+- pipx install --include-deps openai-whisper
+- bash ./scripts/install.sh, then reload Hammerspoon config
+
+Quick start
+- Hold F13 to record; release to paste
+- Optional long-form toggle and refine via VoxCompose (see docs/USAGE.md)
+
+Docs
+- docs/USAGE.md • docs/CONFIG.md • docs/TROUBLESHOOTING.md • docs/ARCHITECTURE.md • docs/ROADMAP.md • docs/RELEASE.md
+
+----
+<details><summary>Full details</summary>
 
 Storage: each recording is saved in its own folder under ~/Documents/VoiceNotes, named by timestamp (e.g., ~/Documents/VoiceNotes/2025-Jun-25_11.15.30_AM/), containing exactly one canonical WAV plus its JSON and TXT:
 - 2025-Jun-25_11.15.30_AM.wav
@@ -29,7 +52,7 @@ Install (MVP quickstart)
   - pipx install --include-deps openai-whisper
 - Install module
   - git clone https://github.com/cliffmin/macos-ptt-dictation ~/code/macos-ptt-dictation
-  - bash ~/code/macos-ptt-dictation/scripts/ptt-install
+  - bash ~/code/macos-ptt-dictation/scripts/install.sh
 - Reload Hammerspoon
   - Hammerspoon menu bar → Reload Config
 - Test
@@ -41,6 +64,23 @@ Uninstall / rollback
 - Run:
   bash ~/code/macos-ptt-dictation/scripts/uninstall.sh
 - This removes the symlink and restores the latest backup of ~/.hammerspoon/push_to_talk.lua if available.
+
+Privacy & permissions
+- Local-only by default: ffmpeg captures audio locally; Whisper runs offline via pipx; no telemetry
+- Data lives under ~/Documents/VoiceNotes (audio, JSON, TXT, JSONL logs)
+- Expected prompts on first run:
+  - Hammerspoon: Accessibility permission for hotkeys and automation
+    - System Settings → Privacy & Security → Accessibility → enable Hammerspoon
+  - Microphone: ffmpeg will request microphone access
+    - System Settings → Privacy & Security → Microphone → allow ffmpeg (and/or Hammerspoon if prompted)
+  - Optional: Full Disk Access only if you change NOTES_DIR to a protected location
+- Data hygiene: tx_logs are local; retention is your choice; personal audio is kept out of git by design
+
+Troubleshooting
+- ffmpeg not found: brew bundle --no-lock --file "$(pwd)/Brewfile" or brew install ffmpeg
+- whisper not found: pipx install --include-deps openai-whisper; ensure ~/.local/bin is on PATH
+- No paste occurs: grant Hammerspoon Accessibility; check paste policy in ptt_config.lua; see JSONL logs for paste_decision
+- Refine timeouts with Ollama: start Ollama first or run scripts/setup_ollama_service.zsh; increase timeouts in config; baseline will paste on fallback
 
 Source of truth policy
 - The repo file hammerspoon/push_to_talk.lua is the canonical source of truth for this feature.
@@ -212,4 +252,15 @@ License
 ## Changelog
 
 See [CHANGELOG.md](./CHANGELOG.md)
+
+## Coming soon
+- Single-key auto mode: short vs long decided on release by duration; optional double-press to toggle
+- Refiner modularity: auto-detect VoxCompose; graceful fallback when unavailable or on timeout
+- UI overlay: small near-mouse indicator for Recording, Transcribing, Refining, and Pasted
+- Paste ergonomics: anchor-aware autopaste with clipboard-only fallback when focus changes
+- VoxCompose: streaming, exit codes, and JSON sidecar metrics
+
+Details: see docs/ROADMAP.md and docs/internal/auto-mode-design.md
+
+</details>
 
