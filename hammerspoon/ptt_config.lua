@@ -72,8 +72,9 @@ return {
   NOTES_DIR = (os.getenv("HOME") or "") .. "/Documents/VoiceNotes",
 
   -- Audio device index (avfoundation): set to your preferred input
-  -- Use Cmd+Alt+Ctrl+I to list devices; typical built-in mic is :0 when no external devices
-  AUDIO_DEVICE_INDEX = 0,
+  -- Use Cmd+Alt+Ctrl+I to list devices
+  -- IMPORTANT: Set to 1 for MacBook Pro Microphone to avoid webcam mic issues
+  AUDIO_DEVICE_INDEX = 1,
 
   -- Reflow and post-processing toggles
   DISFLUENCY_BEGIN_STRIP = true,

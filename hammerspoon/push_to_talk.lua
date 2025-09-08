@@ -98,7 +98,7 @@ local MODEL = "base.en"                             -- faster local model (Engli
 local LANG = "en"
 local HOLD_THRESHOLD_MS = 150                       -- ignore ultra-short taps
 local ARM_DELAY_MS = tonumber(cfg.ARM_DELAY_MS) or 700 -- fallback arming delay before "speak now" cue
-local AUDIO_DEVICE_INDEX = (type(cfg.AUDIO_DEVICE_INDEX) == "number" and cfg.AUDIO_DEVICE_INDEX) or 0 -- avfoundation audio index (":0" by default)
+local AUDIO_DEVICE_INDEX = (type(cfg.AUDIO_DEVICE_INDEX) == "number" and cfg.AUDIO_DEVICE_INDEX) or 1 -- avfoundation audio index (":1" for MacBook Pro Microphone)
 local BUILTIN_SCREEN_PATTERN = "Built%-in"          -- choose the MacBook's built-in display by default
 
 -- Transcript reflow options
@@ -870,9 +870,69 @@ local function refineSelfTest()
   if t.closeInput then t:closeInput() end
 end
 
+-- Helper function to validate audio device is MacBook Pro Microphone
+local function validateAudioDevice()
+  if isTestMode() then return true end
+  
+  local task = hs.task.new("/opt/homebrew/bin/ffmpeg", nil, { "-hide_banner", "-f", "avfoundation", "-list_devices", "true", "-i", "" })
+  task:start()
+  task:waitUntilExit()
+  local stderr = task:standardError() or ""
+  
+  -- Parse audio devices
+  local audioDevices = {}
+  local inAudioSection = false
+  for line in stderr:gmatch("[^\r\n]+") do
+    if line:match("AVFoundation audio devices:") then
+      inAudioSection = true
+    elseif inAudioSection then
+      local index, name = line:match("%[AVFoundation[^%]]*%]%s*%[(%d+)%]%s*(.+)")
+      if index and name then
+        audioDevices[tonumber(index)] = name
+      end
+    end
+  end
+  
+  -- Check if the configured device matches MacBook Pro Microphone
+  local configuredDevice = audioDevices[AUDIO_DEVICE_INDEX]
+  local isMacBookMic = configuredDevice and configuredDevice:match("MacBook Pro Microphone")
+  
+  if not isMacBookMic then
+    local errorMsg = string.format(
+      "Audio Device Error\n\n" ..
+      "Expected: MacBook Pro Microphone (index %d)\n" ..
+      "Current: %s\n\n" ..
+      "Available devices:\n",
+      AUDIO_DEVICE_INDEX,
+      configuredDevice or "Device not found"
+    )
+    
+    for i = 0, 10 do
+      if audioDevices[i] then
+        errorMsg = errorMsg .. string.format("[%d] %s\n", i, audioDevices[i])
+      end
+    end
+    
+    errorMsg = errorMsg .. "\nPlease update AUDIO_DEVICE_INDEX in ptt_config.lua or reconnect MacBook microphone."
+    
+    return false, errorMsg
+  end
+  
+  return true
+end
+
 -- ffmpeg management
 local function startRecording()
   if recording then return end
+  
+  -- Validate audio device before starting
+  local isValid, errorMsg = validateAudioDevice()
+  if not isValid then
+    hs.alert.show(errorMsg, {}, 5)
+    log.e("Audio device validation failed: " .. (errorMsg or "unknown error"))
+    return
+  end
+  
   ensureDir(NOTES_DIR)
 
   local baseName = humanTimestampName()

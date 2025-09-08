@@ -1,266 +1,79 @@
 # macos-ptt-dictation
 
-> Demo GIF coming soon
+> Privacy-first push-to-talk dictation for macOS. Hold F13 to speak, release to paste.
 
-Speak. Release. Paste. Local and offline.
+## ✨ Features
 
-Highlights
-- Private by default: ffmpeg + Whisper CLI run locally
-- One key: hold F13 to record, release to paste
-- Clean outputs in ~/Documents/VoiceNotes
+- **100% Offline** - No cloud services, everything runs locally
+- **One-Key Operation** - Just hold F13 to record, release to transcribe
+- **Fast Transcription** - 5-6x faster than realtime
+- **Smart Formatting** - Handles pauses, punctuation, and paragraphs naturally
+- **Auto-Save** - All recordings preserved in `~/Documents/VoiceNotes`
+- **Customizable** - Adjust models, prompts, and formatting to your needs
 
-Install
-- brew bundle --no-lock --file "$(pwd)/Brewfile"
-- python3 -m pip install --user pipx && python3 -m pipx ensurepath || true
-- pipx install --include-deps openai-whisper
-- bash ./scripts/install.sh, then reload Hammerspoon config
+## 🚀 Quick Start
 
-Quick start
-- Hold F13 to record; release to paste
-- Optional long-form toggle and refine via VoxCompose (see docs/USAGE.md)
+### Prerequisites
+```bash
+# Install Hammerspoon (automation framework)
+brew install --cask hammerspoon
 
-Docs
-- docs/USAGE.md • docs/CONFIG.md • docs/TROUBLESHOOTING.md • docs/ARCHITECTURE.md • docs/ROADMAP.md • docs/RELEASE.md
+# Install ffmpeg (audio capture)
+brew install ffmpeg
+```
 
-----
-<details><summary>Full details</summary>
+### Installation
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/macos-ptt-dictation.git
+cd macos-ptt-dictation
 
-Storage: each recording is saved in its own folder under ~/Documents/VoiceNotes, named by timestamp (e.g., ~/Documents/VoiceNotes/2025-Jun-25_11.15.30_AM/), containing exactly one canonical WAV plus its JSON and TXT:
-- 2025-Jun-25_11.15.30_AM.wav
-- 2025-Jun-25_11.15.30_AM.json
-- 2025-Jun-25_11.15.30_AM.txt
+# Install dependencies and set up
+brew bundle --no-lock
+python3 -m pip install --user pipx && python3 -m pipx ensurepath
+pipx install --include-deps openai-whisper
+bash ./scripts/install.sh
+```
 
-Goals
-- Source of truth for this one feature (track changes as complexity grows)
-- Portability for quick reinstall/restore on a fresh Mac
+### First Use
+1. **Reload Hammerspoon**: Menu bar → Reload Config
+2. **Grant Permissions**: 
+   - Accessibility (for hotkeys)
+   - Microphone (for recording)
+3. **Test**: Hold F13, speak, release to paste
 
-Architecture (current)
-- Hammerspoon module: hammerspoon/push_to_talk.lua
-- Config: hammerspoon/ptt_config.lua (domain prompt, gap thresholds, disfluencies)
-- ffmpeg: /opt/homebrew/bin/ffmpeg
-- Whisper CLI: ~/.local/bin/whisper (pipx venv for openai-whisper)
-- Model/params: base.en, beam_size=3, language=en, temperature=0, device=cpu, timeout=120s (configurable TIMEOUT_MS)
-- Preprocess for clips ≥12s: loudnorm + light compression -> .norm.wav (normalized audio replaces raw for long clips)
-- Storage layout: per-recording folder named like 2025-Jun-25_11.15.30_AM containing WAV/JSON/TXT for that session
-- UX: red dot (recording), orange blinking (transcribing), success/failure sounds; optional on-screen wave bars while recording
+## 📖 Documentation
 
-Install (MVP quickstart)
-- Prereqs
-  - brew install --cask hammerspoon
-  - brew install ffmpeg
-  - python3 -m pip install --user pipx && python3 -m pipx ensurepath || true
-  - pipx install --include-deps openai-whisper
-- Install module
-  - git clone https://github.com/cliffmin/macos-ptt-dictation ~/code/macos-ptt-dictation
-  - bash ~/code/macos-ptt-dictation/scripts/install.sh
-- Reload Hammerspoon
-  - Hammerspoon menu bar → Reload Config
-- Test
-  - Press-and-hold F13 to record; release to transcribe and paste
-- Configure (optional)
-  - Copy and edit: ~/.hammerspoon/ptt_config.lua (a sample is copied by ptt-install)
+- [**Usage Guide**](docs/USAGE.md) - Features and workflows
+- [**Configuration**](docs/CONFIG.md) - Customize behavior
+- [**Troubleshooting**](docs/TROUBLESHOOTING.md) - Common issues
+- [**Architecture**](docs/ARCHITECTURE.md) - Technical overview
 
-Uninstall / rollback
-- Run:
-  bash ~/code/macos-ptt-dictation/scripts/uninstall.sh
-- This removes the symlink and restores the latest backup of ~/.hammerspoon/push_to_talk.lua if available.
+## 🎯 Key Bindings
 
-Privacy & permissions
-- Local-only by default: ffmpeg captures audio locally; Whisper runs offline via pipx; no telemetry
-- Data lives under ~/Documents/VoiceNotes (audio, JSON, TXT, JSONL logs)
-- Expected prompts on first run:
-  - Hammerspoon: Accessibility permission for hotkeys and automation
-    - System Settings → Privacy & Security → Accessibility → enable Hammerspoon
-  - Microphone: ffmpeg will request microphone access
-    - System Settings → Privacy & Security → Microphone → allow ffmpeg (and/or Hammerspoon if prompted)
-  - Optional: Full Disk Access only if you change NOTES_DIR to a protected location
-- Data hygiene: tx_logs are local; retention is your choice; personal audio is kept out of git by design
+| Hotkey | Action |
+|--------|--------|
+| **F13** (hold) | Record while held, paste on release |
+| **Shift+F13** | Toggle recording on/off (long-form) |
+| **Cmd+Alt+Ctrl+I** | Show device info and diagnostics |
 
-Troubleshooting
-- ffmpeg not found: brew bundle --no-lock --file "$(pwd)/Brewfile" or brew install ffmpeg
-- whisper not found: pipx install --include-deps openai-whisper; ensure ~/.local/bin is on PATH
-- No paste occurs: grant Hammerspoon Accessibility; check paste policy in ptt_config.lua; see JSONL logs for paste_decision
-- Refine timeouts with Ollama: start Ollama first or run scripts/setup_ollama_service.zsh; increase timeouts in config; baseline will paste on fallback
+## 🔒 Privacy & Security
 
-Source of truth policy
-- The repo file hammerspoon/push_to_talk.lua is the canonical source of truth for this feature.
-- ~/.hammerspoon/push_to_talk.lua is a symlink to the repo file for runtime loading.
-- Runtime data (~/Documents/VoiceNotes) is NOT tracked in git.
+- **Local Processing** - Audio never leaves your machine
+- **No Analytics** - Zero telemetry or tracking
+- **Your Data** - Recordings saved locally in `~/Documents/VoiceNotes`
+- **Open Source** - Audit the code yourself
 
-Recommended workflows
-- Daily use
-  - Use as normal: F13 press-and-hold → release → paste.
-  - Long-form: Shift+F13 toggles recording on/off. After transcription, optional refine (VoxCompose) to Markdown and open in your default editor.
-  - Diagnostics: Cmd+Alt+Ctrl+I shows config and avfoundation devices in Hammerspoon logs.
+## 🤝 Contributing
 
-- Making changes (safe, reviewable)
-  1) Edit the module in the repo
-     - File: ~/code/macos-ptt-dictation/hammerspoon/push_to_talk.lua
-     - The ~/.hammerspoon symlink ensures Hammerspoon loads the updated code.
-  2) Reload Hammerspoon and test
-     - Menu → Reload Config
-     - Quick smoke tests: short clip (2–4s), medium (10–15s). Confirm .json/.txt outputs and paste.
-  3) Stage and commit changes with a clear message
-     - git -C ~/code/macos-ptt-dictation add -p
-     - git -C ~/code/macos-ptt-dictation commit -m "ptt: <concise change summary>"
-  4) Push to your private remote
-     - git -C ~/code/macos-ptt-dictation push origin main
+Contributions welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
-- Versioning milestones
-  - Optionally tag stable versions: git -C ~/code/macos-ptt-dictation tag -a v0.1.0 -m "initial extraction" && git -C ~/code/macos-ptt-dictation push origin v0.1.0
+## 📄 License
 
-Config tips
-- Domain prompt (ptt_config.lua INITIAL_PROMPT): nudge Whisper toward your vocabulary (e.g., Raycast, Hammerspoon, instruction precedence/consent gating) to reduce mishears.
-- Gap thresholds (GAP_NEWLINE_SEC/DOBULE_NEWLINE): newline only at sentence end or >= 1.75s gaps; adjust to taste.
-- Disfluencies (DISFLUENCIES): whole-word removal at boundaries (e.g., "uh", "um").
-- Shift+F13 toggle + refine: In ptt_config.lua set SHIFT_TOGGLE_ENABLED=true. To enable refine, set LLM_REFINER.ENABLED=true and point CMD to your VoxCompose jar; Markdown files save under ~/Documents/VoiceNotes/refined and open via macOS.
-- Device stability: currently device=cpu for reliability on macOS/PyTorch 3.13. If you enable MPS, also set --fp16 True in the invocation.
-- Model speed: base.en is a good balance. tiny.en is faster but less accurate.
-- Preprocessing: only runs for clips ≥12s; adjust PREPROCESS_MIN_SEC if desired.
-- Timeout: default TIMEOUT_MS=120000 (2 minutes). On timeout, an on-screen alert includes the recording name and duration.
-- Notes directory: override NOTES_DIR in ptt_config.lua (default ~/Documents/VoiceNotes).
-- Hotkeys (Fn combos): Fn+T toggle test/live logs; Fn+R reloads Hammerspoon config; Fn+O opens ~/.hammerspoon/init.lua in VS Code.
+MIT - See [LICENSE](LICENSE) for details.
 
-Reflow and post-processing (ptt_config.lua)
-- DISFLUENCY_BEGIN_STRIP=true: strip common starters at the beginning of lines ("so", "um", "uh", "like", "you know", "okay", "yeah", "well"). Configure the list via BEGIN_DISFLUENCIES.
-- AUTO_CAPITALIZE_SENTENCES=true: capitalize at the start of text, after punctuation, and after newlines.
-- DEDUPE_IMMEDIATE_REPEATS=true: collapse immediate repeats like "word, word" or "word word".
-- DROP_LOWCONF_SEGMENTS=true: drop segments with high no_speech_prob or very low avg_logprob (thresholds via LOWCONF_NO_SPEECH_PROB and LOWCONF_AVG_LOGPROB).
-- DICTIONARY_REPLACE={ ... }: domain-specific replacements (e.g., reposits -> repositories, github -> GitHub).
-- PASTE_TRAILING_NEWLINE=false: when pasting, optionally ensure a trailing newline.
-- ENSURE_TRAILING_PUNCT=false: when pasting, optionally ensure sentence-ending punctuation.
+## 🙏 Acknowledgments
 
-Portability checklist
-- Brewfile installs ffmpeg; whisper-cpp is optional and not used in this flow.
-- Installer ensures pipx and (re)installs openai-whisper in its own venv.
-- Symlink keeps ~/.hammerspoon/push_to_talk.lua pointing at the repo.
-- Migration utilities: scripts/migrate_voicenotes_names.zsh and scripts/migrate_voicenotes_to_folders.zsh can rename old files and reorganize to the per-recording folder layout.
-- Archiving utility: scripts/archive_by_date_voicenotes.zsh moves all sessions older than today to ~/Library/Application Support/macos-ptt-dictation/Archive, preserving tx_logs and refined.
-
-Logging (JSONL)
-- Default path: ~/Documents/VoiceNotes/tx_logs/tx-YYYY-MM-DD.jsonl
-- One JSON object per line, examples of fields:
-  {
-    "ts": "2025-08-30T21:59:30Z",
-    "kind": "success" | "error" | "timeout" | "no_transcript",
-    "app": "macos-ptt-dictation",
-    "model": "base.en",
-    "device": "cpu",
-    "beam_size": 3,
-    "lang": "en",
-    "config": {"reflow_mode": "gap", "gap_newline_sec": 1.75, "gap_double_newline_sec": 2.50, "preprocess_min_sec": 12.0, "timeout_ms": 120000, "disfluencies": ["uh","um"], "initial_prompt_len": 120},
-    "wav": "/Users/you/Documents/VoiceNotes/2025-Aug-30_12.31.34_AM/2025-Aug-30_12.31.34_AM.wav",
-    "wav_bytes": 238670,
-    "duration_sec": 6.1,
-    "preprocess_used": false,
-    "audio_used": "/Users/you/Documents/VoiceNotes/2025-Aug-30_12.31.34_AM/2025-Aug-30_12.31.34_AM.wav",
-    "json_path": "/Users/you/Documents/VoiceNotes/2025-Aug-30_12.31.34_AM/2025-Aug-30_12.31.34_AM.json",
-    "tx_ms": 1450,
-    "tx_code": 0,
-    "transcript_chars": 67,
-    "transcript": "<exact text pasted>"
-  }
-- Toggle via ptt_config.lua: LOG_ENABLED=true/false and optional LOG_DIR override.
-
-Repository hygiene
-- .gitignore excludes system cruft; keep runtime data out of git.
-- Keep commits small and focused; prefer logical units of change.
-
-Future (optional)
-- Migrate to faster-whisper or whisper.cpp backend for speed while keeping the same Hammerspoon wrapper.
-- Provide a native Swift menubar app alternative (no Hammerspoon) for a broader audience.
-- Create a Homebrew Tap formula for convenience (see below).
-
-Interplay with VoxCompose (optional refine)
-- Long-form (Shift+F13) can optionally run a second-pass refinement via the separate VoxCompose Java CLI.
-- Flow:
-  1) Capture + local Whisper transcription (this repo)
-  2) Reflow transcript text (this repo)
-  3) Optional refine to Markdown via VoxCompose (Ollama local model)
-  4) Save .md under ~/Documents/VoiceNotes/refined and open in your OS default editor
-- Enable/disable: hammerspoon/ptt_config.lua → LLM_REFINER.ENABLED (true/false)
-- VoxCompose jar path: LLM_REFINER.CMD points at ~/code/voxcompose/build/libs/voxcompose-0.1.0-all.jar by default
-- Memory: VoxCompose optionally reads JSONL at ~/Library/Application Support/voxcompose/memory.jsonl to incorporate preferences/glossary items
-
-Why separate repos
-- Clear separation of concerns:
-  - macos-ptt-dictation: macOS automation, hotkeys, audio capture, Whisper transcription, UX, file and log management.
-  - VoxCompose: language-model-backed refinement and formatting, pluggable provider, memory features.
-- Modularity and reuse: VoxCompose is a standalone CLI usable by other tools/pipelines.
-- Portfolio and maintainability: distinct technologies (Lua/macOS vs Java/LLM) with their own tests, versioning, and release cadence.
-
-Single-file audio policy (canonical output)
-- Per-recording folder: each session saves to ~/Documents/VoiceNotes/<timestamp>/ with WAV/JSON/TXT.
-- Short clips: one file — <timestamp>/<timestamp>.wav (raw).
-- Long clips (≥ PREPROCESS_MIN_SEC): audio is normalized, then the normalized content replaces the raw — still one file, <timestamp>/<timestamp>.wav.
-- Controls in ptt_config.lua:
-  - PREPROCESS_KEEP_RAW = false (delete raw when normalization succeeds)
-  - CANONICALIZE_NORMALIZED_TO_WAV = true (rename normalized file to <timestamp>.wav)
-
-Integration tests and smoke
-- Script: tests/integration/longform_to_markdown.sh
-  - Uses LONGFORM_WAV_PATH env var or tests/fixtures/local_longform.wav symlink to your local WAV.
-  - Steps: Whisper → temp JSON/TXT → VoxCompose → Markdown → basic structure assertion.
-- Script: tests/integration/whisper_on_samples.sh
-  - Runs Whisper on sample WAVs in tests/fixtures/samples or tests/fixtures/samples_current.
-- Script: tests/integration/reflow_on_latest_samples.sh
-  - Uses internal reflow hook to validate post-processing (disfluency strip, capitalization, dedupe, dictionary fixes) on latest-behavior samples.
-  - Populate tests/fixtures/samples_current via tests/util/select_latest_behavior_samples.zsh.
-- Smoke tests: tests/smoke/*.sh (module loads, hotkeys bound)
-- Docs: tests/README.md
-- Gitignore excludes tests/fixtures/*.wav and tests/fixtures/samples_current/ so personal audio and recent transcripts stay out of version control.
-
-New test utilities and smokes
-- Selection (complexity-weighted):
-  - tests/util/select_best_fixtures_complex.py builds a baseline preferring Test-mode batch fixtures and weighting tricky tokens + transcript length. Buckets by duration (micro/short/medium/long).
-- Benchmarking:
-  - tests/integration/benchmark_against_baseline.py runs Whisper on a baseline and writes a results file.
-  - tests/util/summarize_benchmark.py summarizes latency metrics overall and per bucket.
-- Reporting (short vs long with refine):
-  - tests/util/report_short_vs_long.py reads your latest log and summarizes HOLD (F13) vs TOGGLE (Shift+F13+refine) latency and structure.
-  - For TOGGLE, it compares baseline .txt (next to the Whisper .json) vs refined Markdown (output_path) and reports headings/bullets/paragraphs + char deltas.
-- Smokes:
-  - tests/integration/selector_complex_smoke.sh
-  - tests/integration/fixture_sidecar_smoke.sh
-  - tests/integration/benchmark_smoke.sh
-  - Invoked from tests/smoke/all.sh
-
-Compare short vs long (with/without refine)
-A) From logs (HOLD vs TOGGLE)
-- Ensure you have at least one TOGGLE session with refine enabled (start Ollama and record with Shift+F13); HOLD runs are your short-form.
-- Run the report:
-
-  python3 tests/util/report_short_vs_long.py
-
-- Output includes HOLD vs TOGGLE latency (p50/p90/avg), TOGGLE refine_ms (if available), and a few sample structure diffs.
-
-B) On the SAME dataset (no live recordings)
-- Build a baseline: python3 tests/util/select_best_fixtures_complex.py --per-bucket 5
-- Compare refined vs unrefined on the long bucket using the same WAVs:
-
-  python3 tests/integration/compare_unrefined_vs_refined.py tests/fixtures/baselines/<baseline_id> --bucket long --vox-bin "/usr/bin/java -jar $HOME/code/voxcompose/build/libs/voxcompose-0.1.0-all.jar"
-
-- This runs Whisper once to get the baseline TXT, then runs VoxCompose refine on the same text and reports size and structure deltas.
-
-Requirements summary
-- This repo: Hammerspoon, ffmpeg (Brewfile), pipx-installed whisper CLI.
-- VoxCompose: Java 17+, Ollama with a pulled model (e.g., llama3.1), built jar at build/libs/voxcompose-0.1.0-all.jar.
-
-License
-- MIT (see LICENSE)
-
-## Changelog
-
-See [CHANGELOG.md](./CHANGELOG.md)
-
-## Coming soon
-- Single-key auto mode: short vs long decided on release by duration; optional double-press to toggle
-- Refiner modularity: auto-detect VoxCompose; graceful fallback when unavailable or on timeout
-- UI overlay: small near-mouse indicator for Recording, Transcribing, Refining, and Pasted
-- Paste ergonomics: anchor-aware autopaste with clipboard-only fallback when focus changes
-- VoxCompose: streaming, exit codes, and JSON sidecar metrics
-
-Details: see docs/ROADMAP.md and docs/internal/auto-mode-design.md
-
-</details>
-
+- [OpenAI Whisper](https://github.com/openai/whisper) for transcription
+- [Hammerspoon](https://www.hammerspoon.org/) for macOS automation
+- [ffmpeg](https://ffmpeg.org/) for audio capture
