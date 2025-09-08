@@ -237,14 +237,15 @@ echo "⚠️  Challenging Terms Analysis:"
 echo "--------------------------------"
 problem_words=("GitHub" "symlinks" "JSON" "NoSQL" "dedupe" "XDG" "Jira")
 for word in "${problem_words[@]}"; do
-    correct_count=$(grep -l "$word" "$GOLDEN_DIR"/challenging/*.txt 2>/dev/null | wc -l)
-    detected_count=$(grep -l "$word" "$RESULTS_DIR"/challenging/*.txt 2>/dev/null | wc -l)
+    # Use group with fallback to avoid pipefail aborts when grep finds no matches
+    correct_count=$( { grep -l "$word" "$GOLDEN_DIR"/challenging/*.txt 2>/dev/null || true; } | wc -l )
+    detected_count=$( { grep -l "$word" "$RESULTS_DIR"/challenging/*.txt 2>/dev/null || true; } | wc -l )
     if [ "$correct_count" -gt 0 ]; then
         accuracy=$(echo "scale=1; $detected_count * 100 / $correct_count" | bc)
         printf "%-12s %3.0f%% accuracy (%d/%d)\n" "$word" "$accuracy" "$detected_count" "$correct_count"
     fi
-done
 
+done
 # Overall summary
 echo ""
 echo "=== OVERALL SUMMARY ==="
