@@ -30,13 +30,16 @@ return {
   ARM_DELAY_MS = 700,             -- fallback arming delay before "speak now" cue (increased for reliability)
   WAVE_METER_MODE = "off",        -- disable broken wave meter ("inline", "monitor", or "off")
 
-  -- Optional LLM refiner (VoxCompose CLI)
-  -- Disabled by default. When enabled for TOGGLE sessions, the transcript will be
-  -- piped to the Java CLI, which returns refined Markdown to save + open.
+  -- Optional LLM refiner (requires VoxCompose CLI)
+  -- When enabled for TOGGLE sessions, the transcript will be
+  -- piped to the refiner CLI, which returns refined Markdown to save + open.
   LLM_REFINER = {
-    ENABLED = true,
-    CMD = { "/usr/bin/java", "-jar", (os.getenv("HOME") or "") .. "/code/voxcompose/build/libs/voxcompose-0.1.0-all.jar" },
-    ARGS = { "--model", "llama3.1", "--timeout-ms", "8000", "--memory", (os.getenv("HOME") or "") .. "/Library/Application Support/voxcompose/memory.jsonl" },
+    ENABLED = false,  -- Set to true if you have VoxCompose installed
+    -- Example configuration (adjust paths to match your installation):
+    -- CMD = { "/usr/bin/java", "-jar", (os.getenv("HOME") or "") .. "/path/to/voxcompose.jar" },
+    -- ARGS = { "--model", "llama3.1", "--timeout-ms", "8000" },
+    CMD = {},  -- Set your command here
+    ARGS = {},  -- Set your arguments here
     TIMEOUT_MS = 9000,
   },
 
