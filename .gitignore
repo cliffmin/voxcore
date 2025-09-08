@@ -12,5 +12,9 @@ tests/fixtures/*.norm.wav
 # Ephemeral latest-behavior samples (JSON/TXT/WAV) kept out of git
 /tests/fixtures/samples_current/
 
+# Test results and golden datasets (too large for version control)
+tests/results/
+tests/fixtures/golden/
+tests/fixtures/baselines/*/benchmark_results_*.txt
 
 dist

@@ -108,7 +108,15 @@ local SOUND_ENABLED = (cfg.SOUND_ENABLED == true)
 -- Logging configuration (defaults; can be overridden via ptt_config)
 local LOG_DIR = (cfg.LOG_DIR and tostring(cfg.LOG_DIR)) or (NOTES_DIR .. "/tx_logs")
 local LOG_ENABLED = (cfg.LOG_ENABLED ~= false)
-local MODEL = "base.en"                             -- faster local model (English)
+
+-- Model configuration from ptt_config (with fallback)
+local MODEL = cfg.WHISPER_MODEL or "base.en"         -- configurable model (default: base.en for compatibility)
+local MODEL_BY_DURATION = cfg.MODEL_BY_DURATION or {}
+local MODEL_SHORT = MODEL_BY_DURATION.MODEL_SHORT or MODEL
+local MODEL_LONG = MODEL_BY_DURATION.MODEL_LONG or MODEL
+local SHORT_SWITCH_SEC = tonumber(MODEL_BY_DURATION.SHORT_SEC) or 12.0
+local USE_DYNAMIC_MODEL = (MODEL_BY_DURATION.ENABLED == true)
+
 local LANG = "en"
 local HOLD_THRESHOLD_MS = 150                       -- ignore ultra-short taps
 local ARM_DELAY_MS = tonumber(cfg.ARM_DELAY_MS) or 700 -- fallback arming delay before "speak now" cue
@@ -137,9 +145,6 @@ local BEAM_SIZE = 3                                  -- beam search width (speed
 local BEAM_SIZE_LONG = 3                             -- same for long audio
 local WHISPER_DEVICE = "cpu"                        -- set to "mps" on Apple Silicon if available (auto-detected)
 local VENV_PY = HOME .. "/.local/pipx/venvs/openai-whisper/bin/python"  -- python in pipx venv
-local MODEL_FAST = "base.en"
-local MODEL_SHORT = cfg.MODEL_SHORT or "small.en"    -- higher accuracy for short clips
-local SHORT_SWITCH_SEC = tonumber(cfg.SHORT_SWITCH_SEC) or 12.0
 local LONG_AUDIO_SEC = 1e9                           -- not used now; switching on short instead
 local PREPROCESS_MIN_SEC = 12.0                      -- preprocess only if reasonably long
 local TIMEOUT_MS = tonumber(cfg.TIMEOUT_MS) or 120000 -- 2 minutes transcription timeout
@@ -1051,9 +1056,16 @@ local function onFFExit(code, stdout, stderr)
     local chosenModel = MODEL
     local chosenBeam = BEAM_SIZE
     local doPre = dur >= PREPROCESS_MIN_SEC
-    -- Switch to a slightly larger model for short clips to improve accuracy
-    if dur and dur > 0 and dur <= SHORT_SWITCH_SEC then
-      chosenModel = MODEL_SHORT or MODEL
+    
+    -- Use dynamic model selection if enabled
+    if USE_DYNAMIC_MODEL and dur and dur > 0 then
+      if dur <= SHORT_SWITCH_SEC then
+        chosenModel = MODEL_SHORT
+        log.d(string.format("Using short model %s for %.1fs clip", chosenModel, dur))
+      else
+        chosenModel = MODEL_LONG
+        log.d(string.format("Using long model %s for %.1fs clip", chosenModel, dur))
+      end
     end
 
     -- Kick off transcription

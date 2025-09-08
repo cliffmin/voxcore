@@ -9,14 +9,28 @@ return {
     "CLI, Brew, pipx, transcription, dictation, clipboard paste; symlink; complexity metrics; retest and commit."
   }),
 
+  -- Whisper model configuration
+  -- Based on comprehensive testing (see docs/model_comparison.md):
+  -- - base.en: Fast (3-8s), 19.89% WER, struggles with technical terms
+  -- - small.en: Moderate (4-10s), 19.19% WER, minimal improvement
+  -- - medium.en: Slower (8-22s), 16.86% WER, best accuracy, handles technical terms well
+  WHISPER_MODEL = "medium.en",      -- Recommended: best accuracy for technical content
+  
+  -- Model selection by audio duration (optional advanced configuration)
+  -- Set MODEL_BY_DURATION to use different models based on recording length
+  MODEL_BY_DURATION = {
+    ENABLED = false,               -- Set to true to enable dynamic model selection
+    SHORT_SEC = 12.0,              -- Clips <= this use MODEL_SHORT
+    MODEL_SHORT = "base.en",       -- Fast model for quick dictation
+    MODEL_LONG = "medium.en",      -- Accurate model for longer content
+  },
+  
   -- Reflow thresholds (seconds)
   GAP_NEWLINE_SEC = 1.75,           -- insert newline at sentence end or if gap exceeds this
   GAP_DOUBLE_NEWLINE_SEC = 2.50,    -- paragraph break for larger gaps
 
   -- Disfluency list to strip as standalone words (not inside tokens)
   DISFLUENCIES = { "uh", "um", "uhh", "uhm" },
-
-  -- Output modes per session type
   -- HOLD: classic press-and-hold F13 flow (paste)
   -- TOGGLE: Shift+F13 long-form flow (editor markdown)
   SHIFT_TOGGLE_ENABLED = true,
