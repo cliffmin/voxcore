@@ -9,7 +9,7 @@ mkdir -p "$HOME/.hammerspoon"
 
 # Dependencies
 if command -v brew >/dev/null 2>&1; then
-  brew bundle --no-lock --file="$REPO_DIR/Brewfile"
+  brew bundle --file="$REPO_DIR/Brewfile"
 fi
 
 # Whisper CLI via pipx
