@@ -12,3 +12,5 @@ tests/fixtures/*.norm.wav
 # Ephemeral latest-behavior samples (JSON/TXT/WAV) kept out of git
 /tests/fixtures/samples_current/
 
+
+dist
