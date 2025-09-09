@@ -6,10 +6,6 @@ IFS=$'\n\t'
 # This script is intentionally minimal and non-destructive.
 # It helps you run tests against your own voice recordings, which are gitignored.
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-PERS_DIR="$ROOT_DIR/tests/fixtures/personal"
-SAMPLES_DIR="$PERS_DIR/samples"
-
 cat <<'EOT'
 Personal test runner
 ====================

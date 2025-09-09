@@ -24,13 +24,16 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 
 run_one() {
   local wav="$1"
-  local base="$(basename "${wav%.wav}")"
+  local base
+  base="$(basename "${wav%.wav}")"
   local outdir="$TMP_DIR/$base"
   mkdir -p "$outdir"
-  local t0=$(date +%s)
+  local t0
+  t0=$(date +%s)
   "$WHISPER" "$wav" --model "$MODEL" --language "$LANG" --output_format json --output_dir "$outdir" --beam_size 3 --device cpu --fp16 False --verbose False --temperature 0 >/dev/null 2>&1 || true
   local rc=$?
-  local t1=$(date +%s)
+  local t1
+  t1=$(date +%s)
   local elapsed=$((t1 - t0))
   echo "$rc|$elapsed|$wav|$outdir/$base.json"
 }

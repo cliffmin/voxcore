@@ -52,7 +52,8 @@ check_files() {
         echo -e "${GREEN}✓ push_to_talk.lua exists${NC}"
         # Check if it's a symlink
         if [ -L "$PTT_MODULE" ]; then
-            local target=$(readlink "$PTT_MODULE")
+            local target
+            target=$(readlink "$PTT_MODULE")
             echo "  → Symlink to: $target"
             if [ -f "$target" ]; then
                 echo -e "  ${GREEN}✓ Symlink target exists${NC}"
@@ -149,9 +150,6 @@ check_syntax() {
 # Function to reload Hammerspoon via CLI
 reload_hammerspoon() {
     echo -e "\n${YELLOW}Reloading Hammerspoon...${NC}"
-    
-    # Mark current time for log analysis
-    local reload_time=$(date +"%H:%M:%S")
     
     # Reload via hs CLI tool
     if command -v hs &> /dev/null; then

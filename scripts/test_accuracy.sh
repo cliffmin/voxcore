@@ -24,11 +24,15 @@ calculate_wer() {
     local hyp="$2"
     
     # Simple word-level comparison (not optimal but good enough)
-    local ref_words=$(echo "$ref" | tr '[:upper:]' '[:lower:]' | tr -cs '[:alnum:]' '\n' | grep -v '^$')
-    local hyp_words=$(echo "$hyp" | tr '[:upper:]' '[:lower:]' | tr -cs '[:alnum:]' '\n' | grep -v '^$')
+    local ref_words
+    ref_words=$(echo "$ref" | tr '[:upper:]' '[:lower:]' | tr -cs '[:alnum:]' '\n' | grep -v '^$')
+    local hyp_words
+    hyp_words=$(echo "$hyp" | tr '[:upper:]' '[:lower:]' | tr -cs '[:alnum:]' '\n' | grep -v '^$')
     
-    local ref_count=$(echo "$ref_words" | wc -l)
-    local matches=$(comm -12 <(echo "$ref_words" | sort) <(echo "$hyp_words" | sort) | wc -l)
+    local ref_count
+    ref_count=$(echo "$ref_words" | wc -l)
+    local matches
+    matches=$(comm -12 <(echo "$ref_words" | sort) <(echo "$hyp_words" | sort) | wc -l)
     
     if [ "$ref_count" -eq 0 ]; then
         echo "0"
@@ -41,8 +45,10 @@ calculate_wer() {
 test_file() {
     local wav_file="$1"
     local txt_file="${wav_file%.wav}.txt"
-    local category=$(basename $(dirname "$wav_file"))
-    local name=$(basename "$wav_file" .wav)
+    local category
+    category=$(basename "$(dirname "$wav_file")")
+    local name
+    name=$(basename "$wav_file" .wav)
     
     if [ ! -f "$txt_file" ]; then
         echo "  ⚠️  No reference transcript for $name"
@@ -52,14 +58,16 @@ test_file() {
     echo "Testing $category/$name..."
     
     # Read reference transcript
-    local reference=$(cat "$txt_file")
+    local reference
+    reference=$(cat "$txt_file")
     
     # Run Whisper
     local output_dir="$RESULTS_DIR/$category"
     mkdir -p "$output_dir"
     
     # Time the transcription
-    local start_time=$(date +%s%N)
+    local start_time
+    start_time=$(date +%s%N)
     
     $WHISPER_BIN "$wav_file" \
         --model "$MODEL" \
@@ -72,8 +80,9 @@ test_file() {
         --temperature 0 \
         2>/dev/null
     
-    local end_time=$(date +%s%N)
-    local duration_ms=$(( ($end_time - $start_time) / 1000000 ))
+    local end_time
+    end_time=$(date +%s%N)
+    local duration_ms=$(( (end_time - start_time) / 1000000 ))
     
     # Read hypothesis (Whisper output)
     local hyp_file="$output_dir/${name}.txt"
@@ -82,10 +91,12 @@ test_file() {
         return
     fi
     
-    local hypothesis=$(cat "$hyp_file")
+    local hypothesis
+    hypothesis=$(cat "$hyp_file")
     
     # Calculate metrics
-    local wer=$(calculate_wer "$reference" "$hypothesis")
+    local wer
+    wer=$(calculate_wer "$reference" "$hypothesis")
     local ref_chars=${#reference}
     local hyp_chars=${#hypothesis}
     local char_diff=$(( ref_chars - hyp_chars ))

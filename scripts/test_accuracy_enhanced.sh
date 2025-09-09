@@ -29,19 +29,24 @@ calculate_metrics() {
     local hyp="$2"
     
     # Normalize for comparison
-    local ref_norm=$(echo "$ref" | tr '[:upper:]' '[:lower:]' | tr -s ' ' | sed 's/[[:punct:]]//g')
-    local hyp_norm=$(echo "$hyp" | tr '[:upper:]' '[:lower:]' | tr -s ' ' | sed 's/[[:punct:]]//g')
+    local ref_norm
+    ref_norm=$(echo "$ref" | tr '[:upper:]' '[:lower:]' | tr -s ' ' | sed 's/[[:punct:]]//g')
+    local hyp_norm
+    hyp_norm=$(echo "$hyp" | tr '[:upper:]' '[:lower:]' | tr -s ' ' | sed 's/[[:punct:]]//g')
     
     # Word-level metrics
-    local ref_words=$(echo "$ref_norm" | wc -w)
-    local hyp_words=$(echo "$hyp_norm" | wc -w)
+    local ref_words
+    ref_words=$(echo "$ref_norm" | wc -w)
+    local hyp_words
+    hyp_words=$(echo "$hyp_norm" | wc -w)
     
     # Character-level metrics  
     local ref_chars=${#ref}
     local hyp_chars=${#hyp}
     
     # Simple WER calculation
-    local common_words=$(comm -12 <(echo "$ref_norm" | tr ' ' '\n' | sort -u) <(echo "$hyp_norm" | tr ' ' '\n' | sort -u) | wc -l)
+    local common_words
+    common_words=$(comm -12 <(echo "$ref_norm" | tr ' ' '\n' | sort -u) <(echo "$hyp_norm" | tr ' ' '\n' | sort -u) | wc -l)
     local wer=0
     if [ "$ref_words" -gt 0 ]; then
         wer=$(echo "scale=2; 100 - ($common_words * 100 / $ref_words)" | bc)
@@ -55,8 +60,10 @@ test_file_enhanced() {
     local wav_file="$1"
     local txt_file="${wav_file%.wav}.txt"
     local json_file="${wav_file%.wav}.json"
-    local category=$(basename $(dirname "$wav_file"))
-    local name=$(basename "$wav_file" .wav)
+    local category
+    category=$(basename "$(dirname "$wav_file")")
+    local name
+    name=$(basename "$wav_file" .wav)
     
     if [ ! -f "$txt_file" ]; then
         echo "  ⚠️  No reference transcript for $name"
@@ -76,14 +83,16 @@ test_file_enhanced() {
     echo "Testing $category/$name (voice: $voice, style: $style)..."
     
     # Read reference transcript
-    local reference=$(cat "$txt_file")
+    local reference
+    reference=$(cat "$txt_file")
     
     # Run Whisper
     local output_dir="$RESULTS_DIR/$category"
     mkdir -p "$output_dir"
     
     # Time the transcription
-    local start_time=$(date +%s%N)
+    local start_time
+    start_time=$(date +%s%N)
     
     $WHISPER_BIN "$wav_file" \
         --model "$MODEL" \
@@ -96,8 +105,9 @@ test_file_enhanced() {
         --temperature 0 \
         2>/dev/null
     
-    local end_time=$(date +%s%N)
-    local duration_ms=$(( ($end_time - $start_time) / 1000000 ))
+    local end_time
+    end_time=$(date +%s%N)
+    local duration_ms=$(( (end_time - start_time) / 1000000 ))
     
     # Read hypothesis
     local hyp_file="$output_dir/${name}.txt"
@@ -106,10 +116,12 @@ test_file_enhanced() {
         return 1
     fi
     
-    local hypothesis=$(cat "$hyp_file")
+    local hypothesis
+    hypothesis=$(cat "$hyp_file")
     
     # Calculate detailed metrics
-    local metrics=$(calculate_metrics "$reference" "$hypothesis")
+    local metrics
+    metrics=$(calculate_metrics "$reference" "$hypothesis")
     IFS='|' read -r wer ref_words hyp_words ref_chars hyp_chars <<< "$metrics"
     
     # Track statistics by category

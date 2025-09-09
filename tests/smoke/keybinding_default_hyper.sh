@@ -47,7 +47,7 @@ print('RESOLVED_HOLD=' .. combo(rk.hold))
 print('RESOLVED_TOGGLE=' .. combo(rk.toggle))
 LUA
 
-OUT=$(ROOT="$ROOT" TMP_DIR="$TMP_DIR" hs -c "dofile('$TMP_DIR/keybinding_probe.lua')" 2>&1 || true)
+OUT=$(env ROOT="$ROOT" TMP_DIR="$TMP_DIR" hs -c "dofile('$TMP_DIR/keybinding_probe.lua')" 2>&1 || true)
 
 echo "$OUT" | sed -n 's/^RESOLVED_/\0/p'
 
