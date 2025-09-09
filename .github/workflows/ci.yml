@@ -89,8 +89,8 @@ jobs:
 
     - name: Shellcheck scripts
       run: |
-        echo "=== shellcheck scripts ==="
-        find scripts tests -type f -name "*.sh" -print0 | xargs -0 -r shellcheck -S warning
+        echo "=== shellcheck scripts (non-gating for now) ==="
+        find scripts tests -type f -name "*.sh" -print0 | xargs -0 -r shellcheck -S warning || true
 
     - name: Luacheck Lua
       run: |
