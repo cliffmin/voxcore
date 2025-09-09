@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  artifacts:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute tarball sha256 for Homebrew formula
+        id: sha
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          URL="https://github.com/${{ github.repository }}/archive/refs/tags/${TAG}.tar.gz"
+          echo "Downloading $URL"
+          curl -L "$URL" -o source.tar.gz
+          SHA=$(shasum -a 256 source.tar.gz | awk '{print $1}')
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "$SHA  source.tar.gz" > formula-sha256.txt
+
+      - name: Build quickstart zip
+        run: |
+          zip -r quickstart-${GITHUB_REF_NAME}.zip hammerspoon scripts/install.sh LICENSE README.md
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts-${{ github.ref_name }}
+          path: |
+            formula-sha256.txt
+            quickstart-${{ github.ref_name }}.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            quickstart-${{ github.ref_name }}.zip
+          body: |
+            Homebrew formula sha256 for this tag:
+            ${{ steps.sha.outputs.sha256 }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

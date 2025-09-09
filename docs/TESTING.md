@@ -23,7 +23,7 @@ This project includes comprehensive testing using a golden dataset with known-ac
 
 ```
 tests/fixtures/
-├── golden/          # Public test data (in git)
+├── golden/          # Public test data (generated locally; gitignored)
 │   ├── micro/       # < 2 seconds
 │   ├── short/       # 2-10 seconds
 │   ├── medium/      # 10-30 seconds
@@ -55,7 +55,7 @@ The golden dataset consists of synthetic audio generated using macOS text-to-spe
 
 ### Generate Golden Dataset
 ```bash
-# Create synthetic test audio
+# Create synthetic test audio (golden fixtures are local-only and not committed)
 bash scripts/generate_golden_dataset.sh
 ```
 
@@ -130,4 +130,4 @@ To add new test cases to the golden dataset:
 1. Edit `scripts/generate_golden_dataset.sh`
 2. Add new `generate_sample` calls with exact text
 3. Regenerate dataset
-4. Commit new golden files to git
+4. Keep golden files locally (do not commit them to the repository)

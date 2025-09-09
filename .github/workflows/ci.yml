@@ -10,73 +10,94 @@ on:
 jobs:
   test:
     runs-on: macos-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-    
+
     - name: Install system dependencies
       run: |
-        brew install ffmpeg
-        brew install hammerspoon --cask || true
-    
+        brew update || true
+        brew install ffmpeg lua
+        brew install --cask hammerspoon || true
+
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         python -m pip install pipx
-        python -m pipx ensurepath
+        python -m pipx ensurepath || true
         pipx install --include-deps openai-whisper
-    
+
     - name: Verify installations
       run: |
-        echo "=== Checking ffmpeg ===" 
+        echo "=== Checking ffmpeg ==="
         ffmpeg -version | head -n1
+        echo "=== Checking luac ==="
+        luac -v || true
         echo "=== Checking whisper ==="
-        ~/.local/bin/whisper --help | head -n1
+        ~/.local/bin/whisper --help | head -n1 || true
         echo "=== Checking Hammerspoon Lua files ==="
         ls -la hammerspoon/
-    
+
     - name: Run syntax checks
       run: |
-        echo "=== Lua syntax check ===" 
+        echo "=== Lua syntax check ==="
         for file in hammerspoon/*.lua; do
           echo "Checking $file..."
-          luac -p "$file" 2>&1 || echo "Lua not available, skipping syntax check"
+          luac -p "$file"
         done
-    
+
     - name: Run test suite
       run: |
-        echo "=== Running test suite ===" 
+        echo "=== Running test suite ==="
         if [ -f tests/run_tests.sh ]; then
           bash tests/run_tests.sh
         else
           echo "No test runner found, checking for test files..."
           ls -la tests/ || echo "No tests directory"
         fi
-    
+
     - name: Check documentation
       run: |
-        echo "=== Verifying documentation ===" 
+        echo "=== Verifying documentation ==="
         for doc in README.md CHANGELOG.md LICENSE; do
           [ -f "$doc" ] && echo "✓ $doc exists" || echo "✗ Missing $doc"
         done
 
   lint:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Check file formatting
+
+    - name: Install linters
       run: |
-        echo "=== Checking line endings ===" 
-        find . -type f -name "*.lua" -o -name "*.md" | xargs file | grep -v CRLF || true
-    
+        sudo apt-get update
+        sudo apt-get install -y shellcheck luarocks || true
+        sudo apt-get install -y lua5.4 || sudo apt-get install -y lua5.3 || true
+        luarocks install --local luacheck || true
+        echo "$HOME/.luarocks/bin" >> "$GITHUB_PATH"
+
+    - name: Check line endings
+      run: |
+        echo "=== Checking line endings ==="
+        find . -type f \( -name "*.lua" -o -name "*.md" \) -print0 | xargs -0 file | grep -v CRLF || true
+
+    - name: Shellcheck scripts
+      run: |
+        echo "=== shellcheck scripts ==="
+        find scripts tests -type f -name "*.sh" -print0 | xargs -0 -r shellcheck -S warning
+
+    - name: Luacheck Lua
+      run: |
+        echo "=== luacheck Lua ==="
+        "$HOME/.luarocks/bin/luacheck" hammerspoon || true
+
     - name: Check for large files
       run: |
-        echo "=== Checking for large files (>1MB) ===" 
+        echo "=== Checking for large files (>1MB) ==="
         find . -type f -size +1M -exec ls -lh {} \; | grep -v ".git" || echo "No large files found"
