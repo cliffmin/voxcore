@@ -1541,6 +1541,7 @@ end
 -- Key handling: configurable PTT hotkeys (defaults: F13 hold, Shift+F13 toggle) and Fn+T test toggle
 local f13Hotkey
 local shiftF13Hotkey
+local resolvedKeys = nil
 local function startTaps()
   if keyTap then keyTap:stop() end
   if flagTap then flagTap:stop() end
@@ -1664,6 +1665,10 @@ local function startTaps()
     )
   end
 
+  resolvedKeys = {
+    hold = { mods = holdMods, key = holdKey, combo = holdStr },
+    toggle = (cfg.SHIFT_TOGGLE_ENABLED ~= false) and { mods = select(1, _keySpec("TOGGLE", {"shift"}, holdKey)), key = select(2, _keySpec("TOGGLE", {"shift"}, holdKey)), combo = toggleStr } or nil
+  }
   log.i("push_to_talk: " .. holdStr .. " hold + " .. toggleStr .. " toggle armed (testMode=" .. tostring(isTestMode()) .. ")")
 
   -- Initialize logger level according to current mode
@@ -1693,6 +1698,11 @@ end
 function M.stop()
   if keyTap then keyTap:stop() end
   if flagTap then flagTap:stop() end
+end
+
+-- Test helper: expose resolved key combos for verification
+function M._resolvedKeys()
+  return resolvedKeys
 end
 
 -- Test hooks (for integration testing reflow)
