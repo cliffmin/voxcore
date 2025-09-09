@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="280">
+<rect x="0" y="0" width="680" height="280" fill="#ffffff"/>
+<text x="40" y="28" font-family="Menlo,monospace" font-size="14" fill="#111827">Transcription & Refine Timing</text>
+<line x1="40" y1="240" x2="640" y2="240" stroke="#9CA3AF" stroke-width="1"/>
+<line x1="40" y1="40" x2="40" y2="240" stroke="#9CA3AF" stroke-width="1"/>
+<rect x="60" y="173.67772781019232" width="80" height="66.32227218980768" fill="#4F46E5" rx="4"/>
+<text x="100.0" y="256" text-anchor="middle" font-family="Menlo,monospace" font-size="11" fill="#374151">Hold tx (ms)</text>
+<text x="100.0" y="167.67772781019232" text-anchor="middle" font-family="Menlo,monospace" font-size="11" fill="#111827">13047</text>
+<rect x="180" y="40.0" width="80" height="200.0" fill="#10B981" rx="4"/>
+<text x="220.0" y="256" text-anchor="middle" font-family="Menlo,monospace" font-size="11" fill="#374151">Toggle tx (ms)</text>
+<text x="220.0" y="34.0" text-anchor="middle" font-family="Menlo,monospace" font-size="11" fill="#111827">39344</text>
+<text x="400" y="48" font-family="Menlo,monospace" font-size="12" fill="#111827">Markdown structure (avg across toggles)</text>
+<text x="400" y="64" font-family="Menlo,monospace" font-size="11" fill="#374151">Headings: 0.0  Bullets: 0.0</text>
+</svg>
