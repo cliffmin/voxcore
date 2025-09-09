@@ -52,6 +52,11 @@ clean:
 	@rm -rf tests/fixtures/samples_current/tmp_compare/
 	@echo "Clean complete!"
 
+# Diagnostics: collect latest logs + summary
+.PHONY: diag
+diag:
+	@bash scripts/diagnostics/collect_latest.sh
+
 # Generate performance metrics graph (SVG) from latest tx_logs
 metrics-graph:
 	@mkdir -p docs/assets
