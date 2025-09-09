@@ -1,5 +1,7 @@
 # macos-ptt-dictation
 
+[![CI](https://github.com/cliffmin/macos-ptt-dictation/actions/workflows/ci.yml/badge.svg)](https://github.com/cliffmin/macos-ptt-dictation/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 > Privacy-first push-to-talk dictation for macOS. Hold F13 to speak, release to paste.
 
 ## ✨ Features
