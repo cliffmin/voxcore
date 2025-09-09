@@ -89,6 +89,10 @@ LLM_REFINER = {
 ```
 Run the self‑test (default): Cmd+Alt+Ctrl+R → “LLM refine self‑test OK”.
 
+## 🎥 Demo
+
+![Push-to-Talk Demo](docs/assets/demo.gif)
+
 ## 📈 Performance
 
 ![Performance](docs/assets/metrics.svg)

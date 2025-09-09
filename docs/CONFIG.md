@@ -2,6 +2,9 @@
 
 Configuration is done via `~/.hammerspoon/ptt_config.lua` (a sample is installed by `scripts/install.sh`).
 
+XDG fallback
+- Also supported: `~/.config/macos-ptt-dictation/ptt_config.lua` or `$XDG_CONFIG_HOME/macos-ptt-dictation/ptt_config.lua`
+
 ## Core Settings
 
 ### Audio Device

@@ -40,8 +40,11 @@ echo "Recording screen index $SCREEN_INDEX for ${DURATION}s in 3s..."
 echo "Arrange your window, then press-and-hold F13, release to paste."
 sleep 3
 
-# Record full screen with cursor
-ffmpeg -y -f avfoundation -framerate "$FRAMERATE" -capture_cursor 1 -capture_mouse_clicks 1 -i "$SCREEN_INDEX:" -t "$DURATION" -pix_fmt yuv420p "$MP4"
+# Record full screen with cursor (try safest pixel formats)
+if ! ffmpeg -y -f avfoundation -pixel_format uyvy422 -framerate "$FRAMERATE" -capture_cursor 1 -capture_mouse_clicks 1 -i "$SCREEN_INDEX:" -t "$DURATION" -pix_fmt yuv420p "$MP4"; then
+  echo "Primary capture failed, retrying with pixel_format=nv12..." >&2
+  ffmpeg -y -f avfoundation -pixel_format nv12 -framerate "$FRAMERATE" -capture_cursor 1 -capture_mouse_clicks 1 -i "$SCREEN_INDEX:" -t "$DURATION" -pix_fmt yuv420p "$MP4"
+fi
 
 # Generate palette for better GIF quality
 ffmpeg -y -i "$MP4" -vf "fps=10,scale=960:-1:flags=lanczos,palettegen" "$PALETTE"
