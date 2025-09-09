@@ -13,6 +13,17 @@
 - **Auto-Save** - All recordings preserved in `~/Documents/VoiceNotes`
 - **Customizable** - Adjust models, prompts, and formatting to your needs
 
+## Why now
+
+In the era of AI agents, natural language is the universal interface. When spoken ideas become text, they become searchable, editable, automatable—and actionable. This project makes that instant and private: hold a key, speak, release to paste. For longer thoughts, the optional Refiner promotes raw transcripts into clear, structured Markdown that’s ready for prompts, tickets, docs, or automation.
+
+### Why this vs. others
+- 100% local: no tokens, no network, consistent latency
+- One key anywhere: no window switching; paste at the cursor
+- Structured output: optional refiner produces clean Markdown
+- Deterministic pipeline: ffmpeg → Whisper → (optional) Refiner; logs and sidecars for traceability
+- Extensible: hotkeys, models, retention policy, and refiner provider are all configurable
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -50,6 +61,33 @@ bash ./scripts/install.sh
 - [**Configuration**](docs/CONFIG.md) - Customize behavior
 - [**Troubleshooting**](docs/TROUBLESHOOTING.md) - Common issues
 - [**Architecture**](docs/ARCHITECTURE.md) - Technical overview
+
+## 🧩 Extensibility (plugin‑style processors)
+
+This project exposes a plugin‑style post‑processing stage. Any CLI that follows a simple contract can be used:
+- Input: transcript text on stdin
+- Output: refined text on stdout (e.g., Markdown) or analysis
+- Optional: write a JSON sidecar with metrics
+- Exit code: 0 = success; non‑zero = we fall back to the original transcript
+
+Built‑in example: the Refiner (voxcompose) formats long‑form speech into clean Markdown. Planned: a Coaching analyzer to score clarity/pacing and surface actionable feedback.
+
+### Refiner (optional)
+Install via Homebrew (Apple Silicon shown):
+```bash
+brew tap cliffmin/tap
+brew install voxcompose
+```
+Enable in your config (auto‑detects the voxcompose binary on PATH):
+```lua
+LLM_REFINER = {
+  ENABLED = true,
+  -- CMD = { "/opt/homebrew/bin/voxcompose" }, -- optional, auto‑detected if omitted
+  ARGS = { "--model", "llama3.1", "--timeout-ms", "9000" },
+  TIMEOUT_MS = 9000,
+}
+```
+Run the self‑test (default): Cmd+Alt+Ctrl+R → “LLM refine self‑test OK”.
 
 ## 🎯 Key Bindings
 
