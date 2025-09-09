@@ -55,4 +55,4 @@ echo "5. Recent log entries:"
 tail -3 ~/Documents/VoiceNotes/tx_logs/tx-$(date +%F).jsonl 2>/dev/null | jq -r '"\(.ts) \(.kind) duration:\(.duration_sec)s"' | sed 's/^/   /'
 
 echo ""
-echo "=== End Debug Test ===
+echo "=== End Debug Test ==="
