@@ -21,6 +21,25 @@ local function loadConfig()
     cfg_path_used = "require:ptt_config"
     return
   end
+  -- XDG: prefer ~/.config/macos-ptt-dictation/ptt_config.lua or $XDG_CONFIG_HOME
+  local function loadXdg()
+    local xdg = os.getenv("XDG_CONFIG_HOME")
+    local paths = {}
+    if xdg and xdg ~= "" then
+      table.insert(paths, xdg .. "/macos-ptt-dictation/ptt_config.lua")
+    end
+    table.insert(paths, (os.getenv("HOME") or "") .. "/.config/macos-ptt-dictation/ptt_config.lua")
+    for _,p in ipairs(paths) do
+      if p and hs.fs.attributes(p) then
+        local okx, tx = pcall(dofile, p)
+        if okx and type(tx) == "table" then
+          cfg = tx; cfg_loaded = true; cfg_path_used = p; return true
+        end
+      end
+    end
+    return false
+  end
+  if loadXdg() then return end
   -- Fallback: load repo-local config next to this file
   local src = debug.getinfo(1, "S").source or ""
   local selfPath = src:match("^@(.*)$")

@@ -89,6 +89,10 @@ LLM_REFINER = {
 ```
 Run the self‑test (default): Cmd+Alt+Ctrl+R → “LLM refine self‑test OK”.
 
+## 📈 Performance
+
+![Performance](docs/assets/metrics.svg)
+
 ## 🎯 Key Bindings
 
 Defaults shown; all are configurable in `~/.hammerspoon/ptt_config.lua` under `KEYS`.

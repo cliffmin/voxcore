@@ -1,4 +1,4 @@
-.PHONY: help test test-audio test-e2e test-smoke install clean auto-audio
+.PHONY: help test test-audio test-e2e test-smoke install clean auto-audio metrics-graph demo-gif
 
 # Default target
 help:
@@ -51,6 +51,17 @@ clean:
 	@rm -f /tmp/audio_device_test.wav
 	@rm -rf tests/fixtures/samples_current/tmp_compare/
 	@echo "Clean complete!"
+
+# Generate performance metrics graph (SVG) from latest tx_logs
+metrics-graph:
+	@mkdir -p docs/assets
+	@/usr/bin/env python3 scripts/metrics/render_metrics.py || echo "(metrics script exited)"
+	@echo "Wrote docs/assets/metrics.svg (if data was available)"
+
+# Record and render a short demo GIF (10s)
+demo-gif:
+	@bash scripts/generate_demo_gif.sh 10 docs/assets/demo.gif
+	@echo "Wrote docs/assets/demo.gif"
 
 # Development helpers
 reload:
