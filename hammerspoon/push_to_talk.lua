@@ -890,6 +890,28 @@ local function runDiagnostics()
   log.i("Diagnostics:\n" .. msg)
 end
 
+-- Resolve refiner argv based on config or auto-detection
+local function _which(bin)
+  local out = hs.execute(string.format([[bash -lc 'command -v %q 2>/dev/null']], bin)) or ""
+  out = (out or ""):gsub("%s+$", "")
+  if out == "" then return nil end
+  return out
+end
+local function resolveRefinerArgv()
+  local refCfg = cfg.LLM_REFINER or {}
+  local argv = {}
+  local cmd = refCfg.CMD or {}
+  if type(cmd) == "table" and #cmd > 0 then
+    for _,p in ipairs(cmd) do table.insert(argv, p) end
+  else
+    -- Auto-detect voxcompose in PATH
+    local v = _which("voxcompose")
+    if v then table.insert(argv, v) end
+  end
+  for _,a in ipairs(refCfg.ARGS or {}) do table.insert(argv, a) end
+  return argv
+end
+
 -- Run a self-test of the LLM refiner (no audio involved)
 local function refineSelfTest()
   local refCfg = cfg.LLM_REFINER or {}
@@ -897,14 +919,11 @@ local function refineSelfTest()
     hs.alert.show("LLM refine disabled in ptt_config.lua")
     return
   end
-  local cmd = refCfg.CMD or {}
-  if type(cmd) ~= "table" or #cmd == 0 then
-    hs.alert.show("LLM refiner CMD not configured")
+  local argv = resolveRefinerArgv()
+  if type(argv) ~= "table" or #argv == 0 then
+    hs.alert.show("LLM refiner not found: install 'voxcompose' or set LLM_REFINER.CMD")
     return
   end
-  local argv = {}
-  for _,p in ipairs(cmd) do table.insert(argv, p) end
-  for _,a in ipairs(refCfg.ARGS or {}) do table.insert(argv, a) end
   log.i("Running refine self-test via VoxCompose…")
   local sample = [[Draft test note: demonstrate Markdown structure with a heading and bullet list.
 - item one
@@ -1300,9 +1319,7 @@ local function runWhisper(audioPath)
               finishWithText(transcript)
               return
             end
-            local argv = {}
-            for _,p in ipairs(refCfg.CMD or {}) do table.insert(argv, p) end
-            for _,a in ipairs(refCfg.ARGS or {}) do table.insert(argv, a) end
+            local argv = resolveRefinerArgv()
             -- Sidecar path for refiner metrics
             local sidecarPath = sessionDir .. "/refine.json"
             table.insert(argv, "--sidecar"); table.insert(argv, sidecarPath)
