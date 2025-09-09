@@ -22,6 +22,16 @@ return {
     TOGGLE = { mode = "editor", format = "md" },
   },
 
+  -- Key bindings (configurable)
+  -- Use Hammerspoon key strings (e.g., "f13", "f18", "space", "I")
+  KEYS = {
+    HOLD = { mods = {}, key = "f13" },            -- press-and-hold PTT
+    TOGGLE = { mods = {"shift"}, key = "f13" },   -- toggle on/off
+    INFO = { mods = {"cmd","alt","ctrl"}, key = "I" },
+    REFINER_TEST = { mods = {"cmd","alt","ctrl"}, key = "R" },
+    DIAGNOSTICS = { mods = {"cmd","alt","ctrl"}, key = "D" },
+  },
+
   -- LLM refiner (VoxCompose) is disabled by default for public users
   LLM_REFINER = {
     ENABLED = false,
