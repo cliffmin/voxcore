@@ -2,12 +2,12 @@
 
 [![CI](https://github.com/cliffmin/macos-ptt-dictation/actions/workflows/ci.yml/badge.svg)](https://github.com/cliffmin/macos-ptt-dictation/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> Privacy-first push-to-talk dictation for macOS. Hold F13 to speak, release to paste.
+> Privacy-first push-to-talk dictation for macOS. Hold Hyper+Space to speak, release to paste.
 
 ## ✨ Features
 
 - **100% Offline** - No cloud services, everything runs locally
-- **One-Key Operation** - Just hold F13 to record, release to transcribe
+- **One-Key Operation** - Just hold Hyper+Space (Cmd+Alt+Ctrl+Space) to record, release to transcribe
 - **Fast Transcription** - 5-6x faster than realtime
 - **Smart Formatting** - Handles pauses, punctuation, and paragraphs naturally
 - **Auto-Save** - All recordings preserved in `~/Documents/VoiceNotes`
@@ -42,7 +42,7 @@ bash ./scripts/install.sh
 2. **Grant Permissions**: 
    - Accessibility (for hotkeys)
    - Microphone (for recording)
-3. **Test**: Hold F13, speak, release to paste
+3. **Test**: Hold Hyper+Space, speak, release to paste
 
 ## 📖 Documentation
 
@@ -57,8 +57,8 @@ Defaults shown; all are configurable in `~/.hammerspoon/ptt_config.lua` under `K
 
 | Hotkey | Action |
 |--------|--------|
-| **F13** (hold) | Record while held, paste on release |
-| **Shift+F13** | Toggle recording on/off (long-form) |
+| **Hyper+Space** (hold) | Record while held, paste on release |
+| **Shift+Hyper+Space** | Toggle recording on/off (long-form) |
 | **Cmd+Alt+Ctrl+I** | Show device info and diagnostics |
 
 ## 🔒 Privacy & Security

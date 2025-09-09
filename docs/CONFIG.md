@@ -67,8 +67,8 @@ OUTPUT = {
 ```lua
 -- Change the hotkeys (defaults shown)
 KEYS = {
-  HOLD = { mods = {}, key = "f13" },            -- press-and-hold PTT
-  TOGGLE = { mods = {"shift"}, key = "f13" },   -- toggle on/off
+  HOLD = { mods = {"cmd","alt","ctrl"}, key = "space" },            -- default: Hyper+Space
+  TOGGLE = { mods = {"cmd","alt","ctrl","shift"}, key = "space" },  -- default: Shift+Hyper+Space
   INFO = { mods = {"cmd","alt","ctrl"}, key = "I" },
   REFINER_TEST = { mods = {"cmd","alt","ctrl"}, key = "R" },
   DIAGNOSTICS = { mods = {"cmd","alt","ctrl"}, key = "D" },

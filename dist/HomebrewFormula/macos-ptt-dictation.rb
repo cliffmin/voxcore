@@ -23,7 +23,7 @@ class MacosPttDictation < Formula
         cp "$REPO/hammerspoon/ptt_config.lua.sample" "$HOME/.hammerspoon/ptt_config.lua"
         echo "Created sample config at ~/.hammerspoon/ptt_config.lua"
       fi
-      echo "Reload Hammerspoon and press F13 to test"
+echo "Reload Hammerspoon and press Hyper+Space (Cmd+Alt+Ctrl+Space) to test"
     EOS
     chmod "+x", (bin/"ptt-install")
   end
