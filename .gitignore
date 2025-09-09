@@ -14,8 +14,16 @@ tests/fixtures/*.norm.wav
 
 # Test results and golden datasets (too large for version control)
 tests/results/
+# Golden fixtures are generated locally and not committed
 tests/fixtures/golden/
+# Baseline run outputs (derived), do not track
 tests/fixtures/baselines/*/benchmark_results_*.txt
+tests/fixtures/baselines/*/tmp_outputs/
+tests/fixtures/baselines/*/tmp_compare/
+
+# Personal and sample recordings (not for distribution)
+tests/fixtures/personal/
+tests/fixtures/samples/
 
 dist
 

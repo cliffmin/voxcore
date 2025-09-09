@@ -1,1 +1,0 @@
-Behavior. This is F-13, which is supposed to be more ad hoc and short form. And it seems like SHIFT F-13. It triggers the same pathway and then also the transcription is being pasted into the cursor, which should be... only F-13 should be pasting into cursor.
