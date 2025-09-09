@@ -26,5 +26,13 @@ if [ -e "$HOME/.hammerspoon/push_to_talk.lua" ] && [ ! -L "$HOME/.hammerspoon/pu
 fi
 ln -sf "$REPO_DIR/hammerspoon/push_to_talk.lua" "$HOME/.hammerspoon/push_to_talk.lua"
 
+# Copy sample config on first install
+if [ ! -f "$HOME/.hammerspoon/ptt_config.lua" ]; then
+  if [ -f "$REPO_DIR/hammerspoon/ptt_config.lua.sample" ]; then
+    cp "$REPO_DIR/hammerspoon/ptt_config.lua.sample" "$HOME/.hammerspoon/ptt_config.lua"
+    echo "Created sample config at ~/.hammerspoon/ptt_config.lua"
+  fi
+fi
+
 echo "Install complete. Reload Hammerspoon and press F13 to test."
 
