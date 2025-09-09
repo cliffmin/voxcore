@@ -1,8 +1,8 @@
 # Usage
 
 ## Daily
-- Hold F13 to record. Release to transcribe and paste at the cursor.
-- Toggle long-form: Shift+F13 to start; press again to stop.
+- Hold Hyper+Space to record. Release to transcribe and paste at the cursor.
+- Toggle long-form: Shift+Hyper+Space to start; press again to stop.
 - Optional refine (if VoxCompose is configured): long-form transcript is refined to Markdown and saved under ~/Documents/VoiceNotes/refined.
 
 ## Outputs

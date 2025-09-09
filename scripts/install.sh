@@ -34,5 +34,5 @@ if [ ! -f "$HOME/.hammerspoon/ptt_config.lua" ]; then
   fi
 fi
 
-echo "Install complete. Reload Hammerspoon and press F13 to test."
+echo "Install complete. Reload Hammerspoon and press Hyper+Space (Cmd+Alt+Ctrl+Space) to test."
 

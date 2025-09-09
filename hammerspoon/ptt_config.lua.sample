@@ -24,9 +24,9 @@ return {
 
   -- Key bindings (configurable)
   -- Use Hammerspoon key strings (e.g., "f13", "f18", "space", "I")
-  KEYS = {
-    HOLD = { mods = {}, key = "f13" },            -- press-and-hold PTT
-    TOGGLE = { mods = {"shift"}, key = "f13" },   -- toggle on/off
+KEYS = {
+    HOLD = { mods = {"cmd","alt","ctrl"}, key = "space" },            -- Hyper+Space (default)
+    TOGGLE = { mods = {"cmd","alt","ctrl","shift"}, key = "space" },  -- Shift+Hyper+Space
     INFO = { mods = {"cmd","alt","ctrl"}, key = "I" },
     REFINER_TEST = { mods = {"cmd","alt","ctrl"}, key = "R" },
     DIAGNOSTICS = { mods = {"cmd","alt","ctrl"}, key = "D" },

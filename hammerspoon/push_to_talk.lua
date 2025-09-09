@@ -1,5 +1,5 @@
 -- ~/.hammerspoon/push_to_talk.lua
--- Press-and-hold F13 to record; release to stop, transcribe (offline), copy to clipboard, and paste at cursor.
+-- Press-and-hold the PTT key (default Hyper+Space) to record; release to stop, transcribe (offline), copy to clipboard, and paste at cursor.
 -- Storage: ~/Documents/VoiceNotes/YYYY-MM-DD_HH-MM-SS.wav and .txt
 -- Dependencies: ffmpeg (brew) and Whisper CLI installed via pipx (~/.local/bin/whisper)
 
@@ -165,7 +165,7 @@ local wavPath = nil
 local txtPath = nil
 local sessionDir = nil
 
--- Session mode: "hold" (default) or "toggle" (Shift+F13)
+-- Session mode: "hold" (default) or "toggle" (default Shift+Hyper+Space)
 local sessionKind = "hold"
 local ignoreHoldThreshold = false
 
@@ -1617,7 +1617,7 @@ local function startTaps()
     return table.concat(m, "+") .. "+" .. key
   end
 
-  local holdMods, holdKey = _keySpec("HOLD", {}, "f13")
+local holdMods, holdKey = _keySpec("HOLD", {"cmd","alt","ctrl"}, "space")
   local holdStr = _comboToString(holdMods, holdKey)
 
   -- Primary: press/release callbacks for hold-to-talk
@@ -1647,9 +1647,9 @@ local function startTaps()
   )
 
   -- Toggle on press (configurable)
-  local toggleStr = "disabled"
+local toggleStr = "disabled"
   if (cfg.SHIFT_TOGGLE_ENABLED ~= false) then
-    local toggleMods, toggleKey = _keySpec("TOGGLE", {"shift"}, holdKey)
+    local toggleMods, toggleKey = _keySpec("TOGGLE", {"cmd","alt","ctrl","shift"}, "space")
     toggleStr = _comboToString(toggleMods, toggleKey)
     shiftF13Hotkey = hs.hotkey.bind(toggleMods, toggleKey,
       function() -- pressed
@@ -1665,9 +1665,12 @@ local function startTaps()
     )
   end
 
-  resolvedKeys = {
+resolvedKeys = {
     hold = { mods = holdMods, key = holdKey, combo = holdStr },
-    toggle = (cfg.SHIFT_TOGGLE_ENABLED ~= false) and { mods = select(1, _keySpec("TOGGLE", {"shift"}, holdKey)), key = select(2, _keySpec("TOGGLE", {"shift"}, holdKey)), combo = toggleStr } or nil
+    toggle = (cfg.SHIFT_TOGGLE_ENABLED ~= false) and (function()
+      local m,k = _keySpec("TOGGLE", {"cmd","alt","ctrl","shift"}, "space")
+      return { mods = m, key = k, combo = toggleStr }
+    end)() or nil
   }
   log.i("push_to_talk: " .. holdStr .. " hold + " .. toggleStr .. " toggle armed (testMode=" .. tostring(isTestMode()) .. ")")
 
