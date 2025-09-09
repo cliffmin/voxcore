@@ -39,6 +39,15 @@ return {
     TOGGLE = { mode = "editor", format = "md" },
   },
 
+  -- Key bindings (configurable)
+  KEYS = {
+    HOLD = { mods = {}, key = "f13" },
+    TOGGLE = { mods = {"shift"}, key = "f13" },
+    INFO = { mods = {"cmd","alt","ctrl"}, key = "I" },
+    REFINER_TEST = { mods = {"cmd","alt","ctrl"}, key = "R" },
+    DIAGNOSTICS = { mods = {"cmd","alt","ctrl"}, key = "D" },
+  },
+
   -- UX cues
   SOUND_ENABLED = true,           -- play short cues on arm/finish
   ARM_DELAY_MS = 700,             -- fallback arming delay before "speak now" cue (increased for reliability)

@@ -58,10 +58,26 @@ WAVE_METER_MODE = "off"  -- Visual feedback ("off", "inline", "monitor")
 SHIFT_TOGGLE_ENABLED = true  -- Enable Shift+F13 for toggle recording
 
 OUTPUT = {
-  HOLD = { mode = "paste", format = "txt" },    -- F13 hold behavior
-  TOGGLE = { mode = "editor", format = "md" }   -- Shift+F13 behavior
+  HOLD = { mode = "paste", format = "txt" },    -- hold behavior (key configurable)
+  TOGGLE = { mode = "editor", format = "md" }   -- toggle behavior (key configurable)
 }
 ```
+
+### Key Bindings
+```lua
+-- Change the hotkeys (defaults shown)
+KEYS = {
+  HOLD = { mods = {}, key = "f13" },            -- press-and-hold PTT
+  TOGGLE = { mods = {"shift"}, key = "f13" },   -- toggle on/off
+  INFO = { mods = {"cmd","alt","ctrl"}, key = "I" },
+  REFINER_TEST = { mods = {"cmd","alt","ctrl"}, key = "R" },
+  DIAGNOSTICS = { mods = {"cmd","alt","ctrl"}, key = "D" },
+}
+```
+
+Notes:
+- Keys use Hammerspoon identifiers (e.g., "f13", "f18", "space", "I").
+- Choose a spare key that doesn’t interfere with typing. External keyboards often have F13–F19; foot pedals also work well.
 
 ## Advanced Settings
 

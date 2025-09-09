@@ -53,6 +53,8 @@ bash ./scripts/install.sh
 
 ## 🎯 Key Bindings
 
+Defaults shown; all are configurable in `~/.hammerspoon/ptt_config.lua` under `KEYS`.
+
 | Hotkey | Action |
 |--------|--------|
 | **F13** (hold) | Record while held, paste on release |

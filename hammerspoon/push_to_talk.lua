@@ -1538,7 +1538,7 @@ local function stopRecording()
   end
 end
 
--- Key handling: Press-and-hold F13 and Fn+T test toggle
+-- Key handling: configurable PTT hotkeys (defaults: F13 hold, Shift+F13 toggle) and Fn+T test toggle
 local f13Hotkey
 local shiftF13Hotkey
 local function startTaps()
@@ -1603,10 +1603,26 @@ local function startTaps()
   end)
   keyTap:start()
 
-  -- Primary: use hs.hotkey for F13 with press/release callbacks
-  f13Hotkey = hs.hotkey.bind({}, "f13",
+  -- Resolve key bindings from config (with fallbacks)
+  local function _keySpec(name, defMods, defKey)
+    local kcfg = (cfg.KEYS or {})[name]
+    local mods = (kcfg and kcfg.mods) or defMods
+    local key = (kcfg and kcfg.key) or defKey
+    return mods, key
+  end
+  local function _comboToString(mods, key)
+    local m = mods or {}
+    if #m == 0 then return key end
+    return table.concat(m, "+") .. "+" .. key
+  end
+
+  local holdMods, holdKey = _keySpec("HOLD", {}, "f13")
+  local holdStr = _comboToString(holdMods, holdKey)
+
+  -- Primary: press/release callbacks for hold-to-talk
+  f13Hotkey = hs.hotkey.bind(holdMods, holdKey,
     function() -- pressed
-      log.i("F13 pressed")
+      log.i("PTT pressed (" .. holdStr .. ")")
       if not recording then 
         sessionKind = "hold"
         ignoreHoldThreshold = false
@@ -1614,7 +1630,7 @@ local function startTaps()
       end
     end,
     function() -- released
-      log.i("F13 released")
+      log.i("PTT released (" .. holdStr .. ")")
       if recording then 
         stopRecording() 
       elseif isTestMode() and recording then
@@ -1629,11 +1645,14 @@ local function startTaps()
     end
   )
 
-  -- Shift+F13: toggle on press
+  -- Toggle on press (configurable)
+  local toggleStr = "disabled"
   if (cfg.SHIFT_TOGGLE_ENABLED ~= false) then
-    shiftF13Hotkey = hs.hotkey.bind({"shift"}, "f13",
+    local toggleMods, toggleKey = _keySpec("TOGGLE", {"shift"}, holdKey)
+    toggleStr = _comboToString(toggleMods, toggleKey)
+    shiftF13Hotkey = hs.hotkey.bind(toggleMods, toggleKey,
       function() -- pressed
-        log.i("Shift+F13 pressed")
+        log.i("Toggle pressed (" .. toggleStr .. ")")
         if not recording then
           sessionKind = "toggle"; ignoreHoldThreshold = true; startRecording()
         else
@@ -1645,7 +1664,7 @@ local function startTaps()
     )
   end
 
-  log.i("push_to_talk: F13 hold + Shift+F13 toggle armed (testMode=" .. tostring(isTestMode()) .. ")")
+  log.i("push_to_talk: " .. holdStr .. " hold + " .. toggleStr .. " toggle armed (testMode=" .. tostring(isTestMode()) .. ")")
 
   -- Initialize logger level according to current mode
   do
@@ -1656,10 +1675,19 @@ end
 function M.start()
   startTaps()
   detectWhisperDevice()
-  -- Optional: bind diagnostic keys (Cmd+Alt+Ctrl)
-  hs.hotkey.bind({"cmd", "alt", "ctrl"}, "I", function() showInfo() end)
-  hs.hotkey.bind({"cmd", "alt", "ctrl"}, "R", function() refineSelfTest() end)
-  hs.hotkey.bind({"cmd", "alt", "ctrl"}, "D", function() runDiagnostics() end)
+  -- Optional: bind diagnostic keys (configurable; defaults Cmd+Alt+Ctrl)
+  local function _keySpec(name, defMods, defKey)
+    local kcfg = (cfg.KEYS or {})[name]
+    local mods = (kcfg and kcfg.mods) or defMods
+    local key = (kcfg and kcfg.key) or defKey
+    return mods, key
+  end
+  local infoMods, infoKey = _keySpec("INFO", {"cmd", "alt", "ctrl"}, "I")
+  local refMods, refKey = _keySpec("REFINER_TEST", {"cmd", "alt", "ctrl"}, "R")
+  local diagMods, diagKey = _keySpec("DIAGNOSTICS", {"cmd", "alt", "ctrl"}, "D")
+  hs.hotkey.bind(infoMods, infoKey, function() showInfo() end)
+  hs.hotkey.bind(refMods, refKey, function() refineSelfTest() end)
+  hs.hotkey.bind(diagMods, diagKey, function() runDiagnostics() end)
 end
 
 function M.stop()
