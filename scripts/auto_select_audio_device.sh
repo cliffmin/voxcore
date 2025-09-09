@@ -31,7 +31,8 @@ echo ""
 # Function to extract device info
 get_device_priority() {
     local line="$1"
-    local name=$(echo "$line" | sed 's/.*\] //')
+    local name
+    name=$(echo "$line" | sed 's/.*\] //')
     
     # Priority scoring
     if echo "$name" | grep -iE "(AirPods|Bluetooth|Earbuds|Headphones)" > /dev/null; then

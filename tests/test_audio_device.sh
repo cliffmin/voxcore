@@ -139,7 +139,8 @@ test_recording() {
         -ac 1 -ar 16000 -sample_fmt s16 "$test_file" 2>/dev/null; then
         
         if [ -f "$test_file" ]; then
-            local size=$(stat -f%z "$test_file")
+            local size
+            size=$(stat -f%z "$test_file")
             if [ "$size" -gt 10000 ]; then  # Should be ~32KB for 1 second
                 echo -e "  ${GREEN}✓ Recording successful (${size} bytes)${NC}"
                 rm -f "$test_file"

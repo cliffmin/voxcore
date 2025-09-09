@@ -58,7 +58,7 @@ os.exit(0)
 LUA
 
 # Run the probe and capture output
-OUT=$(ROOT="$ROOT" TMP_DIR="$TMP_DIR" hs -c "dofile('$TMP_DIR/keybinding_probe.lua')" 2>&1 || true)
+OUT=$(env ROOT="$ROOT" TMP_DIR="$TMP_DIR" hs -c "dofile('$TMP_DIR/keybinding_probe.lua')" 2>&1 || true)
 
 # Expect our test combos
 echo "$OUT" | sed -n 's/^RESOLVED_/\0/p'
