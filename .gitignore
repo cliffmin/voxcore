@@ -36,3 +36,5 @@ dist
 *.iws
 *.iml
 *.ipr
+.venv/
+build/
