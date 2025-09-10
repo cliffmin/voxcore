@@ -16,11 +16,14 @@ return {
   DISFLUENCIES = { "uh", "um", "uhh", "uhm" },
 
   -- Output modes per session type
-  SHIFT_TOGGLE_ENABLED = true,
-  OUTPUT = {
-    HOLD = { mode = "paste",  format = "txt" },
-    TOGGLE = { mode = "editor", format = "md" },
-  },
+SHIFT_TOGGLE_ENABLED = true,
+OUTPUT = {
+  HOLD = { mode = "paste",  format = "txt" },
+  TOGGLE = { mode = "editor", format = "md" },
+},
+-- Double-tap F13 to toggle (in addition to Shift+F13)
+DOUBLE_TAP_TOGGLE = true,
+DOUBLE_TAP_WINDOW_MS = 300,
 
   -- Key bindings (configurable)
   -- Use Hammerspoon key strings (e.g., "f13", "f18", "space", "I")

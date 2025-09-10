@@ -164,6 +164,30 @@ local BEAM_SIZE = 3                                  -- beam search width (speed
 local BEAM_SIZE_LONG = 3                             -- same for long audio
 local WHISPER_DEVICE = "cpu"                        -- set to "mps" on Apple Silicon if available (auto-detected)
 local VENV_PY = HOME .. "/.local/pipx/venvs/openai-whisper/bin/python"  -- python in pipx venv
+
+-- Try to auto-detect Apple Silicon + MPS support in the pipx whisper env
+local function detectMPS()
+  -- Quick arch check
+  local arch = hs.execute([[uname -m]]) or ""
+  arch = arch:gsub("%s+", "")
+  if arch ~= "arm64" then return false end
+  -- Ask pipx whisper python if MPS is available
+  local cmd = string.format([["%s" - <<'PY'
+try:
+    import torch
+    print('1' if getattr(torch.backends, 'mps', None) and torch.backends.mps.is_available() else '0')
+except Exception:
+    print('0')
+PY
+]], VENV_PY)
+  local out = hs.execute(cmd) or "0"
+  out = out:gsub("%s+", "")
+  return out == "1"
+end
+
+if detectMPS() then
+  WHISPER_DEVICE = "mps"
+end
 local LONG_AUDIO_SEC = 1e9                           -- not used now; switching on short instead
 local PREPROCESS_MIN_SEC = 12.0                      -- preprocess only if reasonably long
 local TIMEOUT_MS = tonumber(cfg.TIMEOUT_MS) or 120000 -- 2 minutes transcription timeout
@@ -187,6 +211,15 @@ local sessionDir = nil
 -- Session mode: "hold" (default) or "toggle" (default Shift+Hyper+Space)
 local sessionKind = "hold"
 local ignoreHoldThreshold = false
+
+-- Double-tap configuration (toggle on double-tap)
+local DOUBLE_TAP_ENABLED = true
+local DOUBLE_TAP_WINDOW_MS = 300
+
+-- F13 press/hold state for distinguishing hold vs tap/double-tap
+local f13DownAt = nil
+local holdStartTimer = nil
+local lastTapMs = nil
 
 -- Live level indicator state
 local levelIndicator = nil
@@ -1584,6 +1617,27 @@ local function startTaps()
   if f13Hotkey then f13Hotkey:delete() end
   if shiftF13Hotkey then shiftF13Hotkey:delete() end
 
+  local function clearHoldTimer()
+    if holdStartTimer then holdStartTimer:stop(); holdStartTimer = nil end
+  end
+
+  local function startHoldAfterThreshold()
+    clearHoldTimer()
+    if f13DownAt and (not recording) then
+      sessionKind = "hold"
+      ignoreHoldThreshold = false
+      startRecording()
+    end
+  end
+
+  local function toggleSession()
+    if not recording then
+      sessionKind = "toggle"; ignoreHoldThreshold = true; startRecording()
+    else
+      if sessionKind == "toggle" then stopRecording() end
+    end
+  end
+
   flagTap = hs.eventtap.new({ hs.eventtap.event.types.flagsChanged }, function(evt)
     local f = evt:getFlags()
     local wasHeld = fnHeld
@@ -1656,31 +1710,49 @@ local function startTaps()
 local holdMods, holdKey = _keySpec("HOLD", {"cmd","alt","ctrl"}, "space")
   local holdStr = _comboToString(holdMods, holdKey)
 
-  -- Primary: press/release callbacks for hold-to-talk
-  f13Hotkey = hs.hotkey.bind(holdMods, holdKey,
-    function() -- pressed
-      log.i("PTT pressed (" .. holdStr .. ")")
-      if not recording then 
-        sessionKind = "hold"
-        ignoreHoldThreshold = false
-        startRecording()
-      end
-    end,
-    function() -- released
-      log.i("PTT released (" .. holdStr .. ")")
-      if recording then 
-        stopRecording() 
-      elseif isTestMode() and recording then
-        stopRecording()
+-- Primary: press/release callbacks for hold-to-talk (with double-tap toggle)
+f13Hotkey = hs.hotkey.bind(holdMods, holdKey,
+  function() -- pressed
+    log.i("PTT pressed (" .. holdStr .. ")")
+    f13DownAt = nowMs()
+    -- Start a timer to begin recording after HOLD_THRESHOLD_MS if still held
+    clearHoldTimer()
+    holdStartTimer = hs.timer.doAfter((HOLD_THRESHOLD_MS or 150)/1000, startHoldAfterThreshold)
+  end,
+  function() -- released
+    log.i("PTT released (" .. holdStr .. ")")
+    local upMs = nowMs()
+    local downMs = f13DownAt
+    f13DownAt = nil
+    clearHoldTimer()
+
+    if recording and sessionKind == "hold" then
+      -- Normal hold release ends recording
+      stopRecording()
+      return
+    end
+
+    -- If we reached here, we did not start hold recording (released before threshold)
+    if DOUBLE_TAP_ENABLED then
+      if lastTapMs and (upMs - lastTapMs) <= DOUBLE_TAP_WINDOW_MS then
+        lastTapMs = nil
+        log.i("PTT double-tap detected → toggle")
+        toggleSession()
+        return
       else
-        -- Clean up any stuck UI state from accidental tap
-        if indicator then
-          updateIndicator("off")
-          stopBlink()
-        end
+        lastTapMs = upMs
+        -- Single tap: no-op (prevents accidental micro recordings)
+        hs.timer.doAfter((DOUBLE_TAP_WINDOW_MS/1000), function() lastTapMs = nil end)
       end
     end
-  )
+
+    -- Clean up any stuck UI state from accidental tap
+    if indicator then
+      updateIndicator("off")
+      stopBlink()
+    end
+  end
+)
 
   -- Toggle on press (configurable)
 local toggleStr = "disabled"
