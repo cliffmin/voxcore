@@ -68,6 +68,11 @@ demo-gif:
 	@bash scripts/generate_demo_gif.sh 10 docs/assets/demo.gif
 	@echo "Wrote docs/assets/demo.gif"
 
+# Sweep threshold between models on golden fixtures
+.PHONY: sweep-threshold
+sweep-threshold:
+	@/usr/bin/env python3 scripts/metrics/sweep_threshold.py --golden tests/fixtures/golden --models base.en medium.en --start 6 --end 40 --step 2 | tee tests/results/threshold_sweep_$$(/bin/date +%Y%m%d_%H%M).json
+
 # Development helpers
 reload:
 	@echo "Reloading Hammerspoon..."
