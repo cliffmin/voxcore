@@ -2,10 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [Unreleased]
 
+### Added
+- Java-based post-processor for transcript cleaning
+  - Pipeline pattern with modular text processors
+  - Fixes merged words ("theyconfigure" → "they configure")
+  - Sentence boundary detection for run-on sentences
+  - Smart capitalization and punctuation normalization
+  - Extensible architecture for custom processors
+  - Gradle build system with one-command install script
+  - Smart path discovery (no hardcoded paths)
+
+### Changed
+- Replaced Lua text processing with Java processor
+- Improved transcript quality with better word separation
+- Streamlined processing pipeline (single pass instead of multiple)
+- Better distribution support (works on any macOS system)
+
+### Removed
+- Duplicate Lua text processing functions
+- Hardcoded file paths in configuration
+- Obsolete transcript_enhancer.lua module
 ## 0.1.0 - 2025-08-31
 ### Added
 - Transcription timeout increased to 2 minutes (configurable via `TIMEOUT_MS`).
