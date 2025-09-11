@@ -120,8 +120,11 @@ local FFMPEG = "/opt/homebrew/bin/ffmpeg"         -- absolute path for reliabili
 
 -- Auto-detect fastest whisper implementation
 local function detectWhisper()
-  -- Always prefer whisper-cpp if available (5-10x faster)
-  if hs.fs.attributes("/opt/homebrew/bin/whisper-cpp") then
+  -- Prefer whisper-cli (new name) or whisper-cpp (old name) - both are fast C++ implementations
+  if hs.fs.attributes("/opt/homebrew/bin/whisper-cli") then
+    log.i("Detected whisper-cli (fast C++ implementation)")
+    return "whisper-cpp", "/opt/homebrew/bin/whisper-cli"
+  elseif hs.fs.attributes("/opt/homebrew/bin/whisper-cpp") then
     log.i("Detected whisper-cpp (fast C++ implementation)")
     return "whisper-cpp", "/opt/homebrew/bin/whisper-cpp"
   elseif hs.fs.attributes("/usr/local/bin/whisper-cpp") then
@@ -1191,7 +1194,7 @@ local function runWhisper(audioPath)
             table.insert(wargs, cfg.INITIAL_PROMPT)
           end
           
-          table.insert(wargs, "-f")
+          -- whisper-cpp expects the audio file as a positional argument, not with -f
           table.insert(wargs, audioPath)
         else
           -- openai-whisper args (Python implementation)
@@ -1257,12 +1260,26 @@ local function runWhisper(audioPath)
           if hs.fs.attributes(jsonPath) then
             local jtxt = readAll(jsonPath)
             local ok, parsed = pcall(function() return json.decode(jtxt) end)
-            if ok and parsed and parsed.segments then
-              if REFLOW_MODE == "gap" then
-                transcript = reflowFromSegments(parsed.segments)
+            if ok and parsed then
+              -- Handle both whisper-cpp (transcription array) and openai-whisper (segments array) formats
+              local segments = parsed.segments or parsed.transcription
+              if segments then
+                if REFLOW_MODE == "gap" then
+                  transcript = reflowFromSegments(segments)
+                end
               end
+              -- Fallback to full text if available
               if (not transcript) or transcript == "" then
-                transcript = tostring(parsed.text or "")
+                if parsed.text then
+                  transcript = tostring(parsed.text)
+                elseif segments then
+                  -- Build text from segments if no full text field
+                  local parts = {}
+                  for _, seg in ipairs(segments) do
+                    if seg.text then table.insert(parts, seg.text) end
+                  end
+                  transcript = table.concat(parts, " "):gsub("%s+", " "):gsub("^%s+", "")
+                end
               end
             end
           end
