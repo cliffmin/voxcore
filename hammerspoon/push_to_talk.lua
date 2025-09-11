@@ -120,12 +120,18 @@ local FFMPEG = "/opt/homebrew/bin/ffmpeg"         -- absolute path for reliabili
 
 -- Auto-detect fastest whisper implementation
 local function detectWhisper()
-  -- Prefer whisper-cpp if available (5-10x faster)
+  -- Always prefer whisper-cpp if available (5-10x faster)
   if hs.fs.attributes("/opt/homebrew/bin/whisper-cpp") then
+    log.i("Detected whisper-cpp (fast C++ implementation)")
     return "whisper-cpp", "/opt/homebrew/bin/whisper-cpp"
+  elseif hs.fs.attributes("/usr/local/bin/whisper-cpp") then
+    log.i("Detected whisper-cpp at /usr/local/bin")
+    return "whisper-cpp", "/usr/local/bin/whisper-cpp"
   elseif hs.fs.attributes(HOME .. "/.local/bin/whisper") then
+    log.i("Detected openai-whisper (Python implementation - slower)")
     return "openai-whisper", HOME .. "/.local/bin/whisper"
   else
+    log.e("No whisper implementation found!")
     return nil, nil
   end
 end
@@ -1157,8 +1163,8 @@ local function onFFExit(code, stdout, stderr)
 
     -- Kick off transcription
     local function startTranscribe()
-      if not hs.fs.attributes(WHISPER) then
-        finalizeFailure("missing_cli", "Whisper CLI not found at ~/.local/bin/whisper. Install via pipx or update ptt_config.", { extra = { missing = WHISPER } })
+      if not WHISPER or not hs.fs.attributes(WHISPER) then
+        finalizeFailure("missing_cli", "Whisper CLI not found. Install whisper-cpp (brew install whisper-cpp) or openai-whisper (pipx install openai-whisper)", { extra = { missing = WHISPER or "none detected" } })
         return
       end
 
