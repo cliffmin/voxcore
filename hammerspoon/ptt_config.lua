@@ -27,9 +27,9 @@ return {
   -- Set MODEL_BY_DURATION to use different models based on recording length
   MODEL_BY_DURATION = {
     ENABLED = true,                -- ENABLED: Use fast base.en for short clips
-    SHORT_SEC = 15.0,              -- Clips <= 15s use base.en (fast)
+    SHORT_SEC = 21.0,              -- Clips <= 21s use base.en (fast)
     MODEL_SHORT = "base.en",       -- Fast model for quick dictation
-    MODEL_LONG = "medium.en",      -- Accurate model for longer content
+    MODEL_LONG = "medium.en",      -- Accurate model for longer content (>21s)
   },
   
   -- Reflow thresholds (seconds)
