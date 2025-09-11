@@ -93,6 +93,24 @@ Run the self‑test (default): Cmd+Alt+Ctrl+R → “LLM refine self‑test OK�
 
 ![Push-to-Talk Demo](docs/assets/demo.gif)
 
+## 🚀 Major Improvements
+
+### Latest Updates
+
+#### Java Post-Processor for Transcript Cleaning (2024)
+Fixed common Whisper transcription issues with a clean, extensible Java pipeline:
+- **Problem**: Merged words ("theyconfigure"), run-on sentences, inconsistent capitalization
+- **Solution**: Modular Java processor with pipeline pattern
+- **Impact**: Cleaner transcripts, easier to extend, no performance penalty
+- [→ Details](whisper-post-processor/README.md)
+
+#### 10-40x Performance Boost with whisper-cpp (2024)
+Migrated from Python Whisper to C++ implementation:
+- **Problem**: 30+ second wait times for transcription
+- **Solution**: Native C++ with Metal acceleration, smart model switching
+- **Impact**: Sub-second transcription for most recordings
+- [→ Full Story](docs/PERFORMANCE_OPTIMIZATION.md)
+
 ## ⚡ Performance: 10-40x Faster Than Before
 
 Through [data-driven optimization](docs/PERFORMANCE_OPTIMIZATION.md), we achieved:

@@ -84,14 +84,14 @@ MODEL_BY_DURATION = {
 - 20s clip: **0.7 seconds** ⚡ (43x faster!)
 - 45s clip: **4 seconds** 🚀 (11x faster!)
 
-## The Engineering Decision
+## The Decision
 
-**Strong opinion**: Don't overthink this. The 21-second threshold is not just data-driven, it's user-driven:
+The 21-second threshold balances speed and accuracy:
 
-- **Quick thoughts** (<21s): You want instant feedback. 0.5s feels magical. 15-20% WER is fine for notes.
-- **Real dictation** (>21s): You're investing time in speaking, so invest 3 seconds in accuracy.
+- **Short recordings** (<21s): 0.5s response time with acceptable accuracy for notes
+- **Long recordings** (>21s): 3-4s response time with better accuracy for documentation
 
-The alternative of using medium.en for everything would make EVERY interaction feel sluggish. The current setup makes 1/3 of your interactions feel instant while maintaining excellent accuracy where it matters.
+Using medium.en for everything would add unnecessary latency to short interactions.
 
 ## How We Tested
 
@@ -102,6 +102,4 @@ The alternative of using medium.en for everything would make EVERY interaction f
 
 ## Conclusion
 
-This optimization delivers a **10-40x speedup** while maintaining good accuracy where it matters. The 21-second threshold isn't arbitrary—it's the point where base.en's accuracy degrades enough that the 2.5-second cost of medium.en becomes worthwhile.
-
-**Bottom line**: Your transcription now feels instant for quick notes and remains accurate for longer thoughts. That's engineering gold. 🏆
+This optimization achieves 10-40x speedup while maintaining accuracy. The 21-second threshold is where base.en's error rate increases enough to justify medium.en's additional processing time.
