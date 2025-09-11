@@ -299,48 +299,8 @@ local function isoNow()
   return os.date("!%Y-%m-%dT%H:%M:%SZ")
 end
 
--- Text post-processing helpers
-local function applyDictionary(s)
-  local out = s
-  for k, v in pairs(DICTIONARY_REPLACE or {}) do
-    -- word boundary via frontier patterns
-    local patt = "%f[%w]" .. k .. "%f[%W]"
-    out = out:gsub(patt, v)
-  end
-  return out
-end
-
-local function stripBeginDisfluencies(s)
-  if not DISFLUENCY_BEGIN_STRIP then return s end
-  local out = s
-  for _, w in ipairs(BEGIN_DISFLUENCIES) do
-    local patt1 = "^%s*" .. w .. "[,%.:]?%s+" -- start of string
-    local patt2 = "\n%s*" .. w .. "[,%.:]?%s+" -- after newline
-    out = out:gsub(patt1, "")
-    out = out:gsub(patt2, "\n")
-  end
-  return out
-end
-
-local function capitalizeSentences(s)
-  if not AUTO_CAPITALIZE_SENTENCES then return s end
-  local out = s
-  -- Start of text
-  out = out:gsub("^%s*([a-z])", function(c) return string.upper(c) end)
-  -- After punctuation + space/newline
-  out = out:gsub("([%.%!%?]%s+)([a-z])", function(pre, c) return pre .. string.upper(c) end)
-  -- After newline
-  out = out:gsub("(\n%s*)([a-z])", function(pre, c) return pre .. string.upper(c) end)
-  return out
-end
-
-local function dedupeImmediateRepeats(s)
-  if not DEDUPE_IMMEDIATE_REPEATS then return s end
-  local out = s
-  -- Collapse "word, word" or "word word" immediate repeats (simple heuristic)
-  out = out:gsub("(%a[%w%-]+),?%s+%1", "%1")
-  return out
-end
+-- [DEPRECATED] Text post-processing now handled by Java processor
+-- Keeping minimal functions for backward compatibility
 
 local function ensureTrailingPunct(s)
   if not ENSURE_TRAILING_PUNCT then return s end
@@ -354,16 +314,93 @@ local function addTrailingNewline(s)
   return s .. "\n"
 end
 
-local function postProcessText(s)
-  local out = s or ""
-  out = applyDictionary(out)
-  out = stripBeginDisfluencies(out)
-  out = dedupeImmediateRepeats(out)
-  out = capitalizeSentences(out)
-  return out
+-- Apply Java post-processor if available
+local function applyJavaPostProcessor(text)
+  if not text or text == "" then return text end
+  
+  -- Try to find the Java processor JAR in multiple locations
+  local function findPostProcessor()
+    -- 1. Check config for explicit path
+    if cfg.POST_PROCESSOR_JAR and hs.fs.attributes(cfg.POST_PROCESSOR_JAR) then
+      return cfg.POST_PROCESSOR_JAR
+    end
+    
+    -- 2. Check relative to Hammerspoon config
+    local hsConfigDir = hs.configdir
+    local relativeToConfig = hsConfigDir .. "/../whisper-post-processor/dist/whisper-post.jar"
+    if hs.fs.attributes(relativeToConfig) then
+      return relativeToConfig
+    end
+    
+    -- 3. Check in ~/.local/bin (standard user binary location)
+    local userBin = HOME .. "/.local/bin/whisper-post.jar"
+    if hs.fs.attributes(userBin) then
+      return userBin
+    end
+    
+    -- 4. Check if installed via homebrew or in PATH
+    local inPath = hs.execute("which whisper-post 2>/dev/null")
+    if inPath and #inPath > 0 then
+      return inPath:gsub("%s+$", "") -- trim whitespace
+    end
+    
+    -- 5. Check /usr/local/bin
+    local usrLocal = "/usr/local/bin/whisper-post.jar"
+    if hs.fs.attributes(usrLocal) then
+      return usrLocal
+    end
+    
+    -- 6. Check /opt/homebrew/bin (Apple Silicon homebrew location)
+    local optHomebrew = "/opt/homebrew/bin/whisper-post.jar"
+    if hs.fs.attributes(optHomebrew) then
+      return optHomebrew
+    end
+    
+    return nil
+  end
+  
+  local jarPath = findPostProcessor()
+  
+  -- Check if JAR/executable was found
+  if not jarPath then
+    -- Only log once to avoid spam
+    if not _postProcessorWarned then
+      log.d("Java post-processor not found. Install it or set POST_PROCESSOR_JAR in config")
+      _postProcessorWarned = true
+    end
+    return text
+  end
+  
+  -- Create temp file for input (safer than piping for large text)
+  local tmpInput = os.tmpname()
+  local f = io.open(tmpInput, "w")
+  if not f then return text end
+  f:write(text)
+  f:close()
+  
+  -- Run processor (handle both JAR and executable script)
+  local cmd
+  if jarPath:match("%.jar$") then
+    cmd = string.format("java -jar %q -f %q 2>/dev/null", jarPath, tmpInput)
+  else
+    -- Assume it's an executable script/binary
+    cmd = string.format("%q -f %q 2>/dev/null", jarPath, tmpInput)
+  end
+  local output = hs.execute(cmd)
+  
+  -- Clean up temp file
+  os.remove(tmpInput)
+  
+  if output and #output > 0 then
+    -- Remove trailing newline if added by processor
+    output = output:gsub("\n+$", "")
+    log.d("Java post-processor applied successfully")
+    return output
+  else
+    log.d("Java post-processor failed, returning original text")
+    return text
+  end
 end
-
--- Human-friendly file naming helpers
 local function ordinal(n)
   n = tonumber(n) or 0
   local v = n % 100
@@ -630,18 +667,8 @@ local function reflowFromSegments(segments)
   -- Collapse 3+ newlines into 2
   joined = joined:gsub("\n\n+", "\n\n")
 
-  -- Existing disfluency strip (as standalone words)
-  local function stripDisfluencies(s)
-    local words = cfg.DISFLUENCIES or {}
-    for _, w in ipairs(words) do
-      s = s:gsub("(^%s*" .. w .. ")([%s,%.%!%?])", "%2")
-      s = s:gsub("([%s])" .. w .. "([%s,%.%!%?])", "%1%2")
-    end
-    s = s:gsub("%s+([,%.!%?;:])", "%1"):gsub("[ \t]+", " ")
-    return s
-  end
-  joined = stripDisfluencies(joined)
-  joined = postProcessText(joined)
+  -- Java processor handles all text cleaning including disfluencies
+  joined = applyJavaPostProcessor(joined)
   return rstrip(joined)
 end
 
@@ -660,7 +687,8 @@ local function reflowPlainText(txt)
   txt = txt:gsub("[ \t]+", " ")
   -- Remove trailing spaces before newlines
   txt = txt:gsub("[ \t]+\n", "\n")
-  txt = postProcessText(txt)
+  -- Apply Java processor for consistency
+  txt = applyJavaPostProcessor(txt)
   return rstrip(txt)
 end
 
