@@ -16,11 +16,18 @@ return {
   -- - medium.en: Slower (8-22s), 16.86% WER, best accuracy, handles technical terms well
   WHISPER_MODEL = "medium.en",      -- Recommended: best accuracy for technical content
   
+  -- Whisper implementation (PERFORMANCE CRITICAL)
+  -- Options:
+  --   "whisper-cpp" - C++ implementation, 5-10x faster (RECOMMENDED)
+  --   "openai-whisper" - Python implementation, slower but more features
+  --   nil/false - auto-detect (prefers whisper-cpp if available)
+  WHISPER_IMPL = nil,  -- Auto-detect by default
+  
   -- Model selection by audio duration (optional advanced configuration)
   -- Set MODEL_BY_DURATION to use different models based on recording length
   MODEL_BY_DURATION = {
-    ENABLED = false,               -- Set to true to enable dynamic model selection
-    SHORT_SEC = 12.0,              -- Clips <= this use MODEL_SHORT
+    ENABLED = true,                -- ENABLED: Use fast base.en for short clips
+    SHORT_SEC = 15.0,              -- Clips <= 15s use base.en (fast)
     MODEL_SHORT = "base.en",       -- Fast model for quick dictation
     MODEL_LONG = "medium.en",      -- Accurate model for longer content
   },

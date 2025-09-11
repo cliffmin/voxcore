@@ -117,7 +117,23 @@ end
 local HOME = os.getenv("HOME") or ""
 local NOTES_DIR = (cfg.NOTES_DIR and tostring(cfg.NOTES_DIR)) or (HOME .. "/Documents/VoiceNotes")
 local FFMPEG = "/opt/homebrew/bin/ffmpeg"         -- absolute path for reliability
-local WHISPER = HOME .. "/.local/bin/whisper"      -- pipx-installed whisper CLI
+
+-- Auto-detect fastest whisper implementation
+local function detectWhisper()
+  -- Prefer whisper-cpp if available (5-10x faster)
+  if hs.fs.attributes("/opt/homebrew/bin/whisper-cpp") then
+    return "whisper-cpp", "/opt/homebrew/bin/whisper-cpp"
+  elseif hs.fs.attributes(HOME .. "/.local/bin/whisper") then
+    return "openai-whisper", HOME .. "/.local/bin/whisper"
+  else
+    return nil, nil
+  end
+end
+
+local WHISPER_IMPL, WHISPER = detectWhisper()
+if not WHISPER then
+  hs.alert.show("No whisper implementation found! Install whisper-cpp or openai-whisper")
+end
 
 -- Wave meter mode: 'inline' (default; parse ffmpeg stderr), 'monitor' (second ffmpeg), or 'off'
 local WAVE_METER_MODE = cfg.WAVE_METER_MODE or "inline"
@@ -1147,8 +1163,34 @@ local function onFFExit(code, stdout, stderr)
       end
 
 local function runWhisper(audioPath)
-        local fp16Arg = (WHISPER_DEVICE == "mps") and "True" or "False"
-          local wargs = {
+        local wargs
+        
+        if WHISPER_IMPL == "whisper-cpp" then
+          -- whisper-cpp args (C++ implementation, much faster)
+          local modelName = chosenModel:gsub("%.en$", "")
+          local modelPath = "/opt/homebrew/share/whisper-cpp/ggml-" .. modelName .. ".bin"
+          
+          wargs = {
+            "-m", modelPath,
+            "-l", "en",
+            "-oj",  -- output JSON
+            "-of", audioPath:gsub("%.wav$", ""),  -- output file base
+            "--beam-size", tostring(chosenBeam),
+            "-t", "4",  -- threads
+            "-p", "1",  -- processors
+          }
+          
+          if cfg and cfg.INITIAL_PROMPT and #cfg.INITIAL_PROMPT > 0 then
+            table.insert(wargs, "--prompt")
+            table.insert(wargs, cfg.INITIAL_PROMPT)
+          end
+          
+          table.insert(wargs, "-f")
+          table.insert(wargs, audioPath)
+        else
+          -- openai-whisper args (Python implementation)
+          local fp16Arg = (WHISPER_DEVICE == "mps") and "True" or "False"
+          wargs = {
             audioPath,
             "--model", chosenModel,
             "--language", LANG,
@@ -1161,9 +1203,10 @@ local function runWhisper(audioPath)
             "--temperature", "0",
             "--condition_on_previous_text", "False",
           }
-        if cfg and cfg.INITIAL_PROMPT and #cfg.INITIAL_PROMPT > 0 then
-          table.insert(wargs, "--initial_prompt")
-          table.insert(wargs, cfg.INITIAL_PROMPT)
+          if cfg and cfg.INITIAL_PROMPT and #cfg.INITIAL_PROMPT > 0 then
+            table.insert(wargs, "--initial_prompt")
+            table.insert(wargs, cfg.INITIAL_PROMPT)
+          end
         end
 
         if isTestMode() then
