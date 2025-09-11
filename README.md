@@ -93,7 +93,21 @@ Run the self‑test (default): Cmd+Alt+Ctrl+R → “LLM refine self‑test OK�
 
 ![Push-to-Talk Demo](docs/assets/demo.gif)
 
-## 📈 Performance
+## ⚡ Performance: 10-40x Faster Than Before
+
+Through [data-driven optimization](docs/PERFORMANCE_OPTIMIZATION.md), we achieved:
+- **Instant feedback** for quick notes (<21s): ~0.5 seconds
+- **Fast accurate transcription** for longer content (>21s): ~4 seconds
+- **Smart model switching** at the optimal 21-second threshold
+
+### The Numbers Don't Lie:
+| Recording Length | Before (Python) | Now (whisper-cpp) | Speedup |
+|-----------------|-----------------|-------------------|---------|  
+| 5 seconds       | 12 seconds      | 0.5 seconds       | **24x** |
+| 20 seconds      | 30 seconds      | 0.7 seconds       | **43x** |
+| 45 seconds      | 45+ seconds     | 4 seconds         | **11x** |
+
+[Read the full optimization story →](docs/PERFORMANCE_OPTIMIZATION.md)
 
 ![Performance](docs/assets/metrics.svg)
 
