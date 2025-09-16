@@ -1,0 +1,74 @@
+{
+  "test_cases": [
+    {
+      "id": "merged-words-1",
+      "category": "merged_words",
+      "input": "theyconfigure the system that'slike important",
+      "expected": "They configure the system that's like important.",
+      "description": "Common merged words from Whisper"
+    },
+    {
+      "id": "merged-words-2",
+      "category": "merged_words",
+      "input": "i'mjust implementing the apikey validation withthe servicelayer",
+      "expected": "I'm just implementing the API key validation with the service layer.",
+      "description": "Technical terms and contractions"
+    },
+    {
+      "id": "run-on-1",
+      "category": "sentence_boundaries",
+      "input": "this is the first sentence this is the second sentence",
+      "expected": "This is the first sentence. This is the second sentence.",
+      "description": "Missing sentence boundary"
+    },
+    {
+      "id": "capitalization-1",
+      "category": "capitalization",
+      "input": "i went to the store. then i came back",
+      "expected": "I went to the store. Then I came back.",
+      "description": "Capitalize I and sentence starts"
+    },
+    {
+      "id": "punctuation-1",
+      "category": "punctuation",
+      "input": "The database , which is important , needs work",
+      "expected": "The database, which is important, needs work.",
+      "description": "Fix spacing around punctuation"
+    },
+    {
+      "id": "complex-1",
+      "category": "complex",
+      "input": "theydon't understand what'sthe problem withthe backend servicelayer that'slike causing issues forthe endpoints",
+      "expected": "They don't understand what's the problem with the backend service layer that's like causing issues for the endpoints.",
+      "description": "Multiple issues in one sentence"
+    },
+    {
+      "id": "complex-2",
+      "category": "complex",
+      "input": "i'mjust saying the usecase forthe apikeys isthe following we need proper validation",
+      "expected": "I'm just saying the use case for the API keys is the following we need proper validation.",
+      "description": "Mixed technical and common terms"
+    },
+    {
+      "id": "preserve-1",
+      "category": "preserve",
+      "input": "This text is already perfect.",
+      "expected": "This text is already perfect.",
+      "description": "Should not modify correct text"
+    },
+    {
+      "id": "preserve-2",
+      "category": "preserve",
+      "input": "The API key is valid.",
+      "expected": "The API key is valid.",
+      "description": "Already correct technical terms"
+    },
+    {
+      "id": "long-1",
+      "category": "long_text",
+      "input": "this is a very long sentence that just keeps going and going without any punctuation or proper capitalization it should probably be split into multiple sentences for better readability but whisper sometimes produces these run-on transcriptions",
+      "expected": "This is a very long sentence that just keeps going and going without any punctuation or proper capitalization it should probably be split into multiple sentences for better readability but whisper sometimes produces these run-on transcriptions.",
+      "description": "Very long run-on sentence"
+    }
+  ]
+}

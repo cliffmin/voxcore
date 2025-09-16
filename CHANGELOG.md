@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Performance benchmarking and golden test dataset
+  - 21 test samples across 6 categories (micro, short, medium, long, natural, challenging)
+  - Automated accuracy testing with WER (Word Error Rate) calculation
+  - Performance tracking: average 889ms transcription time achieved
+- Threshold analysis documentation (`docs/THRESHOLD_ANALYSIS.md`)
+  - Scientific discovery of optimal 21-second model switching point
+  - Data-driven approach using 456 real recordings
+- Punctuation restoration script (`scripts/punctuate.py`)
+  - Optional post-processing using deepmultilingualpunctuation
+  - Isolated via pipx, not global installation
 - Comprehensive dependency documentation (`docs/DEPENDENCIES.md`)
   - Clarifies Python isolation via pipx (not global)
   - Documents hybrid Lua/Java/Python architecture
@@ -22,15 +32,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Smart path discovery (no hardcoded paths)
 
 ### Changed
+- Switched to whisper-cpp as primary transcription engine
+  - 5-10x performance improvement over openai-whisper
+  - Sub-second transcription for most recordings
+  - Native C++ implementation for better resource usage
+- Dynamic model selection based on recording duration
+  - base.en for clips ≤21 seconds (ultra-fast)
+  - medium.en for clips >21 seconds (better accuracy)
 - Replaced Lua text processing with Java processor
 - Improved transcript quality with better word separation
 - Streamlined processing pipeline (single pass instead of multiple)
 - Better distribution support (works on any macOS system)
+- Updated README with performance metrics and benchmarks
 
 ### Removed
 - Duplicate Lua text processing functions
 - Hardcoded file paths in configuration
 - Obsolete transcript_enhancer.lua module
+- IntelliJ IDEA configuration files (.idea/)
+
+### Performance Improvements
+- **Average transcription time**: 889ms (down from 12+ seconds)
+- **Model switching**: Automatic at 21-second threshold
+- **Word Error Rate**: 19.89% average (acceptable for dictation)
+- **Speed gains**: 10-40x faster than Python implementation
 ## 0.1.0 - 2025-08-31
 ### Added
 - Transcription timeout increased to 2 minutes (configurable via `TIMEOUT_MS`).
