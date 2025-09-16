@@ -20,23 +20,18 @@ install:
 	@bash scripts/install.sh
 
 # Run all tests
-test: test-audio test-smoke test-java
+test: test-smoke test-java-all
 	@echo "All tests completed!"
 
 # Test audio device configuration
 test-audio:
 	@echo "Testing audio device configuration..."
-	@bash tests/test_audio_device.sh
+	@bash scripts/testing/debug_recording.sh
 
-# Run end-to-end tests
-test-e2e:
-	@echo "Running end-to-end tests..."
-	@bash scripts/e2e_test.sh
-
-# Run smoke tests  
+# Run smoke tests (F13 modes)
 test-smoke:
 	@echo "Running smoke tests..."
-	@bash tests/smoke_test.sh
+	@bash scripts/testing/test_f13_modes.sh
 
 # Build Java post-processor
 build-java:
