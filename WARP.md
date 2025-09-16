@@ -64,20 +64,10 @@ macos-ptt-dictation/
 │   │   ├── migrate_dictionary.sh
 │   │   ├── auto_select_audio_device.sh
 │   │   └── setup_ollama_service.sh
-│   ├── testing/               # Test scripts
-│   │   ├── test_accuracy.sh
-│   │   ├── test_accuracy_enhanced.sh
-│   │   ├── test_performance.sh
-│   │   ├── test_integration.sh
-│   │   ├── test_dictionary_plugin.sh
-│   │   ├── test_whisper_cpp.sh
-│   │   ├── test_f13_modes.sh
-│   │   ├── test_bug_fixes.sh
-│   │   ├── test_java_processor.sh    # Java processor unit tests
-│   │   ├── test_e2e_with_java.sh     # E2E tests with Java integration
-│   │   ├── e2e_test.sh
-│   │   ├── debug_recording.sh
-│   │   └── quick_benchmark.sh
+│   ├── testing/               # Test scripts (minimal, system-specific)
+│   │   ├── debug_recording.sh        # Audio device debugging
+│   │   ├── test_f13_modes.sh         # Keyboard shortcut testing
+│   │   └── MIGRATION.md              # Migration plan documentation
 │   ├── analysis/              # Performance and log analysis
 │   │   ├── analyze_durations.py
 │   │   ├── analyze_logs.py
