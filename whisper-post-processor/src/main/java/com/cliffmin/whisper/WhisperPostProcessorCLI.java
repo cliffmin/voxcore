@@ -75,6 +75,10 @@ public class WhisperPostProcessorCLI implements Callable<Integer> {
             description = "Disable dictionary replacements")
     private boolean disableDictionary;
     
+    @Option(names = {"--disable-punctuation-restoration"}, 
+            description = "Disable punctuation restoration (adds missing punctuation)")
+    private boolean disablePunctuationRestoration;
+    
     @Option(names = {"--json"}, 
             description = "Input is JSON with segments")
     private boolean jsonInput;
@@ -166,6 +170,11 @@ public class WhisperPostProcessorCLI implements Callable<Integer> {
         
         if (!disableCapitalization) {
             pipeline.addProcessor(new CapitalizationProcessor());
+        }
+        
+        // Add punctuation restoration (before dictionary for better results)
+        if (!disablePunctuationRestoration) {
+            pipeline.addProcessor(new PunctuationProcessor());
         }
         
         // Add dictionary replacements
