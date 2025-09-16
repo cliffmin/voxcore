@@ -2,6 +2,12 @@ package com.cliffmin.whisper;
 
 import com.cliffmin.whisper.pipeline.ProcessingPipeline;
 import com.cliffmin.whisper.processors.*;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -57,6 +63,22 @@ public class WhisperPostProcessorCLI implements Callable<Integer> {
             description = "Disable punctuation normalization")
     private boolean disablePunctuation;
     
+    @Option(names = {"--disable-reflow"}, 
+            description = "Disable segment reflow")
+    private boolean disableReflow;
+    
+    @Option(names = {"--disable-disfluency"}, 
+            description = "Disable disfluency removal")
+    private boolean disableDisfluency;
+    
+    @Option(names = {"--disable-dictionary"}, 
+            description = "Disable dictionary replacements")
+    private boolean disableDictionary;
+    
+    @Option(names = {"--json"}, 
+            description = "Input is JSON with segments")
+    private boolean jsonInput;
+    
     private final ProcessingPipeline pipeline = new ProcessingPipeline();
     
     @Override
@@ -65,24 +87,74 @@ public class WhisperPostProcessorCLI implements Callable<Integer> {
         configurePipeline();
         
         // Get input text
-        String text = getInputText();
+        String input = getInputText();
         
-        if (text == null || text.isEmpty()) {
+        if (input == null || input.isEmpty()) {
             System.err.println("No input text provided");
             return 1;
         }
         
-        // Process the text
-        String processed = pipeline.process(text);
+        String result;
+        if (jsonInput) {
+            result = processJson(input);
+        } else {
+            result = pipeline.process(input);
+        }
         
         // Output the result
-        outputResult(processed);
+        outputResult(result);
         
         return 0;
     }
     
+    private String processJson(String jsonInput) {
+        try {
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            JsonObject root = JsonParser.parseString(jsonInput).getAsJsonObject();
+            
+            // Process the main text
+            if (root.has("text")) {
+                String text = root.get("text").getAsString();
+                String processedText = pipeline.process(text);
+                root.addProperty("text", processedText);
+            }
+            
+            // Process segments if they exist
+            if (root.has("segments")) {
+                JsonArray segments = root.getAsJsonArray("segments");
+                for (JsonElement element : segments) {
+                    JsonObject segment = element.getAsJsonObject();
+                    if (segment.has("text")) {
+                        String segmentText = segment.get("text").getAsString();
+                        String processedSegmentText = pipeline.process(segmentText);
+                        segment.addProperty("text", processedSegmentText);
+                    }
+                }
+            }
+            
+            return gson.toJson(root);
+        } catch (Exception e) {
+            System.err.println("Error processing JSON: " + e.getMessage());
+            if (debug) {
+                e.printStackTrace();
+            }
+            // Fall back to plain text processing
+            return pipeline.process(jsonInput);
+        }
+    }
+    
     private void configurePipeline() {
         pipeline.setDebugMode(debug);
+        
+        // Add reflow first if processing JSON
+        if (!disableReflow) {
+            pipeline.addProcessor(new ReflowProcessor());
+        }
+        
+        // Add disfluency removal
+        if (!disableDisfluency) {
+            pipeline.addProcessor(new DisfluencyProcessor());
+        }
         
         if (!disableMergedWords) {
             pipeline.addProcessor(new MergedWordProcessor());
@@ -94,6 +166,11 @@ public class WhisperPostProcessorCLI implements Callable<Integer> {
         
         if (!disableCapitalization) {
             pipeline.addProcessor(new CapitalizationProcessor());
+        }
+        
+        // Add dictionary replacements
+        if (!disableDictionary) {
+            pipeline.addProcessor(new DictionaryProcessor());
         }
         
         if (!disablePunctuation) {

@@ -1,4 +1,4 @@
-.PHONY: help test test-audio test-e2e test-smoke install clean auto-audio metrics-graph demo-gif
+.PHONY: help test test-audio test-e2e test-smoke test-java test-java-integration install clean auto-audio metrics-graph demo-gif build-java
 
 # Default target
 help:
@@ -20,7 +20,7 @@ install:
 	@bash scripts/install.sh
 
 # Run all tests
-test: test-audio test-smoke
+test: test-audio test-smoke test-java
 	@echo "All tests completed!"
 
 # Test audio device configuration
@@ -37,6 +37,27 @@ test-e2e:
 test-smoke:
 	@echo "Running smoke tests..."
 	@bash tests/smoke_test.sh
+
+# Build Java post-processor
+build-java:
+	@echo "Building Java post-processor..."
+	@cd whisper-post-processor && gradle clean shadowJar buildExecutable --no-daemon -q
+	@echo "Java processor built successfully!"
+
+# Run Java unit tests
+test-java: build-java
+	@echo "Running Java unit tests..."
+	@cd whisper-post-processor && gradle test --no-daemon
+
+# Run Java integration tests (E2E)
+test-java-integration: build-java
+	@echo "Running Java E2E integration tests..."
+	@cd whisper-post-processor && gradle integrationTest --no-daemon
+
+# Run all Java tests
+test-java-all: build-java
+	@echo "Running all Java tests (unit + integration)..."
+	@cd whisper-post-processor && gradle testAll --no-daemon
 
 # Auto-select best audio device
 auto-audio:
