@@ -68,6 +68,8 @@ Optional Python tools are listed in [requirements-optional.txt](requirements-opt
 
 See [Development Documentation](docs/development/) for architecture details and contribution guidelines.
 
+Repository structure is defined in [WARP.md](WARP.md) - please follow the canonical structure when adding files.
+
 ## License
 
 MIT - See [LICENSE](LICENSE) for details.
