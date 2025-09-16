@@ -26,6 +26,9 @@ docs-internal/
 
 # IDE
 .idea/
+*.iml
+*.ipr
+*.iws
 .vscode/
 *.swp
 *.swo

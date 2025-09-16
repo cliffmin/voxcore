@@ -1,6 +1,5 @@
 plugins {
     id 'java'
-    id 'application'
     id 'com.gradleup.shadow' version '8.3.5'
     id 'jacoco'
 }
@@ -39,10 +38,6 @@ dependencies {
     testImplementation 'org.assertj:assertj-core:3.24.2'
 }
 
-application {
-    mainClass = 'com.cliffmin.whisper.WhisperPostProcessorCLI'
-}
-
 // Configure JAR manifest
 jar {
     manifest {
@@ -60,6 +55,9 @@ shadowJar {
     archiveClassifier = ''
     archiveVersion = ''
     mergeServiceFiles()
+    manifest {
+        attributes 'Main-Class': 'com.cliffmin.whisper.WhisperPostProcessorCLI'
+    }
 }
 
 // Test configuration
