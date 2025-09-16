@@ -62,11 +62,11 @@ bash scripts/generate_golden_dataset.sh
 ### Test Accuracy
 ```bash
 # Test with default model (base.en)
-bash scripts/test_accuracy.sh
+bash scripts/testing/test_accuracy.sh
 
 # Test with specific model
-bash scripts/test_accuracy.sh tiny.en
-bash scripts/test_accuracy.sh small.en
+bash scripts/testing/test_accuracy.sh tiny.en
+bash scripts/testing/test_accuracy.sh small.en
 ```
 
 ### Results

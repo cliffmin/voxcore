@@ -1,36 +1,49 @@
-# See README for usage
+# Build artifacts
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.pyc
+
+# Personal data and test results
+tests/fixtures/personal/
+tests/results/
+tests/fixtures/samples_current/
+tests/fixtures/golden/
+
+# Temporary files
+*.tmp
+*.log
+*.bak
 .DS_Store
+
+# Personal configurations
+.config/
+ptt_config.lua
+
+# Internal documentation
+docs-internal/
+
+# IDE
+.idea/
+.vscode/
 *.swp
 *.swo
-# Never include runtime notes
-Documents/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Whisper models
+*.bin
+models/
+
+# Audio files (except test fixtures)
+*.wav
+*.mp3
+*.m4a
+!tests/fixtures/golden/**/*.wav
+
+# Personal voice notes
 VoiceNotes/
-
-# Local test fixtures (do not check in personal audio)
-tests/fixtures/*.wav
-tests/fixtures/*.norm.wav
-# Ephemeral latest-behavior samples (JSON/TXT/WAV) kept out of git
-/tests/fixtures/samples_current/
-
-# Test results and golden datasets (too large for version control)
-tests/results/
-# Golden fixtures are generated locally and not committed
-tests/fixtures/golden/
-# Baseline run outputs (derived), do not track
-tests/fixtures/baselines/*/benchmark_results_*.txt
-tests/fixtures/baselines/*/tmp_outputs/
-tests/fixtures/baselines/*/tmp_compare/
-
-# Personal and sample recordings (not for distribution)
-tests/fixtures/personal/
-tests/fixtures/samples/
-
-dist
-
-# IntelliJ IDEA
-.idea/
-*.iws
-*.iml
-*.ipr
-.venv/
-build/
+Documents/VoiceNotes/

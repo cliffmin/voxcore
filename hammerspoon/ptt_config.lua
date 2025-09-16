@@ -37,6 +37,7 @@ return {
   GAP_DOUBLE_NEWLINE_SEC = 2.50,    -- paragraph break for larger gaps
 
   -- Disfluency list to strip as standalone words (not inside tokens)
+  -- These are universal filler words that should be removed
   DISFLUENCIES = { "uh", "um", "uhh", "uhm" },
   -- HOLD: classic press-and-hold F13 flow (paste)
   -- TOGGLE: Shift+F13 long-form flow (editor markdown)
@@ -84,8 +85,8 @@ return {
   PUNCTUATOR = {
     ENABLED_FOR_TOGGLE = true,
     ENABLED_FOR_HOLD = false,
-    -- Command to invoke; default uses repo-local scripts/punctuate.py via Python 3
-    CMD = { "/usr/bin/env", "python3", (os.getenv("HOME") or "") .. "/code/macos-ptt-dictation/scripts/punctuate.py" },
+    -- Command to invoke; default uses repo-local scripts/utilities/punctuate.py via Python 3
+    CMD = { "/usr/bin/env", "python3", (os.getenv("HOME") or "") .. "/code/macos-ptt-dictation/scripts/utilities/punctuate.py" },
     TIMEOUT_MS = 2500,  -- fail open (pass-through) after this many ms
   },
 
@@ -127,33 +128,19 @@ return {
 
   -- Reflow and post-processing toggles
   DISFLUENCY_BEGIN_STRIP = true,
-  BEGIN_DISFLUENCIES = { "so", "um", "uh", "like", "you know", "okay", "yeah", "well" },
+  -- Common beginning fillers - keep minimal universal set
+  BEGIN_DISFLUENCIES = { "um", "uh" },
   AUTO_CAPITALIZE_SENTENCES = true,
   DEDUPE_IMMEDIATE_REPEATS = true,
   DROP_LOWCONF_SEGMENTS = true,
   LOWCONF_NO_SPEECH_PROB = 0.5,
   LOWCONF_AVG_LOGPROB = -1.0,
-  DICTIONARY_REPLACE = {
-    ["reposits"] = "repositories",
-    ["camera positories"] = "repositories",
-    ["github"] = "GitHub",
-    -- Recurring mishears observed in transcripts
-    ["withe"] = "with the",
-    ["sim links"] = "symlinks",
-    ["lincoln"] = "symlink",
-    ["XDD"] = "XDG",
-    ["Jura"] = "Jira",
-    ["Jason"] = "JSON",
-    ["no-sequel"] = "NoSQL",
-    ["no sequel"] = "NoSQL",
-    ["Abilare attacks"] = "Avalara tax",
-    ["D-Doop"] = "dedupe",
-    ["D Doop"] = "dedupe",
-    ["retaster"] = "retest",
-    ["complexity made metrics"] = "complexity metrics",
-    ["deadly role"] = "lead role",
-    ["pads"] = "paths",
-  },
+  -- Dictionary replacements are now loaded from external files
+  -- To use custom corrections:
+  -- 1. Create ~/.config/ptt-dictation/corrections.lua
+  -- 2. Add your personal corrections there
+  -- 3. Or wait for VoxCompose integration for automatic learning
+  DICTIONARY_REPLACE = nil,  -- Will auto-load from external sources
   PASTE_TRAILING_NEWLINE = false,
   ENSURE_TRAILING_PUNCT = false,
 

@@ -1,11 +1,14 @@
 # Optional Python Dependencies
 # 
-# These are NOT required for core functionality.
-# Install via pipx for isolation (not pip):
+# IMPORTANT: These are OPTIONAL and NOT required for core functionality.
+# The system works perfectly with just whisper-cpp (C++ implementation).
+#
+# If you need these Python tools, install via pipx for isolation:
+#   brew install pipx
+#   pipx ensurepath
 #   pipx install <package-name>
 #
-# These tools run in isolated virtual environments managed by pipx,
-# preventing global Python pollution.
+# DO NOT use pip directly - pipx provides isolated environments.
 
 # Speech-to-text transcription (fallback, being replaced by whisper-cpp)
 openai-whisper>=20230918

@@ -1,0 +1,6 @@
+# Test results and personal data
+results/
+fixtures/personal/
+fixtures/samples_current/
+*.tmp
+*.log

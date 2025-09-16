@@ -180,7 +180,33 @@ local DEDUPE_IMMEDIATE_REPEATS = (cfg.DEDUPE_IMMEDIATE_REPEATS ~= false)
 local DROP_LOWCONF_SEGMENTS = (cfg.DROP_LOWCONF_SEGMENTS ~= false)
 local LOWCONF_NO_SPEECH_PROB = tonumber(cfg.LOWCONF_NO_SPEECH_PROB) or 0.5
 local LOWCONF_AVG_LOGPROB = tonumber(cfg.LOWCONF_AVG_LOGPROB) or -1.0
-local DICTIONARY_REPLACE = cfg.DICTIONARY_REPLACE or { reposits = "repositories", ["camera positories"] = "repositories", github = "GitHub" }
+-- Load external dictionary plugin (e.g., from VoxCompose or user config)
+local function loadExternalDictionary()
+  -- Try multiple possible sources in order of preference
+  local sources = {
+    -- User's personal dictionary
+    HOME .. "/.config/ptt-dictation/corrections.lua",
+    -- VoxCompose learned corrections (if available)
+    HOME .. "/.config/voxcompose/corrections.lua",
+    -- System-wide shared corrections
+    "/usr/local/share/ptt-dictation/corrections.lua"
+  }
+  
+  for _, path in ipairs(sources) do
+    if hs.fs.attributes(path) then
+      local ok, dict = pcall(dofile, path)
+      if ok and type(dict) == "table" then
+        log.i("Loaded dictionary from: " .. path)
+        return dict
+      end
+    end
+  end
+  
+  -- If no external dictionary found, return empty table
+  return {}
+end
+
+local DICTIONARY_REPLACE = cfg.DICTIONARY_REPLACE or loadExternalDictionary()
 local PASTE_TRAILING_NEWLINE = (cfg.PASTE_TRAILING_NEWLINE == true)
 local ENSURE_TRAILING_PUNCT = (cfg.ENSURE_TRAILING_PUNCT == true)
 
@@ -313,6 +339,29 @@ local function addTrailingNewline(s)
   if not PASTE_TRAILING_NEWLINE then return s end
   if s:sub(-1) == "\n" then return s end
   return s .. "\n"
+end
+
+-- Apply dictionary-based text replacements
+local function applyDictionaryReplacements(text)
+  if not text or text == "" then return text end
+  if not DICTIONARY_REPLACE or type(DICTIONARY_REPLACE) ~= "table" then return text end
+  
+  local modified = text
+  for pattern, replacement in pairs(DICTIONARY_REPLACE) do
+    -- Use word boundaries for more accurate replacements
+    -- Escape special regex characters in the pattern
+    local escaped_pattern = pattern:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+    -- Apply case-insensitive replacement with word boundaries
+    modified = modified:gsub("(%W)" .. escaped_pattern .. "(%W)", "%1" .. replacement .. "%2")
+    modified = modified:gsub("^" .. escaped_pattern .. "(%W)", replacement .. "%1")
+    modified = modified:gsub("(%W)" .. escaped_pattern .. "$", "%1" .. replacement)
+    modified = modified:gsub("^" .. escaped_pattern .. "$", replacement)
+  end
+  
+  if modified ~= text then
+    log.d("Dictionary replacements applied")
+  end
+  return modified
 end
 
 -- Apply Java post-processor if available
@@ -668,8 +717,10 @@ local function reflowFromSegments(segments)
   -- Collapse 3+ newlines into 2
   joined = joined:gsub("\n\n+", "\n\n")
 
-  -- Java processor handles all text cleaning including disfluencies
+  -- Java processor handles structural text cleaning
   joined = applyJavaPostProcessor(joined)
+  -- Apply dictionary replacements after Java processing
+  joined = applyDictionaryReplacements(joined)
   return rstrip(joined)
 end
 
@@ -690,6 +741,8 @@ local function reflowPlainText(txt)
   txt = txt:gsub("[ \t]+\n", "\n")
   -- Apply Java processor for consistency
   txt = applyJavaPostProcessor(txt)
+  -- Apply dictionary replacements after Java processing
+  txt = applyDictionaryReplacements(txt)
   return rstrip(txt)
 end
 
@@ -1371,7 +1424,7 @@ local function runWhisper(audioPath)
               else
                 py = "/usr/bin/env python3"
               end
-              argv = { py, (HOME .. "/code/macos-ptt-dictation/scripts/punctuate.py") }
+              argv = { py, (HOME .. "/code/macos-ptt-dictation/scripts/utilities/punctuate.py") }
             end
             -- Write temp file for input
             local tmp = os.tmpname()
