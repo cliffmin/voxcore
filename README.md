@@ -8,10 +8,10 @@
 ## Features
 
 - 🏠 **100% Local** - All transcription happens on-device, no cloud dependencies
-- ⚡ **Sub-second Response** - Average 889ms transcription with whisper-cpp
+- ⚡ **Fast Response** - Sub-second transcription for short recordings with whisper-cpp
 - ⌨️ **System-wide** - Works in any application with customizable hotkeys
-- 🎯 **Smart Accuracy** - Automatic model switching, text corrections, and punctuation restoration
-- 🧹 **Clean Output** - Automatic removal of "um", "uh" and other disfluencies
+- 🎯 **Smart Accuracy** - Automatic model switching based on recording length
+- 🧹 **Clean Output** - Automatic removal of "um", "uh" and other speech disfluencies
 - 📝 **Direct Insertion** - Transcribed text pastes directly at cursor position
 
 ## Quick Start
@@ -45,24 +45,37 @@ See [Basic Usage](docs/usage/basic-usage.md) for details and [Configuration](doc
 
 ## Performance
 
-| Recording Length | Transcription Time | Model Used |
-|-----------------|-------------------|------------|
-| < 21 seconds    | 300-600ms         | base.en    |
-| > 21 seconds    | 3-5 seconds       | medium.en  |
+| Recording Length | Typical Speed | Model Used | Accuracy |
+|-----------------|---------------|------------|----------|
+| < 21 seconds | <1 second | base.en | Good for general dictation |
+| > 21 seconds | 2-5 seconds | medium.en | Better for technical content |
 
-Achieved through:
-- whisper-cpp C++ implementation (5-10x faster than Python)
-- Dynamic model selection based on duration
-- Optimized audio preprocessing
+### Speed Improvements
+- **whisper-cpp**: 5-10x faster than Python implementation
+- **Dynamic model selection**: Balances speed vs accuracy
+- **Optimized preprocessing**: Reduces latency
 
 ## Requirements
 
-- macOS 11.0+
-- Hammerspoon 0.9.100+
-- FFmpeg 6.0+
-- whisper-cpp (recommended) or openai-whisper
-- Java 17+ (for post-processor)
-- 2GB free disk space for models
+### System
+- macOS 11.0+ (Big Sur or later)
+- 8GB RAM recommended
+- Disk space:
+  - **600MB** for whisper-cpp models (recommended)
+  - **1.7GB** for OpenAI Whisper models (if using Python version)
+
+### Software
+- **Hammerspoon** 0.9.100+ - macOS automation framework
+- **FFmpeg** 6.0+ - Audio processing
+- **Java** 17+ - Post-processor for text cleanup
+
+### Transcription (choose one)
+- **whisper-cpp** (recommended) - Fast C++ implementation, 5-10x speed
+- **openai-whisper** (optional) - Original Python implementation
+
+### Models Used
+- **base.en** (75MB) - Fast transcription for recordings <21 seconds
+- **medium.en** (500MB) - Accurate transcription for recordings >21 seconds
 
 Optional Python tools are listed in [requirements-optional.txt](requirements-optional.txt)
 
