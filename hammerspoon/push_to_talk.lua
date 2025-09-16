@@ -236,6 +236,7 @@ local sessionDir = nil
 -- Session mode: "hold" (default) or "toggle" (default Shift+Hyper+Space)
 local sessionKind = "hold"
 local ignoreHoldThreshold = false
+local isShiftToggle = false  -- Track if Shift+F13 was used
 
 -- Double-tap configuration (toggle on double-tap)
 local DOUBLE_TAP_ENABLED = true
@@ -1392,9 +1393,20 @@ local function runWhisper(audioPath)
           local DEFAULT_OUTPUT = {
             HOLD = { mode = "paste",  format = "txt" },
             TOGGLE = { mode = "editor", format = "md" },
+            SHIFT_TOGGLE = { mode = "editor", format = "md" },
           }
           local outputCfg = (type(cfg.OUTPUT) == "table") and cfg.OUTPUT or DEFAULT_OUTPUT
-          local modeCfg = (sessionKind == "toggle") and (outputCfg.TOGGLE or DEFAULT_OUTPUT.TOGGLE) or (outputCfg.HOLD or DEFAULT_OUTPUT.HOLD)
+          local modeCfg
+          if isShiftToggle then
+            -- Shift+F13 always uses SHIFT_TOGGLE output mode (markdown editor)
+            modeCfg = outputCfg.SHIFT_TOGGLE or DEFAULT_OUTPUT.SHIFT_TOGGLE
+          elseif sessionKind == "toggle" then
+            -- Double-tap F13 uses TOGGLE mode
+            modeCfg = outputCfg.TOGGLE or DEFAULT_OUTPUT.TOGGLE
+          else
+            -- Regular F13 hold uses HOLD mode
+            modeCfg = outputCfg.HOLD or DEFAULT_OUTPUT.HOLD
+          end
 
           local function doLogSuccess(finalText, extra)
             local baseNoExt = audioPath:gsub("%.wav$", "")
@@ -1713,6 +1725,9 @@ local function stopRecording()
     return
   end
   heldMs = nowMs() - startMs
+  
+  -- Remember if this was a Shift+F13 session before resetting
+  local wasShiftToggle = isShiftToggle
   if isTestMode() then
     log.d("[TEST] Would stop ffmpeg (heldMs=" .. tostring(heldMs) .. ") and transcribe")
     updateIndicator("off")
@@ -1759,13 +1774,17 @@ local function startTaps()
     if f13DownAt and (not recording) then
       sessionKind = "hold"
       ignoreHoldThreshold = false
+      isShiftToggle = false  -- Regular F13 hold
       startRecording()
     end
   end
 
   local function toggleSession()
     if not recording then
-      sessionKind = "toggle"; ignoreHoldThreshold = true; startRecording()
+      sessionKind = "toggle"; 
+      ignoreHoldThreshold = true; 
+      isShiftToggle = false;  -- Double-tap, not Shift+F13
+      startRecording()
     else
       if sessionKind == "toggle" then stopRecording() end
     end
@@ -1896,7 +1915,10 @@ local toggleStr = "disabled"
       function() -- pressed
         log.i("Toggle pressed (" .. toggleStr .. ")")
         if not recording then
-          sessionKind = "toggle"; ignoreHoldThreshold = true; startRecording()
+          sessionKind = "toggle"; 
+          ignoreHoldThreshold = true; 
+          isShiftToggle = true;  -- This is Shift+F13, use markdown
+          startRecording()
         else
           if sessionKind == "toggle" then stopRecording() end
         end
