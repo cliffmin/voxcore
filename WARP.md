@@ -48,7 +48,10 @@ macos-ptt-dictation/
 │   ├── gradle/               # Gradle wrapper files
 │   ├── src/                  # Java source code
 │   │   ├── main/java/        # Main implementation
+│   │   │   └── processors/   # Text processors (Reflow, Disfluency, Dictionary)
 │   │   └── test/java/        # Tests
+│   │       ├── processors/   # Unit tests for each processor
+│   │       └── integration/  # E2E integration tests
 │   ├── build/                # Build output (GITIGNORED)
 │   └── dist/                 # Distribution JARs
 │
@@ -70,6 +73,8 @@ macos-ptt-dictation/
 │   │   ├── test_whisper_cpp.sh
 │   │   ├── test_f13_modes.sh
 │   │   ├── test_bug_fixes.sh
+│   │   ├── test_java_processor.sh    # Java processor unit tests
+│   │   ├── test_e2e_with_java.sh     # E2E tests with Java integration
 │   │   ├── e2e_test.sh
 │   │   ├── debug_recording.sh
 │   │   └── quick_benchmark.sh
@@ -100,6 +105,7 @@ macos-ptt-dictation/
 │   │   ├── README.md
 │   │   ├── basic-usage.md
 │   │   ├── model-selection.md
+│   │   ├── post-processing.md        # Disfluency removal and text cleanup
 │   │   └── dictionary-plugins.md
 │   ├── development/           # Developer documentation
 │   │   ├── README.md

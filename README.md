@@ -11,6 +11,7 @@
 - ⚡ **Sub-second Response** - Average 889ms transcription with whisper-cpp
 - ⌨️ **System-wide** - Works in any application with customizable hotkeys
 - 🎯 **Smart Accuracy** - Automatic model switching, text corrections, and punctuation restoration
+- 🧹 **Clean Output** - Automatic removal of "um", "uh" and other disfluencies
 - 📝 **Direct Insertion** - Transcribed text pastes directly at cursor position
 
 ## Quick Start
@@ -38,6 +39,7 @@ See [Basic Usage](docs/usage/basic-usage.md) for details and [Configuration](doc
 
 - **[Setup Guide](docs/setup/)** - Installation, configuration, troubleshooting
 - **[Usage Guide](docs/usage/)** - Features, models, dictionaries
+- **[Post-Processing](docs/usage/post-processing.md)** - Disfluency removal and text cleanup
 - **[Development](docs/development/)** - Architecture, testing, contributing
 - **[API Reference](docs/api/)** - Plugin and integration APIs
 

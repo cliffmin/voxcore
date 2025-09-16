@@ -68,6 +68,38 @@ test {
     }
 }
 
+// Integration test configuration
+task integrationTest(type: Test) {
+    description = 'Run integration tests including E2E pipeline tests'
+    group = 'verification'
+    
+    useJUnitPlatform {
+        includeTags 'integration'
+    }
+    
+    // Include integration test classes
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    
+    // Run integration tests after unit tests
+    shouldRunAfter test
+    
+    // More verbose output for integration tests
+    testLogging {
+        events "started", "passed", "skipped", "failed", "standardOut"
+        showStandardStreams = true
+    }
+    
+    // Longer timeout for integration tests
+    systemProperty 'junit.jupiter.execution.timeout.default', '60s'
+}
+
+// Task to run all tests (unit + integration)
+task testAll(dependsOn: [test, integrationTest]) {
+    description = 'Run all tests (unit and integration)'
+    group = 'verification'
+}
+
 // Custom task to build a standalone executable
 task buildExecutable(type: Copy, dependsOn: shadowJar) {
     from shadowJar
