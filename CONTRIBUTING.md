@@ -18,7 +18,7 @@ Thanks for your interest in improving macos-ptt-dictation.
 - Use 2-space indent and LF endings (see .editorconfig)
 
 ## Tests and validation
-- No formal test suite yet; rely on smokes under tests/
+- Run accuracy tests: `./scripts/testing/test_accuracy.sh`
 - If you add a user-facing knob or behavior change, add a note to README and CHANGELOG
 
 ## Commit messages

@@ -1,6 +1,6 @@
 # Configuration Guide
 
-Configuration is done via `~/.hammerspoon/ptt_config.lua` (a sample is installed by `scripts/install.sh`).
+Configuration is done via `~/.hammerspoon/ptt_config.lua` (a sample is installed by `scripts/setup/install.sh`).
 
 XDG fallback
 - Also supported: `~/.config/macos-ptt-dictation/ptt_config.lua` or `$XDG_CONFIG_HOME/macos-ptt-dictation/ptt_config.lua`
@@ -158,4 +158,4 @@ return {
 - **Formatting issues**: Adjust `GAP_NEWLINE_SEC` thresholds
 - **Missing words**: Check `DISFLUENCIES` isn't removing wanted words
 
-See [Troubleshooting](TROUBLESHOOTING.md) for more help.
+See [Troubleshooting](troubleshooting.md) for more help.
