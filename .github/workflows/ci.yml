@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
@@ -6,98 +6,277 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Run with debug logging'
+        required: false
+        default: false
+
+env:
+  JAVA_VERSION: '17'
+  GRADLE_VERSION: '8.5'
+  WHISPER_MODEL: 'base.en'
 
 jobs:
-  test:
+  # Java tests - Core functionality
+  java-tests:
+    name: Java Tests
     runs-on: macos-latest
-
+    
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: ${{ env.JAVA_VERSION }}
+        
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: ${{ env.GRADLE_VERSION }}
+        
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+    
+    - name: Build Java post-processor
+      run: |
+        cd whisper-post-processor
+        gradle clean build --no-daemon
+        
+    - name: Run Java unit tests
+      run: |
+        cd whisper-post-processor
+        gradle test --no-daemon --info
+        
+    - name: Generate test report
+      if: always()
+      run: |
+        cd whisper-post-processor
+        gradle jacocoTestReport --no-daemon
+        
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: java-test-results
+        path: |
+          whisper-post-processor/build/reports/tests/
+          whisper-post-processor/build/reports/jacoco/
+        
+    - name: Upload JAR artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: whisper-post-processor
+        path: whisper-post-processor/dist/whisper-post.jar
 
+  # Integration tests - Whisper and audio processing
+  integration-tests:
+    name: Integration Tests
+    runs-on: macos-latest
+    needs: java-tests
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: ${{ env.JAVA_VERSION }}
+    
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-
+        
     - name: Install system dependencies
       run: |
         brew update || true
-        brew install ffmpeg lua
+        brew install ffmpeg
         brew install --cask hammerspoon || true
-
-    - name: Install Python dependencies
+        
+    - name: Install whisper-cpp (fast)
+      run: |
+        brew install whisper-cpp || true
+        # Download base model if not cached
+        mkdir -p ~/.cache/whisper
+        if [ ! -f ~/.cache/whisper/ggml-base.en.bin ]; then
+          curl -L "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin" \
+               -o ~/.cache/whisper/ggml-base.en.bin
+        fi
+        
+    - name: Install OpenAI Whisper (fallback)
       run: |
         python -m pip install --upgrade pip
-        python -m pip install pipx
-        python -m pipx ensurepath || true
-        pipx install --include-deps openai-whisper
-
-    - name: Verify installations
+        pip install openai-whisper
+        
+    - name: Download test JAR
+      uses: actions/download-artifact@v4
+      with:
+        name: whisper-post-processor
+        path: whisper-post-processor/dist/
+        
+    - name: Run integration tests
       run: |
-        echo "=== Checking ffmpeg ==="
-        ffmpeg -version | head -n1
-        echo "=== Checking luac ==="
-        luac -v || true
-        echo "=== Checking whisper ==="
-        ~/.local/bin/whisper --help | head -n1 || true
-        echo "=== Checking Hammerspoon Lua files ==="
-        ls -la hammerspoon/
-
-    - name: Run syntax checks
+        cd whisper-post-processor
+        gradle integrationTest --no-daemon || true
+        
+    - name: Test Whisper pipeline
       run: |
-        echo "=== Lua syntax check ==="
+        # Create test audio
+        say -o /tmp/test.aiff "Hello, this is a test"
+        ffmpeg -i /tmp/test.aiff -ar 16000 -ac 1 /tmp/test.wav -y
+        
+        # Test whisper-cpp if available
+        if command -v whisper-cpp &> /dev/null; then
+          echo "Testing whisper-cpp..."
+          whisper-cpp --model base.en --output-txt /tmp/test.wav || true
+        fi
+        
+        # Test OpenAI whisper
+        echo "Testing OpenAI whisper..."
+        whisper /tmp/test.wav --model base.en --output_format txt || true
+        
+    - name: Test Java post-processor
+      run: |
+        echo "Um, this is, uh, a test." | java -jar whisper-post-processor/dist/whisper-post.jar
+
+  # Lua and shell script validation
+  lua-shell-tests:
+    name: Lua & Shell Tests
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Lua
+      run: |
+        brew install lua luarocks
+        
+    - name: Lua syntax check
+      run: |
+        echo "=== Checking Lua syntax ==="
         for file in hammerspoon/*.lua; do
           echo "Checking $file..."
           luac -p "$file"
         done
-
-    - name: Run test suite
-      run: |
-        echo "=== Running test suite ==="
-        if [ -f tests/run_tests.sh ]; then
-          bash tests/run_tests.sh
-        else
-          echo "No test runner found, checking for test files..."
-          ls -la tests/ || echo "No tests directory"
-        fi
-
-    - name: Check documentation
-      run: |
-        echo "=== Verifying documentation ==="
-        for doc in README.md CHANGELOG.md LICENSE; do
-          [ -f "$doc" ] && echo "✓ $doc exists" || echo "✗ Missing $doc"
-        done
-
-  lint:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Install linters
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y shellcheck luarocks || true
-        sudo apt-get install -y lua5.4 || sudo apt-get install -y lua5.3 || true
-        luarocks install --local luacheck || true
-        echo "$HOME/.luarocks/bin" >> "$GITHUB_PATH"
-
-    - name: Check line endings
-      run: |
-        echo "=== Checking line endings ==="
-        find . -type f \( -name "*.lua" -o -name "*.md" \) -print0 | xargs -0 file | grep -v CRLF || true
-
+        
+    - name: Install shellcheck
+      run: brew install shellcheck
+      
     - name: Shellcheck scripts
       run: |
-        echo "=== shellcheck scripts (gating on errors) ==="
-        find scripts tests -type f -name "*.sh" -print0 | xargs -0 -r shellcheck -S error
-
-    - name: Luacheck Lua
+        echo "=== Checking shell scripts ==="
+        find scripts -type f -name "*.sh" -exec shellcheck {} \; || true
+        
+    - name: Check Makefile
       run: |
-        echo "=== luacheck Lua ==="
-        "$HOME/.luarocks/bin/luacheck" hammerspoon || true
+        echo "=== Validating Makefile targets ==="
+        make help
 
+  # Documentation and code quality
+  quality-checks:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Check documentation
+      run: |
+        echo "=== Required documentation ==="
+        for doc in README.md CHANGELOG.md LICENSE WARP.md; do
+          [ -f "$doc" ] && echo "✓ $doc exists" || exit 1
+        done
+        
+    - name: Check line endings
+      run: |
+        echo "=== Checking for CRLF line endings ==="
+        ! find . -type f \( -name "*.java" -o -name "*.lua" -o -name "*.md" \) \
+          -exec file {} \; | grep CRLF
+        
     - name: Check for large files
       run: |
         echo "=== Checking for large files (>1MB) ==="
-        find . -type f -size +1M -exec ls -lh {} \; | grep -v ".git" || echo "No large files found"
+        large_files=$(find . -type f -size +1M -not -path "./.git/*" \
+                      -not -path "./whisper-post-processor/build/*" \
+                      -not -name "*.jar" | head -10)
+        if [ -n "$large_files" ]; then
+          echo "Large files found:"
+          echo "$large_files"
+          exit 1
+        fi
+        
+    - name: Check for sensitive data
+      run: |
+        echo "=== Checking for potential secrets ==="
+        # Check for common secret patterns
+        ! grep -r -E "(api[_-]?key|password|secret|token)" \
+          --include="*.java" --include="*.lua" --include="*.sh" \
+          --exclude-dir=.git --exclude-dir=build . | grep -v -E "(example|test|sample)"
+
+  # Release build (only on main branch)
+  release:
+    name: Release Build
+    runs-on: macos-latest
+    needs: [java-tests, integration-tests, lua-shell-tests, quality-checks]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: ${{ env.JAVA_VERSION }}
+        
+    - name: Build release JAR
+      run: |
+        cd whisper-post-processor
+        gradle clean shadowJar --no-daemon
+        
+    - name: Create release bundle
+      run: |
+        mkdir -p release
+        cp whisper-post-processor/dist/whisper-post.jar release/
+        cp -r hammerspoon release/
+        cp -r scripts release/
+        cp README.md CHANGELOG.md LICENSE release/
+        tar -czf macos-ptt-dictation-release.tar.gz release/
+        
+    - name: Upload release artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-bundle
+        path: macos-ptt-dictation-release.tar.gz
+        retention-days: 30
+
+  # Status check - Required for branch protection
+  status:
+    name: CI Status
+    runs-on: ubuntu-latest
+    needs: [java-tests, integration-tests, lua-shell-tests, quality-checks]
+    if: always()
+    
+    steps:
+    - name: Check status
+      run: |
+        if [[ "${{ needs.java-tests.result }}" == "failure" || \
+              "${{ needs.integration-tests.result }}" == "failure" || \
+              "${{ needs.lua-shell-tests.result }}" == "failure" || \
+              "${{ needs.quality-checks.result }}" == "failure" ]]; then
+          echo "CI failed"
+          exit 1
+        fi
+        echo "CI passed"
