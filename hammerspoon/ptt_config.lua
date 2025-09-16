@@ -40,10 +40,11 @@ return {
   DISFLUENCIES = { "uh", "um", "uhh", "uhm" },
   -- HOLD: classic press-and-hold F13 flow (paste)
   -- TOGGLE: Shift+F13 long-form flow (editor markdown)
-SHIFT_TOGGLE_ENABLED = true,
+  SHIFT_TOGGLE_ENABLED = true,
   OUTPUT = {
-    HOLD = { mode = "paste",  format = "txt" },
-    TOGGLE = { mode = "editor", format = "md" },
+    HOLD = { mode = "paste",  format = "txt" },         -- F13 hold: always paste
+    TOGGLE = { mode = "paste", format = "txt" },        -- F13 double-tap: always paste
+    SHIFT_TOGGLE = { mode = "editor", format = "md" },  -- Shift+F13: always markdown editor
   },
   -- Double-tap F13 to toggle (in addition to Shift+F13)
   DOUBLE_TAP_TOGGLE = true,
