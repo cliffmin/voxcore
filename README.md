@@ -2,160 +2,165 @@
 
 [![CI](https://github.com/cliffmin/macos-ptt-dictation/actions/workflows/ci.yml/badge.svg)](https://github.com/cliffmin/macos-ptt-dictation/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> Privacy-first push-to-talk dictation for macOS. Hold Hyper+Space to speak, release to paste.
+Offline push-to-talk dictation for macOS using OpenAI Whisper. Hold a key to record, release to transcribe and paste at cursor.
 
-## ✨ Features
+## Overview
 
-- **100% Offline** - No cloud services, everything runs locally
-- **One-Key Operation** - Just hold Hyper+Space (Cmd+Alt+Ctrl+Space) to record, release to transcribe
-- **Fast Transcription** - 5-6x faster than realtime
-- **Smart Formatting** - Handles pauses, punctuation, and paragraphs naturally
-- **Auto-Save** - All recordings preserved in `~/Documents/VoiceNotes`
-- **Customizable** - Adjust models, prompts, and formatting to your needs
+A macOS automation tool that provides system-wide voice-to-text functionality using local speech recognition. Built with Hammerspoon, FFmpeg, and Whisper for privacy-conscious users who need fast, accurate transcription without cloud dependencies.
 
-## Why now
+## Key Features
 
-In the era of AI agents, natural language is the universal interface. When spoken ideas become text, they become searchable, editable, automatable—and actionable. This project makes that instant and private: hold a key, speak, release to paste. For longer thoughts, the optional Refiner promotes raw transcripts into clear, structured Markdown that’s ready for prompts, tickets, docs, or automation.
+- **Local Processing** - All transcription happens on-device using Whisper models
+- **System-wide Hotkey** - Works in any application via configurable keyboard shortcuts
+- **Direct Insertion** - Transcribed text pastes directly at cursor position
+- **Performance Optimized** - Sub-second transcription for most recordings ([details](docs/PERFORMANCE_OPTIMIZATION.md))
+- **Automatic Formatting** - Intelligent paragraph breaks and punctuation based on speech patterns
+- **Session Recording** - All audio saved locally with searchable transcripts
 
-### Why this vs. others
-- 100% local: no tokens, no network, consistent latency
-- One key anywhere: no window switching; paste at the cursor
-- Structured output: optional refiner produces clean Markdown
-- Deterministic pipeline: ffmpeg → Whisper → (optional) Refiner; logs and sidecars for traceability
-- Extensible: hotkeys, models, retention policy, and refiner provider are all configurable
+## Requirements
 
-## 🚀 Quick Start
+- macOS 11.0 or later
+- Hammerspoon 0.9.100+
+- FFmpeg 6.0+
+- whisper-cpp (recommended) or Python 3.9+ with pipx (optional fallback)
+- Java 17+ (for post-processor)
+- 2GB free disk space for models
 
-### Prerequisites
+## Installation
+
+### Quick Start
+
 ```bash
-# Install Hammerspoon (automation framework)
-brew install --cask hammerspoon
-
-# Install ffmpeg (audio capture)
-brew install ffmpeg
-```
-
-### Installation
-```bash
-# Clone the repository
-git clone https://github.com/YOUR_USERNAME/macos-ptt-dictation.git
+# Clone and setup
+git clone https://github.com/cliffmin/macos-ptt-dictation.git
 cd macos-ptt-dictation
-
-# Install dependencies and set up
-brew bundle --no-lock
-python3 -m pip install --user pipx && python3 -m pipx ensurepath
-pipx install --include-deps openai-whisper
-bash ./scripts/install.sh
+./scripts/install.sh
 ```
 
-### First Use
-1. **Reload Hammerspoon**: Menu bar → Reload Config
-2. **Grant Permissions**: 
-   - Accessibility (for hotkeys)
-   - Microphone (for recording)
-3. **Test**: Hold Hyper+Space, speak, release to paste
+### Manual Installation
 
-## 📖 Documentation
-
-- [**Usage Guide**](docs/USAGE.md) - Features and workflows
-- [**Configuration**](docs/CONFIG.md) - Customize behavior
-- [**Troubleshooting**](docs/TROUBLESHOOTING.md) - Common issues
-- [**Architecture**](docs/ARCHITECTURE.md) - Technical overview
-
-## 🧩 Extensibility (plugin‑style processors)
-
-This project exposes a plugin‑style post‑processing stage. Any CLI that follows a simple contract can be used:
-- Input: transcript text on stdin
-- Output: refined text on stdout (e.g., Markdown) or analysis
-- Optional: write a JSON sidecar with metrics
-- Exit code: 0 = success; non‑zero = we fall back to the original transcript
-
-Built‑in example: the Refiner (voxcompose) formats long‑form speech into clean Markdown. Planned: a Coaching analyzer to score clarity/pacing and surface actionable feedback.
-
-### Refiner (optional)
-Install via Homebrew (Apple Silicon shown):
+1. Install core dependencies:
 ```bash
-brew tap cliffmin/tap
-brew install voxcompose
+brew install --cask hammerspoon
+brew install ffmpeg
+brew install whisper-cpp  # Recommended for performance
+brew install openjdk      # For Java post-processor
 ```
-Enable in your config (auto‑detects the voxcompose binary on PATH):
-```lua
-LLM_REFINER = {
-  ENABLED = true,
-  -- CMD = { "/opt/homebrew/bin/voxcompose" }, -- optional, auto‑detected if omitted
-  ARGS = { "--model", "llama3.1", "--timeout-ms", "9000" },
-  TIMEOUT_MS = 9000,
-}
+
+2. Configure Hammerspoon:
+```bash
+cp -r hammerspoon/* ~/.hammerspoon/
+cp hammerspoon/ptt_config.lua.sample ~/.hammerspoon/ptt_config.lua
 ```
-Run the self‑test (default): Cmd+Alt+Ctrl+R → “LLM refine self‑test OK”.
 
-## 🎥 Demo
+3. Install post-processor:
+```bash
+cd whisper-post-processor
+./install.sh
+```
 
-![Push-to-Talk Demo](docs/assets/demo.gif)
+4. Optional: Install Python tools (isolated via pipx):
+```bash
+# Only if you need Python fallback instead of whisper-cpp
+brew install pipx
+pipx ensurepath
+pipx install openai-whisper  # Fallback transcription
+```
 
-## 🚀 Major Improvements
+5. Grant required permissions:
+   - System Preferences → Security & Privacy → Accessibility → Hammerspoon ✓
+   - System Preferences → Security & Privacy → Microphone → Hammerspoon ✓
 
-### Latest Updates
+6. Reload Hammerspoon configuration
 
-#### Java Post-Processor for Transcript Cleaning (2024)
-Fixed common Whisper transcription issues with a clean, extensible Java pipeline:
-- **Problem**: Merged words ("theyconfigure"), run-on sentences, inconsistent capitalization
-- **Solution**: Modular Java processor with pipeline pattern
-- **Impact**: Cleaner transcripts, easier to extend, no performance penalty
-- [→ Details](whisper-post-processor/README.md)
+## Usage
 
-#### 10-40x Performance Boost with whisper-cpp (2024)
-Migrated from Python Whisper to C++ implementation:
-- **Problem**: 30+ second wait times for transcription
-- **Solution**: Native C++ with Metal acceleration, smart model switching
-- **Impact**: Sub-second transcription for most recordings
-- [→ Full Story](docs/PERFORMANCE_OPTIMIZATION.md)
+### Default Keybindings
 
-## ⚡ Performance: 10-40x Faster Than Before
+| Keybinding | Action |
+|------------|--------|
+| `Hyper+Space` (hold) | Record while held, transcribe and paste on release |
+| `Shift+Hyper+Space` | Toggle recording (for longer sessions) |
+| `Cmd+Alt+Ctrl+I` | Show system info and diagnostics |
 
-Through [data-driven optimization](docs/PERFORMANCE_OPTIMIZATION.md), we achieved:
-- **Instant feedback** for quick notes (<21s): ~0.5 seconds
-- **Fast accurate transcription** for longer content (>21s): ~4 seconds
-- **Smart model switching** at the optimal 21-second threshold
+*Hyper = Cmd+Alt+Ctrl (configurable in `ptt_config.lua`)*
 
-### The Numbers Don't Lie:
-| Recording Length | Before (Python) | Now (whisper-cpp) | Speedup |
-|-----------------|-----------------|-------------------|---------|  
-| 5 seconds       | 12 seconds      | 0.5 seconds       | **24x** |
-| 20 seconds      | 30 seconds      | 0.7 seconds       | **43x** |
-| 45 seconds      | 45+ seconds     | 4 seconds         | **11x** |
+### Configuration
 
-[Read the full optimization story →](docs/PERFORMANCE_OPTIMIZATION.md)
+Edit `~/.hammerspoon/ptt_config.lua` to customize:
+- Whisper model selection
+- Keybindings
+- Audio quality settings
+- Output formatting
+- Storage location
 
-![Performance](docs/assets/metrics.svg)
+See [Configuration Guide](docs/CONFIG.md) for all options.
 
-## 🎯 Key Bindings
+## Architecture
 
-Defaults shown; all are configurable in `~/.hammerspoon/ptt_config.lua` under `KEYS`.
+### Processing Pipeline
 
-| Hotkey | Action |
-|--------|--------|
-| **Hyper+Space** (hold) | Record while held, paste on release |
-| **Shift+Hyper+Space** | Toggle recording on/off (long-form) |
-| **Cmd+Alt+Ctrl+I** | Show device info and diagnostics |
+```
+Audio Capture (FFmpeg) → Transcription (Whisper) → Post-Processing (Java) → Clipboard
+```
 
-## 🔒 Privacy & Security
+### Components
 
-- **Local Processing** - Audio never leaves your machine
-- **No Analytics** - Zero telemetry or tracking
-- **Your Data** - Recordings saved locally in `~/Documents/VoiceNotes`
-- **Open Source** - Audit the code yourself
+- **Hammerspoon**: macOS automation and hotkey management (Lua)
+- **FFmpeg**: Audio recording and normalization
+- **Whisper**: Speech-to-text engine (whisper-cpp recommended, Python fallback via pipx)
+- **Post-Processor**: Java-based text correction pipeline
+- **Storage**: Local filesystem with JSON metadata
 
-## 🤝 Contributing
+**Note**: Python dependencies (if used) are isolated in pipx virtual environments, not installed globally. See [Dependencies Documentation](docs/DEPENDENCIES.md) for details.
 
-Contributions welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+### Performance Optimizations
 
-## 📄 License
+- Dynamic model selection based on recording duration
+- Optimized 21-second threshold for model switching
+- Metal acceleration on Apple Silicon
+- Native C++ implementation via whisper-cpp
+
+See [Performance Analysis](docs/PERFORMANCE_OPTIMIZATION.md) for detailed benchmarks.
+
+## Recent Improvements
+
+- **Performance**: 10-40x faster transcription with whisper-cpp ([details](docs/PERFORMANCE_OPTIMIZATION.md))
+- **Accuracy**: Java post-processor fixes common Whisper issues ([details](whisper-post-processor/README.md))
+- **Model Optimization**: Discovered optimal 21-second threshold for model switching ([research](docs/THRESHOLD_ANALYSIS.md))
+
+## Documentation
+
+- [Configuration Guide](docs/CONFIG.md) - Detailed configuration options
+- [Dependencies](docs/DEPENDENCIES.md) - Dependency management and isolation
+- [Performance Analysis](docs/PERFORMANCE_OPTIMIZATION.md) - Benchmarks and optimization details
+- [Threshold Discovery](docs/THRESHOLD_ANALYSIS.md) - 21-second model switching research
+- [Architecture](docs/ARCHITECTURE.md) - System design and components
+- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
+- [Testing](docs/TESTING.md) - Test infrastructure and accuracy metrics
+
+## Testing
+
+Run the test suite:
+```bash
+make test                          # Quick smoke tests
+./scripts/test_accuracy.sh         # Full accuracy testing
+cd whisper-post-processor && gradle test  # Java processor tests
+```
+
+See [Testing Guide](docs/TESTING.md) for comprehensive testing documentation.
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
 
 MIT - See [LICENSE](LICENSE) for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-- [OpenAI Whisper](https://github.com/openai/whisper) for transcription
-- [Hammerspoon](https://www.hammerspoon.org/) for macOS automation
-- [ffmpeg](https://ffmpeg.org/) for audio capture
+- [OpenAI Whisper](https://github.com/openai/whisper) - Speech recognition models
+- [Hammerspoon](https://www.hammerspoon.org/) - macOS automation framework
+- [whisper-cpp](https://github.com/ggerganov/whisper.cpp) - High-performance C++ implementation
+- [FFmpeg](https://ffmpeg.org/) - Audio processing

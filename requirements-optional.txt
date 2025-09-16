@@ -1,0 +1,21 @@
+# Optional Python Dependencies
+# 
+# These are NOT required for core functionality.
+# Install via pipx for isolation (not pip):
+#   pipx install <package-name>
+#
+# These tools run in isolated virtual environments managed by pipx,
+# preventing global Python pollution.
+
+# Speech-to-text transcription (fallback, being replaced by whisper-cpp)
+openai-whisper>=20230918
+
+# Punctuation restoration for transcripts (optional)
+deepmultilingualpunctuation>=1.0.0
+
+# Note: Do NOT install these with pip directly.
+# Use pipx to maintain isolation:
+#   brew install pipx
+#   pipx ensurepath
+#   pipx install openai-whisper
+#   pipx install deepmultilingualpunctuation
