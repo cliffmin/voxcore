@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Comprehensive dependency documentation (`docs/DEPENDENCIES.md`)
+  - Clarifies Python isolation via pipx (not global)
+  - Documents hybrid Lua/Java/Python architecture
+  - Migration path from Python to native solutions
 - Java-based post-processor for transcript cleaning
   - Pipeline pattern with modular text processors
   - Fixes merged words ("theyconfigure" → "they configure")
