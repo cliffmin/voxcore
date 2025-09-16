@@ -76,6 +76,18 @@ SHIFT_TOGGLE_ENABLED = true,
     TIMEOUT_MS = 9000,
   },
 
+  -- Optional punctuation restorer (deepmultilingualpunctuation)
+  -- Restores punctuation and capitalization on raw ASR text.
+  -- Enabled by default for TOGGLE (long-form) sessions only to avoid cold-start
+  -- overhead during quick HOLD-to-paste.
+  PUNCTUATOR = {
+    ENABLED_FOR_TOGGLE = true,
+    ENABLED_FOR_HOLD = false,
+    -- Command to invoke; default uses repo-local scripts/punctuate.py via Python 3
+    CMD = { "/usr/bin/env", "python3", (os.getenv("HOME") or "") .. "/code/macos-ptt-dictation/scripts/punctuate.py" },
+    TIMEOUT_MS = 2500,  -- fail open (pass-through) after this many ms
+  },
+
   -- Test fixture export (local, never committed)
   TEST_FIXTURE_EXPORT = {
     ENABLED = true,               -- when in TEST mode, export fixtures automatically

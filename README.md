@@ -8,14 +8,22 @@ Offline push-to-talk dictation for macOS using OpenAI Whisper. Hold a key to rec
 
 A macOS automation tool that provides system-wide voice-to-text functionality using local speech recognition. Built with Hammerspoon, FFmpeg, and Whisper for privacy-conscious users who need fast, accurate transcription without cloud dependencies.
 
+### ⚡ Performance Highlights
+- **Sub-second transcription**: Average 889ms for typical recordings
+- **5-10x faster** than Python alternatives using whisper-cpp
+- **Smart model switching**: Automatic optimization at 21-second threshold
+- **80% accuracy** on real-world dictation with technical terms
+
 ## Key Features
 
-- **Local Processing** - All transcription happens on-device using Whisper models
-- **System-wide Hotkey** - Works in any application via configurable keyboard shortcuts
-- **Direct Insertion** - Transcribed text pastes directly at cursor position
-- **Performance Optimized** - Sub-second transcription for most recordings ([details](docs/PERFORMANCE_OPTIMIZATION.md))
-- **Automatic Formatting** - Intelligent paragraph breaks and punctuation based on speech patterns
-- **Session Recording** - All audio saved locally with searchable transcripts
+- **🏠 100% Local Processing** - All transcription happens on-device, no cloud dependencies
+- **⌨️ System-wide Hotkey** - Works in any application (default: F13 or Hyper+Space)
+- **⚡ Ultra-Fast Response** - Sub-second transcription (<900ms average)
+- **🎯 Smart Model Selection** - Automatically switches models based on recording length
+- **📝 Direct Insertion** - Transcribed text pastes directly at cursor position
+- **🔧 Post-Processing Pipeline** - Java-based text correction for common Whisper issues
+- **📁 Session Recording** - All audio saved locally with searchable transcripts
+- **🎙️ Automatic Formatting** - Intelligent paragraph breaks based on speech patterns
 
 ## Requirements
 
@@ -125,9 +133,25 @@ See [Performance Analysis](docs/PERFORMANCE_OPTIMIZATION.md) for detailed benchm
 
 ## Recent Improvements
 
-- **Performance**: 10-40x faster transcription with whisper-cpp ([details](docs/PERFORMANCE_OPTIMIZATION.md))
-- **Accuracy**: Java post-processor fixes common Whisper issues ([details](whisper-post-processor/README.md))
-- **Model Optimization**: Discovered optimal 21-second threshold for model switching ([research](docs/THRESHOLD_ANALYSIS.md))
+### 🚀 Performance (September 2025)
+- **10-40x faster transcription** with whisper-cpp integration
+  - Short clips (<10s): 300-400ms transcription time
+  - Medium clips (10-20s): 400-600ms transcription time  
+  - Long clips (>20s): 3-5 seconds with medium.en model
+- **Smart model switching** at 21-second threshold
+  - base.en for speed (≤21s): Ultra-fast response
+  - medium.en for accuracy (>21s): Better for long-form content
+- **Java post-processor** fixes common Whisper issues
+  - Merged word separation ("theyconfigure" → "they configure")
+  - Sentence boundary detection
+  - Smart capitalization
+
+### 📊 Benchmark Results
+- **Average transcription time**: 889ms (21 golden test samples)
+- **Word Error Rate**: 19.89% overall (acceptable for real-time dictation)
+- **Technical term accuracy**: 100% for GitHub, JSON, Jira (with dictionary replacements)
+
+See [Performance Analysis](docs/PERFORMANCE_OPTIMIZATION.md) and [Threshold Research](docs/THRESHOLD_ANALYSIS.md) for detailed benchmarks.
 
 ## Documentation
 
