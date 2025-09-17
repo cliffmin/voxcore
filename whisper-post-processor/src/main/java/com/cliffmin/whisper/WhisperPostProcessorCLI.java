@@ -84,9 +84,20 @@ public class WhisperPostProcessorCLI implements Callable<Integer> {
     private boolean jsonInput;
     
     private final ProcessingPipeline pipeline = new ProcessingPipeline();
+
+    // Optional: Defaults via config (non-breaking)
+    private com.cliffmin.whisper.config.Configuration cfg = null;
     
     @Override
     public Integer call() throws Exception {
+        // Optional: load configuration to set defaults
+        try {
+            var cm = new com.cliffmin.whisper.config.ConfigurationManager();
+            var home = System.getProperty("user.home");
+            var path = java.nio.file.Path.of(home, ".config", "ptt-dictation", "config.json");
+            cfg = cm.load(path);
+        } catch (Exception ignored) {}
+
         // Configure pipeline based on options
         configurePipeline();
         
@@ -176,6 +187,8 @@ public class WhisperPostProcessorCLI implements Callable<Integer> {
         if (!disablePunctuationRestoration) {
             pipeline.addProcessor(new PunctuationProcessor());
         }
+        
+        // If config exists, we can tweak pipeline defaults in future (placeholder)
         
         // Add dictionary replacements
         if (!disableDictionary) {

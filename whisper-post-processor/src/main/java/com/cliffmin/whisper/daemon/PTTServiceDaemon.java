@@ -27,11 +27,23 @@ import java.util.Map;
  */
 public class PTTServiceDaemon {
     private final Gson gson = new Gson();
-    private final WhisperService whisper = new WhisperCppAdapter();
-    private final AudioProcessor audio = new AudioProcessor();
+    private final WhisperService whisper;
+    private final AudioProcessor audio;
     private final ConfigurationManager configManager = new ConfigurationManager();
     private Configuration config;
     private Undertow server;
+
+    public PTTServiceDaemon() {
+        this.whisper = new WhisperCppAdapter();
+        this.audio = new AudioProcessor();
+    }
+
+    // For testing/injection
+    public PTTServiceDaemon(WhisperService whisper, AudioProcessor audio, Configuration config) {
+        this.whisper = whisper;
+        this.audio = audio;
+        this.config = config;
+    }
 
     public void start(int port) {
         // Load configuration (env > file > defaults)
