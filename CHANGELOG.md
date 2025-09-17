@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Phase 5: Real-time & Metrics (2024-09-17)
+#### Added
+- WebSocket endpoint `/ws` (streaming skeleton)
+- Prometheus metrics at `/metrics`; timer for transcription
+
 ### Phase 4: Configuration Management (2024-09-17)
 #### Added
 - Configuration and ConfigurationManager with precedence (env > file > defaults)
