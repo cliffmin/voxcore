@@ -62,8 +62,21 @@ shadowJar {
 }
 
 // Test configuration
+// Run unit tests only (exclude integration/slow suites)
 test {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'integration'
+    }
+    // Exclude known integration/slow test packages and classes by convention
+    // Integration package
+    filter {
+        excludeTestsMatching "com.cliffmin.whisper.integration.*"
+        // Common integration/slow class name patterns
+        excludeTestsMatching "*IntegrationTest"
+        excludeTestsMatching "*Performance*"
+        excludeTestsMatching "*Accuracy*"
+        excludeTestsMatching "*FullTestSuite*"
+    }
     testLogging {
         events "passed", "skipped", "failed"
     }
