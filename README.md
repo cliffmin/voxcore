@@ -1,5 +1,11 @@
 # macOS Push-to-Talk Dictation
 
+Note: To enforce branch discipline locally, you can configure a pre-push guard to prevent direct pushes to main:
+
+```bash
+git config --local hooks.prepush "scripts/ci/prepush.sh"
+```
+
 [![CI](https://github.com/cliffmin/macos-ptt-dictation/actions/workflows/ci.yml/badge.svg)](https://github.com/cliffmin/macos-ptt-dictation/actions/workflows/ci.yml) 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
