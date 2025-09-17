@@ -7,6 +7,7 @@
 - Configuration and ConfigurationManager with precedence (env > file > defaults)
 - Tests for configuration loading and defaults
 - Documentation for configuration at `docs/setup/configuration.md`
+- Daemon now consumes config (language, whisperModel) with request > config > auto precedence
 
 ### Phase 3: Hammerspoon Bridge (2024-09-17)
 #### Added
