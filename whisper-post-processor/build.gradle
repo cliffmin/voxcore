@@ -31,7 +31,6 @@ dependencies {
 
     // HTTP server for daemon
     implementation 'io.undertow:undertow-core:2.3.10.Final'
-    implementation 'io.undertow:undertow-websockets-core:2.3.10.Final'
     implementation 'io.undertow:undertow-websockets-jsr:2.3.10.Final'
 
     // Metrics

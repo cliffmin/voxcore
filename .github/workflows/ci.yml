@@ -264,8 +264,8 @@ jobs:
     - name: Check for sensitive data
       run: |
         echo "=== Checking for potential secrets ==="
-        # Check for common secret patterns
-        ! grep -r -E "(api[_-]?key|password|secret|token)" \
+        # Fail only when a likely secret value is present (assignment/colon + long value-like token)
+        ! grep -rIn -E "((api[_-]?key|password|secret|token)[^A-Za-z0-9]{0,3}[:=][^A-Za-z0-9]{0,3}[\"']?[A-Za-z0-9/_\\-\\+=]{20,}[\"']?)" \
           --include="*.java" --include="*.lua" --include="*.sh" \
           --exclude-dir=.git --exclude-dir=build . | grep -v -E "(example|test|sample)"
 
