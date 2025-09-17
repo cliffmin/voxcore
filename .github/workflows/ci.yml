@@ -53,7 +53,7 @@ jobs:
         cd whisper-post-processor
         gradle clean build --no-daemon --stacktrace
         
-    - name: Run Java unit tests
+    - name: Run Java unit tests (unit only)
       run: |
         cd whisper-post-processor
         gradle test --no-daemon --info --stacktrace
@@ -79,7 +79,7 @@ jobs:
         name: whisper-post-processor
         path: whisper-post-processor/dist/whisper-post.jar
 
-  # Integration tests - Whisper and audio processing
+  # Integration tests - Whisper and audio processing (explicit)
   integration-tests:
     name: Integration Tests
     runs-on: macos-latest
