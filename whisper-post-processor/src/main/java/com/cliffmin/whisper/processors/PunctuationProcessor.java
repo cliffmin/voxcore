@@ -80,8 +80,11 @@ public class PunctuationProcessor implements TextProcessor {
     }
     
     private String addCommas(String text) {
-        // Add commas after introductory words
-        text = text.replaceAll("\\b(However|Therefore|Moreover|Furthermore|Additionally|Also|Next|Then|Finally|First|Second|Third)\\s+", "$1, ");
+        // Add commas after common introductory adverbs
+        text = text.replaceAll("\\b(However|Therefore|Moreover|Furthermore|Additionally|Also|Next|Then|Finally)\\s+", "$1, ");
+        
+        // Add commas after enumerators only when followed by a pronoun (to avoid 'First sentence' false positives)
+        text = text.replaceAll("(?m)^(First|Second|Third)\\s+(?=(I|We|You|They|He|She|It)\\b)", "$1, ");
         
         // Add commas before coordinating conjunctions in compound sentences
         text = text.replaceAll("\\s+(but|and|or|nor|for|yet|so)\\s+(?=[A-Z])", ", $1 ");
@@ -101,6 +104,9 @@ public class PunctuationProcessor implements TextProcessor {
         
         // Remove duplicate punctuation
         text = text.replaceAll("([.!?])+", "$1");
+        
+        // Fix comma before question/exclamation (",?" -> "?")
+        text = text.replaceAll(",\\s*([!?])", "$1");
         
         // Fix multiple commas
         text = text.replaceAll(",\\s*,+", ",");

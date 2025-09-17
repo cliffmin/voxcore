@@ -7,6 +7,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -21,7 +22,9 @@ class WhisperPostProcessorCLITest {
         Files.writeString(cfgFile, "{\n  \"language\": \"fr\", \n  \"whisperModel\": \"small.en\"\n}\n");
 
         ProcessBuilder pb = new ProcessBuilder(
-            "java", "-cp", "build/libs/whisper-post.jar",
+            "java",
+            String.format("-Dptt.config.file=%s", cfgFile.toString()),
+            "-cp", "build/libs/whisper-post.jar",
             "com.cliffmin.whisper.WhisperPostProcessorCLI",
             "--print-config"
         );
@@ -29,10 +32,8 @@ class WhisperPostProcessorCLITest {
         pb.environment().put("_JAVA_OPTIONS", "");
         pb.environment().put("PTT_LANG", "en"); // Will be overridden by file due to explicit override property
         pb.environment().put("PTT_WHISPER_MODEL", "base.en");
-        pb.command().add(0, "bash");
-        pb.command().add(1, "-lc");
-        pb.command().add(2, String.format("java -Dptt.config.file=%s -cp build/libs/whisper-post.jar com.cliffmin.whisper.WhisperPostProcessorCLI --print-config", cfgFile.toString()));
-        pb.directory(tmp.getParent().getParent().resolve("whisper-post-processor").toFile());
+        // Run from the module directory where build/libs exists
+        pb.directory(Paths.get(System.getProperty("user.dir")).toFile());
 
         Process p = pb.start();
         p.waitFor();

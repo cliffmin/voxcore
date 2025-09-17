@@ -60,6 +60,12 @@ public class DisfluencyProcessor implements TextProcessor {
         // Remove immediate repeats
         result = dedupeImmediateRepeats(result);
         
+        // Cleanup awkward punctuation (e.g., ",?" -> "?")
+        result = result.replaceAll(",\\s*([!?])", "$1");
+        
+        // Capitalize after sentence endings
+        result = capitalizeAfterSentenceEnds(result);
+        
         return result;
     }
     
@@ -99,6 +105,17 @@ public class DisfluencyProcessor implements TextProcessor {
         return result;
     }
     
+    private String capitalizeAfterSentenceEnds(String text) {
+        java.util.regex.Pattern sentenceEnd = java.util.regex.Pattern.compile("([.!?]\\s+)([a-z])");
+        java.util.regex.Matcher matcher = sentenceEnd.matcher(text);
+        StringBuffer sb = new StringBuffer();
+        while (matcher.find()) {
+            matcher.appendReplacement(sb, matcher.group(1) + matcher.group(2).toUpperCase());
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
+    
     private String removeStandaloneDisfluencies(String text) {
         if (text == null || text.isEmpty()) {
             return text;
@@ -123,8 +140,8 @@ public class DisfluencyProcessor implements TextProcessor {
             }
         }
         
-        // Handle stuttering patterns (e.g., "th-th-this" -> "this")
-        text = text.replaceAll("\\b(\\w{1,2})-(\\1-)+", "");
+        // Handle stuttering patterns (e.g., "Th-th-this" or "t-t-test") case-insensitively
+        text = text.replaceAll("(?i)\\b(\\w{1,2})-(\\1-)+", "");
         
         // Clean up extra spaces and punctuation
         text = text.replaceAll("\\s+", " ");
