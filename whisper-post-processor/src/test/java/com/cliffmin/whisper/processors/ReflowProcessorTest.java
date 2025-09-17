@@ -60,6 +60,27 @@ public class ReflowProcessorTest {
         String result = processor.process(input);
         assertThat(result).isEqualTo("Hello there, how are you? I'm fine! Thanks.");
     }
+
+    @Test
+    void testCollapseMultipleNewlinesToSpace() {
+        String input = "First line\n\n\nSecond line\n\nThird line";
+        String result = processor.process(input);
+        assertThat(result).isEqualTo("First line Second line Third line");
+    }
+
+    @Test
+    void testCRLFNormalized() {
+        String input = "A\r\nB\r\n\r\nC";
+        String result = processor.process(input);
+        assertThat(result).isEqualTo("A B C");
+    }
+
+    @Test
+    void testNewlinesWithQuestionAndExclamation() {
+        String input = "Hello?\nWorld!\nNext line";
+        String result = processor.process(input);
+        assertThat(result).isEqualTo("Hello? World! Next line");
+    }
     
     @Test
     void testJsonSegmentProcessing() {
