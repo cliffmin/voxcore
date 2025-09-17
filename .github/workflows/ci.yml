@@ -49,10 +49,10 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-gradle-
     
-    - name: Build Java post-processor
+    - name: Build Java post-processor (no tests; produce dist jar)
       run: |
         cd whisper-post-processor
-        gradle clean build --no-daemon --stacktrace
+        gradle clean buildAll --no-daemon --stacktrace
         
     - name: Run Java unit tests (unit only)
       run: |
