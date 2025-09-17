@@ -26,7 +26,7 @@ public class DisfluencyProcessor implements TextProcessor {
             )),
             new HashSet<>(Arrays.asList(
                 "um", "uh", "uhh", "uhm", "er", "erm",
-                "so", "well", "you know", "i mean", "actually",
+                "well", "you know", "i mean", "actually",
                 "basically", "literally"
             )),
             true
@@ -110,8 +110,14 @@ public class DisfluencyProcessor implements TextProcessor {
                 // For phrases, ensure word boundaries around the entire phrase
                 String pattern = "\\b" + Pattern.quote(disfluency) + "\\b\\s*[,.]?";
                 text = text.replaceAll("(?i)" + pattern, " ");
+            } else if ("like".equalsIgnoreCase(disfluency)) {
+                // Only remove filler "like" when it's clearly filler:
+                // 1) "like," with trailing comma
+                text = text.replaceAll("(?i)\\blike\\s*,\\s*", "");
+                // 2) preceded by a comma: ", like <word>" -> ", <word>"
+                text = text.replaceAll("(?i),\\s*like\\b\\s*", ", ");
             } else {
-                // For single words, standard word boundary matching
+                // For other single words, standard word boundary matching
                 String pattern = "\\b" + Pattern.quote(disfluency) + "\\b\\s*[,.]?";
                 text = text.replaceAll("(?i)" + pattern, " ");
             }

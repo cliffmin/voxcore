@@ -83,6 +83,8 @@ public class MergedWordProcessor implements TextProcessor {
     
     @Override
     public String process(String input) {
+        if (input == null) return null;
+        if (input.isEmpty()) return input;
         String result = input;
         
         // First handle the special apostrophe patterns
