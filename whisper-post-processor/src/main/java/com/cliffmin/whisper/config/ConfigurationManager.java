@@ -43,6 +43,15 @@ public class ConfigurationManager {
         if (json.has("llmApiUrl")) b.llmApiUrl(json.get("llmApiUrl").getAsString());
         if (json.has("cacheEnabled")) b.cacheEnabled(json.get("cacheEnabled").getAsBoolean());
         if (json.has("cacheMaxSize")) b.cacheMaxSize(json.get("cacheMaxSize").getAsInt());
+        // Pipeline toggles
+        if (json.has("enableReflow")) b.enableReflow(json.get("enableReflow").getAsBoolean());
+        if (json.has("enableDisfluency")) b.enableDisfluency(json.get("enableDisfluency").getAsBoolean());
+        if (json.has("enableMergedWords")) b.enableMergedWords(json.get("enableMergedWords").getAsBoolean());
+        if (json.has("enableSentences")) b.enableSentences(json.get("enableSentences").getAsBoolean());
+        if (json.has("enableCapitalization")) b.enableCapitalization(json.get("enableCapitalization").getAsBoolean());
+        if (json.has("enableDictionary")) b.enableDictionary(json.get("enableDictionary").getAsBoolean());
+        if (json.has("enablePunctuationNormalization")) b.enablePunctuationNormalization(json.get("enablePunctuationNormalization").getAsBoolean());
+        if (json.has("enablePunctuationRestoration")) b.enablePunctuationRestoration(json.get("enablePunctuationRestoration").getAsBoolean());
         if (json.has("notesDir")) b.notesDir(json.get("notesDir").getAsString());
         if (json.has("audioDeviceIndex")) b.audioDeviceIndex(json.get("audioDeviceIndex").getAsInt());
     }
@@ -59,6 +68,15 @@ public class ConfigurationManager {
         v = getenv("VOX_CACHE_SIZE"); if (v != null) b.cacheMaxSize(Integer.parseInt(v));
         v = getenv("PTT_NOTES_DIR"); if (v != null) b.notesDir(v);
         v = getenv("PTT_AUDIO_DEVICE"); if (v != null) b.audioDeviceIndex(Integer.parseInt(v));
+        // Pipeline toggles via env (1/0)
+        v = getenv("PTT_ENABLE_REFLOW"); if (v != null) b.enableReflow(!isFalsey(v));
+        v = getenv("PTT_ENABLE_DISFLUENCY"); if (v != null) b.enableDisfluency(!isFalsey(v));
+        v = getenv("PTT_ENABLE_MERGED"); if (v != null) b.enableMergedWords(!isFalsey(v));
+        v = getenv("PTT_ENABLE_SENTENCES"); if (v != null) b.enableSentences(!isFalsey(v));
+        v = getenv("PTT_ENABLE_CAPS"); if (v != null) b.enableCapitalization(!isFalsey(v));
+        v = getenv("PTT_ENABLE_DICTIONARY"); if (v != null) b.enableDictionary(!isFalsey(v));
+        v = getenv("PTT_ENABLE_PUNCT_NORMALIZE"); if (v != null) b.enablePunctuationNormalization(!isFalsey(v));
+        v = getenv("PTT_ENABLE_PUNCT_RESTORE"); if (v != null) b.enablePunctuationRestoration(!isFalsey(v));
     }
 
     private String normalizeEndpoint(String base) {

@@ -210,7 +210,17 @@ public class WhisperPostProcessorCLI implements Callable<Integer> {
             pipeline.addProcessor(new PunctuationProcessor());
         }
         
-        // If config exists, we can tweak pipeline defaults in future (placeholder)
+        // If config exists, apply pipeline toggles as defaults (flags still override)
+        if (cfg != null) {
+            if (!cfg.isEnableReflow()) disableReflow = true;
+            if (!cfg.isEnableDisfluency()) disableDisfluency = true;
+            if (!cfg.isEnableMergedWords()) disableMergedWords = true;
+            if (!cfg.isEnableSentences()) disableSentences = true;
+            if (!cfg.isEnableCapitalization()) disableCapitalization = true;
+            if (!cfg.isEnableDictionary()) disableDictionary = true;
+            if (!cfg.isEnablePunctuationNormalization()) disablePunctuation = true;
+            if (!cfg.isEnablePunctuationRestoration()) disablePunctuationRestoration = true;
+        }
         
         // Add dictionary replacements
         if (!disableDictionary) {
