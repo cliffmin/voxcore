@@ -28,6 +28,9 @@ dependencies {
     
     // Logging
     implementation 'org.slf4j:slf4j-simple:2.0.9'
+
+    // HTTP server for daemon
+    implementation 'io.undertow:undertow-core:2.3.10.Final'
     
     // Testing
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'

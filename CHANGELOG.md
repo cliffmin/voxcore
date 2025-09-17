@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Phase 3: Hammerspoon Bridge (2024-09-17)
+#### Added
+- Undertow-based HTTP daemon `PTTServiceDaemon` exposing `/health` and `/transcribe`
+- Lua `java_bridge.lua` to start and call the daemon from Hammerspoon
+- Integration tests for daemon endpoints (`PTTServiceDaemonTest`)
+
 ### Phase 2: Whisper Integration (2024-09-17)
 #### Added
 - **WhisperService interface** for unified transcription API
