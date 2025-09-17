@@ -1,7 +1,33 @@
 # Changelog
 
 ## [Unreleased]
-### Added
+
+### Phase 2: Whisper Integration (2024-09-17)
+#### Added
+- **WhisperService interface** for unified transcription API
+- **WhisperCppAdapter** implementation for fast C++ transcription
+- **AudioProcessor** for comprehensive WAV file handling:
+  - Audio validation and normalization (16kHz, mono, 16-bit)
+  - Speech detection with silence removal (VAD)
+  - Audio splitting for long recordings
+  - Duration and format detection
+- Automatic model selection based on audio duration
+- Async transcription support with CompletableFuture
+- Comprehensive test suite (WhisperServiceTest, AudioProcessorTest)
+- API documentation at `docs/api/whisper-service.md`
+
+### Phase 1: Java Conversion Foundation (2024-09-16)
+#### Added
+- **PunctuationProcessor** to replace Python deepmultilingualpunctuation
+- **Ollama integration handler** for graceful LLM fallback
+- VoxCompose wrapper with 30-second timeout configuration
+- Java conversion plan (`JAVA_CONVERSION_PLAN.md`)
+- Status tracking document (`JAVA_CONVERSION_STATUS.md`)
+- Enhanced CI/CD pipeline with better error handling
+- Best practices guide for Ollama/LLM at `docs/usage/ollama-best-practices.md`
+
+### Previous Improvements
+#### Added
 - **Advanced Java post-processor with three new processors:**
   - **DisfluencyProcessor**: Removes "um", "uh", "you know", "like" and other filler words
   - **ReflowProcessor**: Merges artificially broken segments into continuous thoughts
