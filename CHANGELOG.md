@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Phase 4: Configuration Management (2024-09-17)
+#### Added
+- Configuration and ConfigurationManager with precedence (env > file > defaults)
+- Tests for configuration loading and defaults
+- Documentation for configuration at `docs/setup/configuration.md`
+
 ### Phase 3: Hammerspoon Bridge (2024-09-17)
 #### Added
 - Undertow-based HTTP daemon `PTTServiceDaemon` exposing `/health` and `/transcribe`
