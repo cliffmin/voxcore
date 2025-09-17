@@ -191,6 +191,7 @@ class AccuracyTest {
 /**
  * Performance tests - replaces test_performance.sh and quick_benchmark.sh
  */
+@Tag("integration")
 @Tag("performance")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class PerformanceTest {
