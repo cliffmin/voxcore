@@ -31,6 +31,12 @@ dependencies {
 
     // HTTP server for daemon
     implementation 'io.undertow:undertow-core:2.3.10.Final'
+    implementation 'io.undertow:undertow-websockets-core:2.3.10.Final'
+    implementation 'io.undertow:undertow-websockets-jsr:2.3.10.Final'
+
+    // Metrics
+    implementation 'io.micrometer:micrometer-core:1.11.5'
+    implementation 'io.micrometer:micrometer-registry-prometheus:1.11.5'
     
     // Testing
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'

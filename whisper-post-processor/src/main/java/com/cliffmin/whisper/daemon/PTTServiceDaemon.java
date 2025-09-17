@@ -6,16 +6,21 @@ import com.cliffmin.whisper.audio.AudioProcessor;
 import com.cliffmin.whisper.config.Configuration;
 import com.cliffmin.whisper.config.ConfigurationManager;
 import com.google.gson.Gson;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.prometheus.PrometheusConfig;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 import io.undertow.Undertow;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
+import io.undertow.server.handlers.BlockingHandler;
+import io.undertow.server.handlers.PathHandler;
 import io.undertow.util.Headers;
+import io.undertow.server.handlers.WebSocketProtocolHandshakeHandler;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,6 +37,8 @@ public class PTTServiceDaemon {
     private final ConfigurationManager configManager = new ConfigurationManager();
     private Configuration config;
     private Undertow server;
+    private PrometheusMeterRegistry registry;
+    private Timer transcribeTimer;
 
     public PTTServiceDaemon() {
         this.whisper = new WhisperCppAdapter();
@@ -48,9 +55,13 @@ public class PTTServiceDaemon {
     public void start(int port) {
         // Load configuration (env > file > defaults)
         this.config = loadConfiguration();
+        // Init metrics
+        this.registry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+        this.transcribeTimer = Timer.builder("ptt_transcribe_seconds").publishPercentiles(0.5, 0.95).register(registry);
+
         server = Undertow.builder()
                 .addHttpListener(port, "127.0.0.1")
-                .setHandler(this::route)
+                .setHandler(buildHandler())
                 .build();
         server.start();
     }
@@ -59,17 +70,18 @@ public class PTTServiceDaemon {
         if (server != null) server.stop();
     }
 
-    private void route(HttpServerExchange exchange) throws Exception {
-        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
-        String path = exchange.getRequestPath();
-        if ("/health".equals(path)) {
-            handleHealth(exchange);
-        } else if ("/transcribe".equals(path) && exchange.getRequestMethod().equalToString("POST")) {
-            handleTranscribe(exchange);
-        } else {
-            exchange.setStatusCode(404);
-            exchange.getResponseSender().send("{\"error\":\"not found\"}");
-        }
+    private HttpHandler buildHandler() {
+        PathHandler root = new PathHandler();
+        root.addExactPath("/health", this::handleHealth);
+        root.addExactPath("/transcribe", new BlockingHandler(this::handleTranscribe));
+        root.addExactPath("/metrics", exchange -> {
+            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain; version=0.0.4");
+            exchange.getResponseSender().send(registry.scrape());
+        });
+        WebSocketProtocolHandshakeHandler wsHandler =
+            new WebSocketProtocolHandshakeHandler(new StreamingWebSocket().handler());
+        root.addPrefixPath("/ws", wsHandler);
+        return root;
     }
 
     private void handleHealth(HttpServerExchange exchange) {
@@ -85,6 +97,7 @@ public class PTTServiceDaemon {
 
     private void handleTranscribe(HttpServerExchange exchange) {
         exchange.startBlocking();
+        Timer.Sample sample = Timer.start();
         try {
             // For simplicity, accept a JSON body: { "path": "/abs/path.wav", "model":"base.en" }
             String body = new String(exchange.getInputStream().readAllBytes());
@@ -135,9 +148,11 @@ public class PTTServiceDaemon {
 
             exchange.getResponseSender().send(gson.toJson(resp));
             Files.deleteIfExists(normalized);
+            sample.stop(transcribeTimer);
         } catch (Exception e) {
             exchange.setStatusCode(500);
             exchange.getResponseSender().send(gson.toJson(Map.of("error", e.getMessage())));
+            sample.stop(transcribeTimer);
         }
     }
 
