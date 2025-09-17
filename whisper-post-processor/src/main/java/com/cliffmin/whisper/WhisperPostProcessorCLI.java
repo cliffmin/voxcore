@@ -79,9 +79,13 @@ public class WhisperPostProcessorCLI implements Callable<Integer> {
             description = "Disable punctuation restoration (adds missing punctuation)")
     private boolean disablePunctuationRestoration;
     
-    @Option(names = {"--json"}, 
+@Option(names = {"--json"}, 
             description = "Input is JSON with segments")
     private boolean jsonInput;
+
+    @Option(names = {"--print-config"},
+            description = "Print effective config and exit")
+    private boolean printConfig;
     
     private final ProcessingPipeline pipeline = new ProcessingPipeline();
 
@@ -93,10 +97,28 @@ public class WhisperPostProcessorCLI implements Callable<Integer> {
         // Optional: load configuration to set defaults
         try {
             var cm = new com.cliffmin.whisper.config.ConfigurationManager();
-            var home = System.getProperty("user.home");
-            var path = java.nio.file.Path.of(home, ".config", "ptt-dictation", "config.json");
+            var override = System.getProperty("ptt.config.file");
+            java.nio.file.Path path;
+            if (override != null && !override.isBlank()) {
+                path = java.nio.file.Path.of(override);
+            } else {
+                var home = System.getProperty("user.home");
+                path = java.nio.file.Path.of(home, ".config", "ptt-dictation", "config.json");
+            }
             cfg = cm.load(path);
         } catch (Exception ignored) {}
+
+        if (printConfig) {
+            var g = new com.google.gson.GsonBuilder().setPrettyPrinting().create();
+            System.out.println(g.toJson(new java.util.LinkedHashMap<String,Object>() {{
+                put("language", cfg != null ? cfg.getLanguage() : "en");
+                put("whisperModel", cfg != null ? cfg.getWhisperModel() : "base.en");
+                put("llmEnabled", cfg != null && cfg.isLlmEnabled());
+                put("llmModel", cfg != null ? cfg.getLlmModel() : null);
+                put("llmTimeoutMs", cfg != null ? cfg.getLlmTimeoutMs() : 30000);
+            }}));
+            return 0;
+        }
 
         // Configure pipeline based on options
         configurePipeline();

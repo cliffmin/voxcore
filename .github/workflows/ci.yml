@@ -57,6 +57,12 @@ jobs:
       run: |
         cd whisper-post-processor
         gradle test --no-daemon --info --stacktrace
+
+    - name: Unit test summary
+      if: always()
+      run: |
+        echo "=== Unit Test Summary ==="
+        awk '/tests/ && /completed/' build/reports/tests/test/index.html || true
         
     - name: Generate test report
       if: always()
@@ -134,6 +140,12 @@ jobs:
           echo "Integration tests failed, continuing..."
           exit 0
         }
+
+    - name: Integration test summary
+      if: always()
+      run: |
+        echo "=== Integration Test Summary ==="
+        awk '/tests/ && /completed/' whisper-post-processor/build/reports/tests/integrationTest/index.html || true
 
     - name: Daemon health check
       run: |
