@@ -12,6 +12,10 @@ The PTT Service Daemon exposes a minimal HTTP API to let Hammerspoon (Lua) call 
 
 ## Running locally
 
+Configuration precedence: env > file > defaults
+- File path: `~/.config/ptt-dictation/config.json` (override with `PTT_CONFIG_FILE`)
+- Relevant env vars: `PTT_LANG`, `PTT_WHISPER_MODEL`
+
 ```bash
 # From project root
 ./gradlew :whisper-post-processor:shadowJar

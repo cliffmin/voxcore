@@ -3,6 +3,8 @@ package com.cliffmin.whisper.daemon;
 import com.cliffmin.whisper.service.WhisperService;
 import com.cliffmin.whisper.service.WhisperCppAdapter;
 import com.cliffmin.whisper.audio.AudioProcessor;
+import com.cliffmin.whisper.config.Configuration;
+import com.cliffmin.whisper.config.ConfigurationManager;
 import com.google.gson.Gson;
 import io.undertow.Undertow;
 import io.undertow.server.HttpHandler;
@@ -27,9 +29,13 @@ public class PTTServiceDaemon {
     private final Gson gson = new Gson();
     private final WhisperService whisper = new WhisperCppAdapter();
     private final AudioProcessor audio = new AudioProcessor();
+    private final ConfigurationManager configManager = new ConfigurationManager();
+    private Configuration config;
     private Undertow server;
 
     public void start(int port) {
+        // Load configuration (env > file > defaults)
+        this.config = loadConfiguration();
         server = Undertow.builder()
                 .addHttpListener(port, "127.0.0.1")
                 .setHandler(this::route)
@@ -58,6 +64,10 @@ public class PTTServiceDaemon {
         Map<String, Object> resp = new HashMap<>();
         resp.put("status", "ok");
         resp.put("whisperAvailable", whisper.isAvailable());
+        if (config != null) {
+            resp.put("language", config.getLanguage());
+            resp.put("whisperModel", config.getWhisperModel());
+        }
         exchange.getResponseSender().send(gson.toJson(resp));
     }
 
@@ -68,7 +78,7 @@ public class PTTServiceDaemon {
             String body = new String(exchange.getInputStream().readAllBytes());
             Map<?,?> req = gson.fromJson(body, Map.class);
             String audioPathStr = (String) req.get("path");
-            String model = (String) req.getOrDefault("model", "base.en");
+            String model = (String) req.get("model");
 
             Path audioPath = Path.of(audioPathStr);
             if (!Files.exists(audioPath)) {
@@ -81,13 +91,24 @@ public class PTTServiceDaemon {
             Path normalized = Files.createTempFile("ptt_norm_", ".wav");
             audio.normalizeForWhisper(audioPath, normalized);
 
-            // Detect model based on duration if not provided
+            // Determine language and model (request > config > auto by duration)
             double duration = audio.getDuration(normalized);
-            String selectedModel = (model == null || model.isBlank()) ? whisper.detectModel(duration) : model;
+            String selectedModel;
+            if (model != null && !model.isBlank()) {
+                selectedModel = model;
+            } else if (config != null && config.getWhisperModel() != null) {
+                selectedModel = config.getWhisperModel();
+            } else {
+                selectedModel = whisper.detectModel(duration);
+            }
+
+            String language = (req.get("language") instanceof String s && !s.isBlank())
+                    ? s
+                    : (config != null && config.getLanguage() != null ? config.getLanguage() : "en");
 
             WhisperService.TranscriptionOptions options = new WhisperService.TranscriptionOptions.Builder()
                     .model(selectedModel)
-                    .language("en")
+                    .language(language)
                     .timestamps(true)
                     .build();
 
@@ -112,5 +133,21 @@ public class PTTServiceDaemon {
         int port = 8765;
         new PTTServiceDaemon().start(port);
         System.out.println("PTTServiceDaemon started on http://127.0.0.1:" + port);
+    }
+
+    private Configuration loadConfiguration() {
+        try {
+            String envPath = System.getenv("PTT_CONFIG_FILE");
+            Path path;
+            if (envPath != null && !envPath.isBlank()) {
+                path = Path.of(envPath);
+            } else {
+                String home = System.getProperty("user.home");
+                path = Path.of(home, ".config", "ptt-dictation", "config.json");
+            }
+            return configManager.load(path);
+        } catch (Exception e) {
+            return Configuration.defaults().build();
+        }
     }
 }
