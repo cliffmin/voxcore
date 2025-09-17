@@ -4,8 +4,9 @@
 
 ### Phase 5: Real-time & Metrics (2024-09-17)
 #### Added
-- WebSocket endpoint `/ws` (streaming skeleton)
-- Prometheus metrics at `/metrics`; timer for transcription
+- WebSocket endpoint `/ws` (incremental processing via pipeline; returns `{ processed: ... }`)
+- ContextProcessor that learns term casing from recent text (used in streaming pipeline)
+- Prometheus metrics at `/metrics`; timer for transcription; room to add counters
 
 ### Phase 4: Configuration Management (2024-09-17)
 #### Added

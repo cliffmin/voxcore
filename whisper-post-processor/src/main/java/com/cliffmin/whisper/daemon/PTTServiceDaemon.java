@@ -78,8 +78,19 @@ public class PTTServiceDaemon {
             exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain; version=0.0.4");
             exchange.getResponseSender().send(registry.scrape());
         });
+        // Streaming WS uses the same processing pipeline as CLI
+        var pipeline = new com.cliffmin.whisper.pipeline.ProcessingPipeline();
+        pipeline.addProcessor(new com.cliffmin.whisper.processors.ReflowProcessor());
+        pipeline.addProcessor(new com.cliffmin.whisper.context.ContextProcessor(200));
+        pipeline.addProcessor(new com.cliffmin.whisper.processors.DisfluencyProcessor());
+        pipeline.addProcessor(new com.cliffmin.whisper.processors.MergedWordProcessor());
+        pipeline.addProcessor(new com.cliffmin.whisper.processors.SentenceBoundaryProcessor());
+        pipeline.addProcessor(new com.cliffmin.whisper.processors.CapitalizationProcessor());
+        pipeline.addProcessor(new com.cliffmin.whisper.processors.PunctuationProcessor());
+        pipeline.addProcessor(new com.cliffmin.whisper.processors.DictionaryProcessor());
+        pipeline.addProcessor(new com.cliffmin.whisper.processors.PunctuationNormalizer());
         WebSocketProtocolHandshakeHandler wsHandler =
-            new WebSocketProtocolHandshakeHandler(new StreamingWebSocket().handler());
+            new WebSocketProtocolHandshakeHandler(new StreamingWebSocket(pipeline, v -> null).handler());
         root.addPrefixPath("/ws", wsHandler);
         return root;
     }

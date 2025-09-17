@@ -4,7 +4,7 @@ The PTT Service Daemon exposes a minimal HTTP API to let Hammerspoon (Lua) call 
 
 ## Endpoints
 
-- WebSocket: `ws://127.0.0.1:8765/ws` (streaming; currently echoes back text)
+- WebSocket: `ws://127.0.0.1:8765/ws` (streaming; processes accumulated text via Java pipeline and returns `{ "processed": "..." }`)
 - Metrics: `GET /metrics` (Prometheus format)
 
 - GET /health
