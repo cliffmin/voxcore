@@ -96,6 +96,10 @@ Offline push-to-talk dictation for macOS using Whisper. Every file must directly
 
 ### Adding Dependencies
 
+- Prefer extending existing modules (service/, audio/, daemon/) before adding new packages
+- If adding a new library, justify it in the PR description (why existing tools are insufficient)
+- Update CHANGELOG and docs if behavior changes
+
 1. **Justify necessity**:
    - Can existing tools do this?
    - Is it worth the complexity?
