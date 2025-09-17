@@ -24,7 +24,7 @@ Offline push-to-talk dictation for macOS using Whisper. Every file must directly
 **MUST contain**: Java processors, pipeline logic, tests, Whisper service, audio utils  
 **NEVER add**: UI code, user configs  
 **Structure**: Standard Maven/Gradle layout (`src/main/java`, `src/test/java`)  
-**New**: `service/` (WhisperService, adapters), `audio/` (AudioProcessor)
+**New**: `service/` (WhisperService, adapters), `audio/` (AudioProcessor), `daemon/` (HTTP service)
 
 ### `/scripts/` - Automation & Utilities
 **Purpose**: Setup, testing, analysis tools  
