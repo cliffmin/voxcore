@@ -15,6 +15,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
 
+@org.junit.jupiter.api.Tag("integration")
 class AccuracyTest {
     
     private static ProcessingPipeline pipeline;

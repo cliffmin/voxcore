@@ -134,6 +134,10 @@ jobs:
           echo "Integration tests failed, continuing..."
           exit 0
         }
+
+    - name: Daemon health check
+      run: |
+        bash scripts/testing/daemon_health.sh
         
     - name: Test Whisper pipeline
       run: |
