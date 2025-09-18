@@ -27,7 +27,7 @@ import java.util.concurrent.Callable;
     name = "whisper-post",
     mixinStandardHelpOptions = true,
 version = "0.4.0",
-    description = "Post-processes Whisper transcription output to fix common issues."
+    description = "VoxCore Whisper post-processor: fixes common transcription issues."
 )
 public class WhisperPostProcessorCLI implements Callable<Integer> {
     

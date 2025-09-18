@@ -1,4 +1,4 @@
--- Ollama/LLM Handler for PTT Dictation
+-- Ollama/LLM Handler for VoxCore
 -- Provides graceful fallback when Ollama isn't available
 
 local M = {}

@@ -1,6 +1,6 @@
 # Scripts Directory
 
-Organized utility scripts for the macOS PTT Dictation system.
+Organized utility scripts for the VoxCore system.
 
 ## Directory Structure
 

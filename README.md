@@ -1,4 +1,4 @@
-# macOS Push-to-Talk Dictation
+# VoxCore (formerly macOS Push-to-Talk Dictation)
 
 Note: To enforce branch discipline locally, you can configure a pre-push guard to prevent direct pushes to main:
 
@@ -9,7 +9,7 @@ git config --local hooks.prepush "scripts/ci/prepush.sh"
 [![CI](https://github.com/cliffmin/macos-ptt-dictation/actions/workflows/ci.yml/badge.svg)](https://github.com/cliffmin/macos-ptt-dictation/actions/workflows/ci.yml) 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Offline push-to-talk voice dictation for macOS.** Hold a hotkey to record, release to transcribe and paste text at cursor.
+**VoxCore: Offline push-to-talk voice dictation for macOS.** Hold a hotkey to record, release to transcribe, and paste text at the cursor.
 
 ## Features
 

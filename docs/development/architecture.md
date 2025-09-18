@@ -36,6 +36,6 @@ Key benefits of the Java service
 - Clean API seam (Lua ↔ HTTP/WS) and better CI test surfaces
 
 Why separate repos
-- macos-ptt-dictation: macOS automation, capture, transcription, UX, files, logs
+- VoxCore: macOS automation, capture, transcription, UX, files, logs
 - VoxCompose: refinement and formatting with pluggable providers
 

@@ -120,7 +120,7 @@ public class PunctuationProcessor implements TextProcessor {
             text = Character.toUpperCase(text.charAt(0)) + text.substring(1);
         }
         
-        // Capitalize after sentence endings
+        // Capitalize after sentence endings (across whitespace, including newlines)
         Pattern sentenceEnd = Pattern.compile("([.!?]\\s+)([a-z])");
         Matcher matcher = sentenceEnd.matcher(text);
         
@@ -131,15 +131,27 @@ public class PunctuationProcessor implements TextProcessor {
         matcher.appendTail(sb);
         text = sb.toString();
         
-        // Also capitalize at start of each line
-        java.util.regex.Pattern lineStart = java.util.regex.Pattern.compile("(?m)^(\\s*)([a-z])");
-        java.util.regex.Matcher lm = lineStart.matcher(text);
-        StringBuffer lsb = new StringBuffer();
-        while (lm.find()) {
-            lm.appendReplacement(lsb, lm.group(1) + lm.group(2).toUpperCase());
+        // Capitalize at start of non-empty lines only, preserving entirely blank lines
+        // We avoid regex replacement here to make the intent explicit.
+        String[] lines = text.split("\n", -1); // preserve trailing empty lines
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            if (line.trim().isEmpty()) {
+                // Preserve blank/whitespace-only lines exactly
+                continue;
+            }
+            int idx = 0;
+            while (idx < line.length() && Character.isWhitespace(line.charAt(idx))) {
+                idx++;
+            }
+            if (idx < line.length()) {
+                char ch = line.charAt(idx);
+                if (Character.isLowerCase(ch)) {
+                    lines[i] = line.substring(0, idx) + Character.toUpperCase(ch) + line.substring(idx + 1);
+                }
+            }
         }
-        lm.appendTail(lsb);
-        text = lsb.toString();
+        text = String.join("\n", lines);
         
         return text;
     }
