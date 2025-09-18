@@ -3,6 +3,8 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [ main, develop, feature/** ]
+    tags:
+      - 'v*.*.*'
   pull_request:
     branches: [ main ]
     types: [opened, synchronize, reopened, ready_for_review]
@@ -13,6 +15,9 @@ on:
         description: 'Run with debug logging'
         required: false
         default: false
+
+permissions:
+  contents: write
 
 env:
   JAVA_VERSION: '17'
@@ -274,7 +279,7 @@ jobs:
     name: Release Build
     runs-on: macos-latest
     needs: [java-tests, integration-tests, lua-shell-tests, quality-checks]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || startsWith(github.ref, 'refs/tags/v')
     
     steps:
     - uses: actions/checkout@v4
@@ -307,14 +312,26 @@ jobs:
         cp -r hammerspoon release/
         cp -r scripts release/
         cp README.md CHANGELOG.md LICENSE release/
-        tar -czf macos-ptt-dictation-release.tar.gz release/
+        tar -czf voxcore-release.tar.gz release/
         
     - name: Upload release artifact
       uses: actions/upload-artifact@v4
       with:
         name: release-bundle
-        path: macos-ptt-dictation-release.tar.gz
+        path: voxcore-release.tar.gz
         retention-days: 30
+    
+    - name: Create GitHub Release (on tag)
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v2
+      with:
+        draft: false
+        prerelease: false
+        files: |
+          voxcore-release.tar.gz
+          whisper-post-processor/dist/whisper-post.jar
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Status check - Required for branch protection
   status:

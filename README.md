@@ -6,7 +6,7 @@ Note: To enforce branch discipline locally, you can configure a pre-push guard t
 git config --local hooks.prepush "scripts/ci/prepush.sh"
 ```
 
-[![CI](https://github.com/cliffmin/macos-ptt-dictation/actions/workflows/ci.yml/badge.svg)](https://github.com/cliffmin/macos-ptt-dictation/actions/workflows/ci.yml) 
+[![CI](https://github.com/cliffmin/voxcore/actions/workflows/ci.yml/badge.svg)](https://github.com/cliffmin/voxcore/actions/workflows/ci.yml) 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **VoxCore: Offline push-to-talk voice dictation for macOS.** Hold a hotkey to record, release to transcribe, and paste text at the cursor.
@@ -28,8 +28,8 @@ brew install --cask hammerspoon
 brew install ffmpeg whisper-cpp openjdk@17
 
 # Clone and setup
-git clone https://github.com/cliffmin/macos-ptt-dictation.git
-cd macos-ptt-dictation
+git clone https://github.com/cliffmin/voxcore.git
+cd voxcore
 ./scripts/setup/install.sh
 
 # Build Java post-processor (optional but recommended)
