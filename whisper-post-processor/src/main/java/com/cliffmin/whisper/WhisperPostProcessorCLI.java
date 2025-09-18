@@ -109,14 +109,14 @@ public class WhisperPostProcessorCLI implements Callable<Integer> {
         } catch (Exception ignored) {}
 
         if (printConfig) {
-            var g = new com.google.gson.GsonBuilder().setPrettyPrinting().create();
-            System.out.println(g.toJson(new java.util.LinkedHashMap<String,Object>() {{
-                put("language", cfg != null ? cfg.getLanguage() : "en");
-                put("whisperModel", cfg != null ? cfg.getWhisperModel() : "base.en");
-                put("llmEnabled", cfg != null && cfg.isLlmEnabled());
-                put("llmModel", cfg != null ? cfg.getLlmModel() : null);
-                put("llmTimeoutMs", cfg != null ? cfg.getLlmTimeoutMs() : 30000);
-            }}));
+            var g = new com.google.gson.Gson(); // compact JSON to match tests
+            java.util.Map<String,Object> m = new java.util.LinkedHashMap<>();
+            m.put("language", cfg != null ? cfg.getLanguage() : "en");
+            m.put("whisperModel", cfg != null ? cfg.getWhisperModel() : "base.en");
+            m.put("llmEnabled", cfg != null && cfg.isLlmEnabled());
+            if (cfg != null && cfg.getLlmModel() != null) m.put("llmModel", cfg.getLlmModel());
+            m.put("llmTimeoutMs", cfg != null ? cfg.getLlmTimeoutMs() : 30000);
+            System.out.println(g.toJson(m));
             return 0;
         }
 

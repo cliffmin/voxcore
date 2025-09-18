@@ -81,10 +81,10 @@ public class PunctuationProcessor implements TextProcessor {
     
     private String addCommas(String text) {
         // Add commas after common introductory adverbs
-        text = text.replaceAll("\\b(However|Therefore|Moreover|Furthermore|Additionally|Also|Next|Then|Finally)\\s+", "$1, ");
+        text = text.replaceAll("(?i)\\b(However|Therefore|Moreover|Furthermore|Additionally|Also|Next|Then|Finally)\\s+", "$1, ");
         
-        // Add commas after enumerators only when followed by a pronoun (to avoid 'First sentence' false positives)
-        text = text.replaceAll("(?m)^(First|Second|Third)\\s+(?=(I|We|You|They|He|She|It)\\b)", "$1, ");
+        // Add commas after enumerators at line start only when followed by a pronoun (heuristic for "First, we ...")
+        text = text.replaceAll("(?mi)^(First|Second|Third)\\s+(?=(i|we|you|they|he|she|it)\\b)", "$1, ");
         
         // Add commas before coordinating conjunctions in compound sentences
         text = text.replaceAll("\\s+(but|and|or|nor|for|yet|so)\\s+(?=[A-Z])", ", $1 ");
@@ -129,8 +129,19 @@ public class PunctuationProcessor implements TextProcessor {
             matcher.appendReplacement(sb, matcher.group(1) + matcher.group(2).toUpperCase());
         }
         matcher.appendTail(sb);
+        text = sb.toString();
         
-        return sb.toString();
+        // Also capitalize at start of each line
+        java.util.regex.Pattern lineStart = java.util.regex.Pattern.compile("(?m)^(\\s*)([a-z])");
+        java.util.regex.Matcher lm = lineStart.matcher(text);
+        StringBuffer lsb = new StringBuffer();
+        while (lm.find()) {
+            lm.appendReplacement(lsb, lm.group(1) + lm.group(2).toUpperCase());
+        }
+        lm.appendTail(lsb);
+        text = lsb.toString();
+        
+        return text;
     }
     
     @Override

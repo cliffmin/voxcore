@@ -66,6 +66,11 @@ public class DisfluencyProcessor implements TextProcessor {
         // Capitalize after sentence endings
         result = capitalizeAfterSentenceEnds(result);
         
+        // Ensure the first character is capitalized if it starts with a letter
+        if (!result.isEmpty() && Character.isLowerCase(result.charAt(0))) {
+            result = Character.toUpperCase(result.charAt(0)) + result.substring(1);
+        }
+        
         return result;
     }
     

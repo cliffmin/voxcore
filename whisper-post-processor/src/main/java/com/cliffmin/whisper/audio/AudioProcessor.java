@@ -96,8 +96,8 @@ public class AudioProcessor {
         try {
             AudioInfo info = getAudioInfo(audioPath);
             
-            // Check duration (not too short, not too long) when duration is known
-            if (info.duration > 0 && (info.duration < 0.1 || info.duration > 3600)) {
+            // Check duration upper bound when duration is known
+            if (info.duration > 0 && info.duration > 3600) {
                 log.warn("Audio duration out of range: {} seconds", info.duration);
                 return false;
             }
