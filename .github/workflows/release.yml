@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   artifacts:
     runs-on: ubuntu-latest
@@ -25,7 +28,7 @@ jobs:
 
       - name: Build quickstart zip
         run: |
-          zip -r quickstart-${GITHUB_REF_NAME}.zip hammerspoon scripts/install.sh LICENSE README.md
+          zip -r quickstart-${GITHUB_REF_NAME}.zip hammerspoon scripts/setup/install.sh LICENSE README.md
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
