@@ -39,7 +39,7 @@ macos-ptt-dictation/
 │   ├── ptt_config.lua.sample  # Configuration template
 │   └── whisper_wrapper.lua    # Whisper integration
 │
-├── whisper-post-processor/     # Java text post-processor
+├── whisper-post-processor/     # Java text post-processor & service (Undertow HTTP/WS, Prometheus metrics)
 │   ├── build.gradle           # Gradle build configuration
 │   ├── settings.gradle        # Gradle settings
 │   ├── gradle.properties      # Gradle properties
@@ -48,8 +48,8 @@ macos-ptt-dictation/
 │   ├── gradle/               # Gradle wrapper files
 │   ├── src/                  # Java source code
 │   │   ├── main/java/        # Main implementation
-│   │   │   └── processors/   # Text processors (Reflow, Disfluency, Dictionary)
-│   │   └── test/java/        # Tests
+│   │   │   └── processors/   # Text processors (Reflow, Context, Disfluency, Dictionary, etc.)
+│   │   └── test/java/        # Tests (unit, integration; unit excludes @Tag("integration"))
 │   │       ├── processors/   # Unit tests for each processor
 │   │       └── integration/  # E2E integration tests
 │   ├── build/                # Build output (GITIGNORED)

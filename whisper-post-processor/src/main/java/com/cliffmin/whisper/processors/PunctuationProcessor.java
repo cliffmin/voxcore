@@ -80,8 +80,11 @@ public class PunctuationProcessor implements TextProcessor {
     }
     
     private String addCommas(String text) {
-        // Add commas after introductory words
-        text = text.replaceAll("\\b(However|Therefore|Moreover|Furthermore|Additionally|Also|Next|Then|Finally|First|Second|Third)\\s+", "$1, ");
+        // Add commas after common introductory adverbs
+        text = text.replaceAll("(?i)\\b(However|Therefore|Moreover|Furthermore|Additionally|Also|Next|Then|Finally)\\s+", "$1, ");
+        
+        // Add commas after enumerators at line start only when followed by a pronoun (heuristic for "First, we ...")
+        text = text.replaceAll("(?mi)^(First|Second|Third)\\s+(?=(i|we|you|they|he|she|it)\\b)", "$1, ");
         
         // Add commas before coordinating conjunctions in compound sentences
         text = text.replaceAll("\\s+(but|and|or|nor|for|yet|so)\\s+(?=[A-Z])", ", $1 ");
@@ -102,6 +105,9 @@ public class PunctuationProcessor implements TextProcessor {
         // Remove duplicate punctuation
         text = text.replaceAll("([.!?])+", "$1");
         
+        // Fix comma before question/exclamation (",?" -> "?")
+        text = text.replaceAll(",\\s*([!?])", "$1");
+        
         // Fix multiple commas
         text = text.replaceAll(",\\s*,+", ",");
         
@@ -114,7 +120,7 @@ public class PunctuationProcessor implements TextProcessor {
             text = Character.toUpperCase(text.charAt(0)) + text.substring(1);
         }
         
-        // Capitalize after sentence endings
+        // Capitalize after sentence endings (across whitespace, including newlines)
         Pattern sentenceEnd = Pattern.compile("([.!?]\\s+)([a-z])");
         Matcher matcher = sentenceEnd.matcher(text);
         
@@ -123,8 +129,31 @@ public class PunctuationProcessor implements TextProcessor {
             matcher.appendReplacement(sb, matcher.group(1) + matcher.group(2).toUpperCase());
         }
         matcher.appendTail(sb);
+        text = sb.toString();
         
-        return sb.toString();
+        // Capitalize at start of non-empty lines only, preserving entirely blank lines
+        // We avoid regex replacement here to make the intent explicit.
+        String[] lines = text.split("\n", -1); // preserve trailing empty lines
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            if (line.trim().isEmpty()) {
+                // Preserve blank/whitespace-only lines exactly
+                continue;
+            }
+            int idx = 0;
+            while (idx < line.length() && Character.isWhitespace(line.charAt(idx))) {
+                idx++;
+            }
+            if (idx < line.length()) {
+                char ch = line.charAt(idx);
+                if (Character.isLowerCase(ch)) {
+                    lines[i] = line.substring(0, idx) + Character.toUpperCase(ch) + line.substring(idx + 1);
+                }
+            }
+        }
+        text = String.join("\n", lines);
+        
+        return text;
     }
     
     @Override

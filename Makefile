@@ -2,7 +2,7 @@
 
 # Default target
 help:
-	@echo "Push-to-Talk Dictation - Make Targets"
+	@echo "VoxCore - Make Targets"
 	@echo "====================================="
 	@echo ""
 	@echo "  make install      - Install dependencies and setup symlinks"
@@ -16,7 +16,7 @@ help:
 
 # Install dependencies and setup
 install:
-	@echo "Installing push-to-talk dictation..."
+	@echo "Installing VoxCore..."
 	@bash scripts/install.sh
 
 # Run all tests

@@ -50,3 +50,5 @@ models/
 # Personal voice notes
 VoiceNotes/
 Documents/VoiceNotes/
+.env
+.envrc

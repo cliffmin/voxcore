@@ -1,10 +1,10 @@
 # Refiner Plugin API Specification
 
 ## Overview
-This document defines the simple interface between macos-ptt-dictation and refiner plugins (like VoxCompose).
+This document defines the simple interface between VoxCore and refiner plugins (like VoxCompose).
 
 ## Philosophy
-- **macos-ptt-dictation**: Dumb, fast, reliable transcription
+- **VoxCore**: Dumb, fast, reliable transcription
 - **Refiner plugins**: Smart, adaptive, configurable post-processing
 
 ## Plugin Capabilities Discovery
@@ -44,11 +44,11 @@ voxcompose --capabilities
 
 ## How It Works
 
-1. **On Startup**: macos-ptt-dictation queries refiner capabilities
+1. **On Startup**: VoxCore queries refiner capabilities
 2. **Dynamic Configuration**: Thresholds and models adjust based on refiner response
 3. **Fallback**: If no capabilities response, use defaults from ptt_config.lua
 
-## Implementation in macos-ptt-dictation
+## Implementation in VoxCore
 
 ```lua
 -- In push_to_talk.lua initialization
