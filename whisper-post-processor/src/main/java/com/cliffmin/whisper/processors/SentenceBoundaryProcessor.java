@@ -25,6 +25,9 @@ public class SentenceBoundaryProcessor implements TextProcessor {
         // Split very long run-on sentences
         result = splitLongSentences(result);
         
+        // Insert boundaries at common conjunction patterns (minimal heuristic)
+        result = insertBoundaryAtConjunctions(result);
+        
         // Ensure sentences end with punctuation
         result = ensureSentenceEndings(result);
         
@@ -102,6 +105,20 @@ public class SentenceBoundaryProcessor implements TextProcessor {
             text = text.trim() + ".";
         }
         return text;
+    }
+    
+    private String insertBoundaryAtConjunctions(String text) {
+        // Minimal rule: replace " and <pronoun>" with ". <Pronoun>" when mid-sentence
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile("(?i)\\band\\s+(this|that|it|we|i|you|they)\\b");
+        java.util.regex.Matcher m = p.matcher(text);
+        StringBuffer sb = new StringBuffer();
+        while (m.find()) {
+            String pronoun = m.group(1);
+            String cap = Character.toUpperCase(pronoun.charAt(0)) + pronoun.substring(1);
+            m.appendReplacement(sb, ". " + cap);
+        }
+        m.appendTail(sb);
+        return sb.toString();
     }
     
     @Override

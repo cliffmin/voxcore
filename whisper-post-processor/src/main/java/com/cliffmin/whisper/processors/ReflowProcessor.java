@@ -143,18 +143,13 @@ public class ReflowProcessor implements TextProcessor {
     }
     
     private String processPlainText(String text) {
-        // Simple reflow for plain text
+        // Simple reflow for plain text: collapse all newlines to a single space
         text = text.replaceAll("\\r\\n", "\n");
-        
-        // Mark double newlines, collapse singles, restore doubles
-        text = text.replaceAll("\\n\\n", "<P>\n");
-        text = text.replaceAll("\\n", " ");
-        text = text.replaceAll("<P>\n", "\n\n");
+        text = text.replaceAll("\\n+", " ");
         
         // Normalize spacing
         text = text.replaceAll("\\s+([,.:;!?])", "$1");
         text = text.replaceAll("[ \\t]+", " ");
-        text = text.replaceAll("[ \\t]+\\n", "\n");
         
         return text.trim();
     }

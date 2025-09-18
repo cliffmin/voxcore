@@ -1,4 +1,4 @@
-# Whisper Post-Processor
+# VoxCore Whisper Post-Processor
 
 A Java-based post-processor that fixes common Whisper transcription issues like merged words, missing punctuation, and run-on sentences.
 

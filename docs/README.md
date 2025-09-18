@@ -1,4 +1,4 @@
-# Documentation
+# VoxCore Documentation
 
 ## For Users
 - **[Setup](setup/)** - Installation and configuration

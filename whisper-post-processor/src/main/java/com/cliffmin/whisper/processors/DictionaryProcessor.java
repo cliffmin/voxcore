@@ -52,12 +52,15 @@ public class DictionaryProcessor implements TextProcessor {
     }
     
     private Map<String, String> loadDictionary() {
-        Map<String, String> dict = new HashMap<>();
+        Map<String, String> dict = defaultReplacements();
         
         // Try loading from multiple sources
+        String home = System.getProperty("user.home");
         String[] paths = {
-            System.getProperty("user.home") + "/.config/ptt-dictation/corrections.json",
-            System.getProperty("user.home") + "/.config/voxcompose/corrections.json",
+            home + "/.config/ptt-dictation/dictionary.json",
+            home + "/.config/ptt-dictation/corrections.json",
+            home + "/.config/voxcompose/corrections.json",
+            "/usr/local/share/ptt-dictation/dictionary.json",
             "/usr/local/share/ptt-dictation/corrections.json"
         };
         
@@ -65,10 +68,11 @@ public class DictionaryProcessor implements TextProcessor {
             Path path = Paths.get(pathStr);
             if (Files.exists(path)) {
                 try {
-                    dict = loadJsonDictionary(path);
-                    if (!dict.isEmpty()) {
+                    Map<String, String> loaded = loadJsonDictionary(path);
+                    if (!loaded.isEmpty()) {
+                        dict.putAll(loaded);
                         System.err.println("Loaded dictionary from: " + pathStr);
-                        break;
+                        // Do not break; allow later files to add/override
                     }
                 } catch (IOException e) {
                     // Try next source
@@ -94,27 +98,54 @@ public class DictionaryProcessor implements TextProcessor {
         Gson gson = new Gson();
         String content = new String(Files.readAllBytes(path));
         
-        // Try to parse as simple map first
+        // 1) Support simple map { "key": "value" }
         try {
             TypeToken<Map<String, String>> typeToken = new TypeToken<Map<String, String>>() {};
-            return gson.fromJson(content, typeToken.getType());
-        } catch (Exception e) {
-            // Try VoxCompose format
-            try {
-                VoxComposeDict voxDict = gson.fromJson(content, VoxComposeDict.class);
+            Map<String, String> m = gson.fromJson(content, typeToken.getType());
+            if (m != null) return m;
+        } catch (Exception ignore) {}
+        
+        // 2) Support { "replacements": { ... } }
+        try {
+            com.google.gson.JsonObject obj = gson.fromJson(content, com.google.gson.JsonObject.class);
+            if (obj != null && obj.has("replacements") && obj.get("replacements").isJsonObject()) {
                 Map<String, String> result = new HashMap<>();
-                if (voxDict.corrections != null) {
-                    for (Map.Entry<String, VoxCorrection> entry : voxDict.corrections.entrySet()) {
-                        if (entry.getValue().confidence > 0.8) {
-                            result.put(entry.getKey(), entry.getValue().to);
-                        }
-                    }
+                for (var e : obj.getAsJsonObject("replacements").entrySet()) {
+                    result.put(e.getKey(), e.getValue().getAsString());
                 }
                 return result;
-            } catch (Exception e2) {
-                return new HashMap<>();
             }
-        }
+        } catch (Exception ignore) {}
+        
+        // 3) VoxCompose format
+        try {
+            VoxComposeDict voxDict = gson.fromJson(content, VoxComposeDict.class);
+            Map<String, String> result = new HashMap<>();
+            if (voxDict != null && voxDict.corrections != null) {
+                for (Map.Entry<String, VoxCorrection> entry : voxDict.corrections.entrySet()) {
+                    if (entry.getValue().confidence > 0.8) {
+                        result.put(entry.getKey(), entry.getValue().to);
+                    }
+                }
+            }
+            return result;
+        } catch (Exception ignore) {}
+        
+        return new HashMap<>();
+    }
+    
+    private Map<String, String> defaultReplacements() {
+        Map<String, String> m = new HashMap<>();
+        // Common tech terms used in tests and typical transcripts
+        m.put("github", "GitHub");
+        m.put("javascript", "JavaScript");
+        m.put("typescript", "TypeScript");
+        m.put("nodejs", "Node.js");
+        m.put("json", "JSON");
+        m.put("xml", "XML");
+        m.put("api", "API");
+        m.put("python", "Python");
+        return m;
     }
     
     @Override
