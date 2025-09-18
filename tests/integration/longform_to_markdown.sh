@@ -6,7 +6,7 @@ set -euo pipefail
 # 1) LONGFORM_WAV_PATH env var, or
 # 2) tests/fixtures/local_longform.wav symlink to your real file.
 
-# Repo root for macos-ptt-dictation
+# Repo root for voxcore
 REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 VOX_JAR="$HOME/code/voxcompose/build/libs/voxcompose-0.1.0-all.jar"
 WHISPER_BIN="$HOME/.local/bin/whisper"

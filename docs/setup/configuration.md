@@ -3,7 +3,7 @@
 Configuration is done via `~/.hammerspoon/ptt_config.lua` (a sample is installed by `scripts/setup/install.sh`).
 
 XDG fallback
-- Also supported: `~/.config/macos-ptt-dictation/ptt_config.lua` or `$XDG_CONFIG_HOME/macos-ptt-dictation/ptt_config.lua`
+- Also supported: `~/.config/voxcore/ptt_config.lua` or `$XDG_CONFIG_HOME/voxcore/ptt_config.lua` (legacy macos-ptt-dictation paths also supported)
 
 ## Core Settings
 

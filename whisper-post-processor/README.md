@@ -16,8 +16,8 @@ A Java-based post-processor that fixes common Whisper transcription issues like 
 
 ```bash
 # Clone the repo (if not already)
-git clone https://github.com/yourusername/macos-ptt-dictation.git
-cd macos-ptt-dictation/whisper-post-processor
+git clone https://github.com/cliffmin/voxcore.git
+cd voxcore/whisper-post-processor
 
 # Run the install script
 ./install.sh
