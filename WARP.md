@@ -1,6 +1,6 @@
 # Canonical Repository Structure
 
-This document defines the canonical structure of the macos-ptt-dictation repository.
+This document defines the canonical structure of the VoxCore repository.
 Any files or directories not listed here should be considered non-canonical and potentially subject to cleanup.
 
 ## Purpose
@@ -11,7 +11,7 @@ Files should only exist if they directly support this purpose or its development
 ## Canonical Structure
 
 ```
-macos-ptt-dictation/
+voxcore/
 │
 ├── README.md                    # Main entry point, lean overview (max 100 lines)
 ├── CHANGELOG.md                 # Version history following Keep a Changelog format
