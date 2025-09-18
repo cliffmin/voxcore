@@ -17,7 +17,7 @@ Log example
 {
   "ts": "2025-08-30T21:59:30Z",
   "kind": "success",
-  "app": "macos-ptt-dictation",
+  "app": "voxcore",
   "model": "base.en",
   "device": "cpu",
   "beam_size": 3,

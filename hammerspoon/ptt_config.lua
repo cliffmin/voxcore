@@ -86,7 +86,7 @@ return {
     ENABLED_FOR_TOGGLE = true,
     ENABLED_FOR_HOLD = false,
     -- Command to invoke; default uses repo-local scripts/utilities/punctuate.py via Python 3
-    CMD = { "/usr/bin/env", "python3", (os.getenv("HOME") or "") .. "/code/macos-ptt-dictation/scripts/utilities/punctuate.py" },
+    CMD = { "/usr/bin/env", "python3", (os.getenv("HOME") or "") .. "/code/voxcore/scripts/utilities/punctuate.py" },
     TIMEOUT_MS = 2500,  -- fail open (pass-through) after this many ms
   },
 
