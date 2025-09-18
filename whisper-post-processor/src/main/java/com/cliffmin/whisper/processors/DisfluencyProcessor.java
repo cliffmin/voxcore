@@ -26,7 +26,7 @@ public class DisfluencyProcessor implements TextProcessor {
             )),
             new HashSet<>(Arrays.asList(
                 "um", "uh", "uhh", "uhm", "er", "erm",
-                "so", "well", "you know", "i mean", "actually",
+                "well", "you know", "i mean", "actually",
                 "basically", "literally"
             )),
             true
@@ -59,6 +59,17 @@ public class DisfluencyProcessor implements TextProcessor {
         
         // Remove immediate repeats
         result = dedupeImmediateRepeats(result);
+        
+        // Cleanup awkward punctuation (e.g., ",?" -> "?")
+        result = result.replaceAll(",\\s*([!?])", "$1");
+        
+        // Capitalize after sentence endings
+        result = capitalizeAfterSentenceEnds(result);
+        
+        // Ensure the first character is capitalized if it starts with a letter
+        if (!result.isEmpty() && Character.isLowerCase(result.charAt(0))) {
+            result = Character.toUpperCase(result.charAt(0)) + result.substring(1);
+        }
         
         return result;
     }
@@ -99,6 +110,17 @@ public class DisfluencyProcessor implements TextProcessor {
         return result;
     }
     
+    private String capitalizeAfterSentenceEnds(String text) {
+        java.util.regex.Pattern sentenceEnd = java.util.regex.Pattern.compile("([.!?]\\s+)([a-z])");
+        java.util.regex.Matcher matcher = sentenceEnd.matcher(text);
+        StringBuffer sb = new StringBuffer();
+        while (matcher.find()) {
+            matcher.appendReplacement(sb, matcher.group(1) + matcher.group(2).toUpperCase());
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
+    
     private String removeStandaloneDisfluencies(String text) {
         if (text == null || text.isEmpty()) {
             return text;
@@ -110,15 +132,21 @@ public class DisfluencyProcessor implements TextProcessor {
                 // For phrases, ensure word boundaries around the entire phrase
                 String pattern = "\\b" + Pattern.quote(disfluency) + "\\b\\s*[,.]?";
                 text = text.replaceAll("(?i)" + pattern, " ");
+            } else if ("like".equalsIgnoreCase(disfluency)) {
+                // Only remove filler "like" when it's clearly filler:
+                // 1) "like," with trailing comma
+                text = text.replaceAll("(?i)\\blike\\s*,\\s*", "");
+                // 2) preceded by a comma: ", like <word>" -> ", <word>"
+                text = text.replaceAll("(?i),\\s*like\\b\\s*", ", ");
             } else {
-                // For single words, standard word boundary matching
+                // For other single words, standard word boundary matching
                 String pattern = "\\b" + Pattern.quote(disfluency) + "\\b\\s*[,.]?";
                 text = text.replaceAll("(?i)" + pattern, " ");
             }
         }
         
-        // Handle stuttering patterns (e.g., "th-th-this" -> "this")
-        text = text.replaceAll("\\b(\\w{1,2})-(\\1-)+", "");
+        // Handle stuttering patterns (e.g., "Th-th-this" or "t-t-test") case-insensitively
+        text = text.replaceAll("(?i)\\b(\\w{1,2})-(\\1-)+", "");
         
         // Clean up extra spaces and punctuation
         text = text.replaceAll("\\s+", " ");

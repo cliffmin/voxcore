@@ -1,13 +1,16 @@
 # Architecture
 
 Overview
-- Hammerspoon module: hammerspoon/push_to_talk.lua
-- Config: hammerspoon/ptt_config.lua
+- Hammerspoon (Lua): macOS automation & UX (hotkeys, notifications)
 - Audio capture: ffmpeg avfoundation → 16 kHz mono WAV
-- Transcription: ~/.local/bin/whisper (openai-whisper via pipx)
-- Long audio: preprocess (normalize/compress) for clips ≥ 12s
-- Outputs: per-session folder in ~/Documents/VoiceNotes
-- Optional refine: VoxCompose CLI to Markdown
+- Java Service (Undertow): long-running daemon (no per-request JVM cold-start)
+  - HTTP: /health, /transcribe, /metrics (Prometheus)
+  - WebSocket: /ws (incremental processing of accumulated text)
+- Transcription: whisper.cpp via WhisperService/WhisperCppAdapter
+- Java Post-Processor Pipeline: Reflow → Context → Disfluency → MergedWord → Sentences → Capitalization → PunctuationProcessor → Dictionary → PunctuationNormalizer
+- Config precedence: request > env/file (~/.config/ptt-dictation/config.json) > defaults
+- Outputs: pasted text (Hammerspoon), optional files/logs
+- Optional refine: VoxCompose remains supported but Java now covers most cleanup
 
 Log example
 ```json path=null start=null
@@ -26,7 +29,13 @@ Log example
 }
 ```
 
+Key benefits of the Java service
+- Faster start-of-speech capture (service is warm; avoids JVM cold-start delays that used to truncate first words when combined with silence gating)
+- Real-time streaming via WebSocket (incremental refinement)
+- Observability via Prometheus metrics
+- Clean API seam (Lua ↔ HTTP/WS) and better CI test surfaces
+
 Why separate repos
-- macos-ptt-dictation: macOS automation, capture, transcription, UX, files, logs
+- VoxCore: macOS automation, capture, transcription, UX, files, logs
 - VoxCompose: refinement and formatting with pluggable providers
 

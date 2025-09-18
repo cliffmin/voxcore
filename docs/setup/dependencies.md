@@ -2,7 +2,7 @@
 
 ## Overview
 
-macos-ptt-dictation is a hybrid application with a clear separation of concerns:
+VoxCore is a hybrid application with a clear separation of concerns:
 - **Core**: Lua (Hammerspoon) for macOS automation
 - **Post-processing**: Java for transcript cleaning
 - **Optional Tools**: Python via pipx for transcription and punctuation

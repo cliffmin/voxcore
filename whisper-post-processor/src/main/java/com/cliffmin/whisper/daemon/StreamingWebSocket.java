@@ -37,7 +37,7 @@ public class StreamingWebSocket {
     public WebSocketConnectionCallback handler() {
         return (WebSocketHttpExchange exchange, WebSocketChannel channel) -> {
             buffers.put(channel, new StringBuilder());
-            channel.addCloseTask((ch, msg) -> buffers.remove(ch));
+            channel.addCloseTask(ch -> buffers.remove(ch));
             channel.getReceiveSetter().set(new AbstractReceiveListener() {
                 @Override
                 protected void onFullTextMessage(WebSocketChannel channel, BufferedTextMessage message) {
