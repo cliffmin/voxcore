@@ -21,7 +21,7 @@ dependencies {
     implementation 'info.picocli:picocli:4.7.5'
     
     // JSON processing
-    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'com.google.code.gson:gson:2.13.2'
     
     // String utilities
     implementation 'org.apache.commons:commons-lang3:3.14.0'
