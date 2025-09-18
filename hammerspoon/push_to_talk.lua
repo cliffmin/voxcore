@@ -509,7 +509,7 @@ local function logEvent(kind, data)
   local payload = {
     ts = isoNow(),
     kind = kind,
-    app = "macos-ptt-dictation",
+    app = "voxcore",
     model = MODEL,
     device = WHISPER_DEVICE,
     beam_size = BEAM_SIZE,
