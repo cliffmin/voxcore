@@ -1,5 +1,5 @@
 -- hammerspoon/ptt_config.lua
--- Tunables for macos-ptt-dictation
+-- Tunables for VoxCore
 
 return {
   -- Domain prompt biases Whisper toward your vocabulary and phrasing.

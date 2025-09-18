@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-09-17
+- Java service (HTTP/WS) with configuration and metrics
+- Reliable start-of-speech capture (reduced first-word truncation due to warm service)
+- Config precedence (request > env/file > defaults) and pipeline toggles applied in CLI/daemon
+- ContextProcessor (learns term casing) used in streaming pipeline
+- WebSocket streaming marked experimental; HTTP endpoints considered stable
+
 ### Phase 5: Real-time & Metrics (2024-09-17)
 #### Added
 - WebSocket endpoint `/ws` (incremental processing via pipeline; returns `{ processed: ... }`)

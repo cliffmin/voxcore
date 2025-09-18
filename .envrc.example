@@ -1,0 +1,4 @@
+# Inherit env from parent (e.g., /Users/<user>/code/.envrc)
+source_up
+# Optional repo-local overrides (untracked)
+# dotenv_if_exists .env

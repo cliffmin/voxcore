@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in improving macos-ptt-dictation.
+Thanks for your interest in improving VoxCore.
 
 ## How to propose a change
 - Open an issue describing the problem or the proposed change

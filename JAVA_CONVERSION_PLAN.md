@@ -1,5 +1,5 @@
 # Java Conversion Implementation Plan
-## macOS PTT Dictation System
+## VoxCore System
 
 ### Overview
 Complete migration from Python/shell scripts to Java-based processing pipeline while maintaining all functionality and improving performance.

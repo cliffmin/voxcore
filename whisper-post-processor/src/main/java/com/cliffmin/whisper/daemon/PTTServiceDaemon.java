@@ -16,7 +16,7 @@ import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.BlockingHandler;
 import io.undertow.server.handlers.PathHandler;
 import io.undertow.util.Headers;
-import io.undertow.server.handlers.WebSocketProtocolHandshakeHandler;
+import io.undertow.Handlers;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -89,8 +89,7 @@ public class PTTServiceDaemon {
         pipeline.addProcessor(new com.cliffmin.whisper.processors.PunctuationProcessor());
         pipeline.addProcessor(new com.cliffmin.whisper.processors.DictionaryProcessor());
         pipeline.addProcessor(new com.cliffmin.whisper.processors.PunctuationNormalizer());
-        WebSocketProtocolHandshakeHandler wsHandler =
-            new WebSocketProtocolHandshakeHandler(new StreamingWebSocket(pipeline, v -> null).handler());
+        var wsHandler = Handlers.websocket(new StreamingWebSocket(pipeline, v -> {}).handler());
         root.addPrefixPath("/ws", wsHandler);
         return root;
     }
