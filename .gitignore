@@ -22,6 +22,8 @@ tests/fixtures/golden/
 ptt_config.lua
 
 # Internal documentation
+internal/
+internal/docs/
 docs-internal/
 
 # IDE

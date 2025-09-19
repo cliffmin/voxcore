@@ -44,19 +44,30 @@ Merges artificially broken segments into continuous thoughts while preserving:
 - Natural pauses
 - Timing information (in JSON mode)
 
-### 4. Custom Dictionary
+### 4. Custom Dictionary (Lua plugin)
 
-Add your own corrections via `~/.config/ptt-dictation/dictionary.json`:
+Use the dictionary plugin system to manage personal corrections via Lua:
 
-```json
-{
-  "replacements": {
-    "acme corp": "ACME Corporation",
-    "my project": "MyProject™",
-    "team lead": "Tech Lead"
-  }
+1) Create the config directory
+```bash
+mkdir -p ~/.config/ptt-dictation
+```
+
+2) Copy the template and edit
+```bash
+cp examples/corrections.template.lua ~/.config/ptt-dictation/corrections.lua
+```
+
+3) Add your corrections
+```lua
+return {
+  ["acme corp"] = "ACME Corporation",
+  ["my project"] = "MyProject™",
+  ["team lead"] = "Tech Lead",
 }
 ```
+
+See also: `docs/usage/dictionary-plugins.md` for details and advanced options.
 
 ## Usage
 
@@ -131,25 +142,25 @@ Output: "So we need to refactor the GitHub repository."
 
 ## Customization
 
-### Creating a Custom Dictionary
+### Creating a Custom Dictionary (Lua)
 
 1. Create the config directory:
 ```bash
 mkdir -p ~/.config/ptt-dictation
 ```
 
-2. Create `dictionary.json`:
-```json
-{
-  "replacements": {
-    "old term": "new term",
-    "abbreviation": "Full Name",
-    "misspelling": "correct spelling"
-  }
+2. Create `~/.config/ptt-dictation/corrections.lua`:
+```lua
+return {
+  ["old term"] = "new term",
+  ["abbreviation"] = "Full Name",
+  ["misspelling"] = "correct spelling",
 }
 ```
 
-3. The processor will automatically load your custom dictionary.
+3. The system will automatically load your Lua corrections.
+
+Note: JSON-based dictionaries are deprecated in favor of the Lua-based plugin approach.
 
 ### Disabling Specific Features
 
@@ -191,10 +202,11 @@ echo "um, test" | java -jar dist/whisper-post.jar
 
 ### Custom dictionary not loading
 
-Check the dictionary file location and format:
+Check your Lua corrections file exists and is syntactically valid:
 ```bash
-cat ~/.config/ptt-dictation/dictionary.json | jq .
+ls -l ~/.config/ptt-dictation/corrections.lua
 ```
+If loading still fails, temporarily remove recent edits in that file and reload Hammerspoon.
 
 ### Performance issues
 
