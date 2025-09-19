@@ -15,6 +15,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build VoxCore post-processor JAR
+        run: |
+          cd whisper-post-processor
+          ./gradlew clean buildAll --no-daemon --stacktrace
+
       - name: Compute tarball sha256 for Homebrew formula
         id: sha
         run: |
@@ -43,6 +54,7 @@ jobs:
         with:
           files: |
             quickstart-${{ github.ref_name }}.zip
+            whisper-post-processor/dist/whisper-post.jar
           body: |
             Homebrew formula sha256 for this tag:
             ${{ steps.sha.outputs.sha256 }}
