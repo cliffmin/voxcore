@@ -3,6 +3,8 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [ main, develop, feature/** ]
+    tags:
+      - 'v*.*.*'
   pull_request:
     branches: [ main ]
     types: [opened, synchronize, reopened, ready_for_review]
@@ -13,6 +15,9 @@ on:
         description: 'Run with debug logging'
         required: false
         default: false
+
+permissions:
+  contents: write
 
 env:
   JAVA_VERSION: '17'
@@ -26,16 +31,16 @@ jobs:
     runs-on: macos-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Set up Java
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: 'temurin'
         java-version: ${{ env.JAVA_VERSION }}
         
     - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
+      uses: gradle/actions/setup-gradle@v4
       with:
         gradle-version: ${{ env.GRADLE_VERSION }}
         
@@ -93,10 +98,10 @@ jobs:
     needs: java-tests
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Set up Java
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: 'temurin'
         java-version: ${{ env.JAVA_VERSION }}
@@ -128,7 +133,7 @@ jobs:
         pip install openai-whisper
         
     - name: Download test JAR
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: whisper-post-processor
         path: whisper-post-processor/dist/
@@ -189,7 +194,7 @@ jobs:
     runs-on: macos-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Install Lua
       run: |
@@ -234,7 +239,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Check documentation
       run: |
@@ -277,10 +282,10 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Set up Java
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: 'temurin'
         java-version: ${{ env.JAVA_VERSION }}
@@ -288,7 +293,7 @@ jobs:
     - name: Build release JAR
       run: |
         cd whisper-post-processor
-        gradle clean shadowJar --no-daemon --stacktrace
+        gradle clean buildAll --no-daemon --stacktrace
         
         # Verify JAR was created
         if [ ! -f dist/whisper-post.jar ]; then
@@ -307,14 +312,26 @@ jobs:
         cp -r hammerspoon release/
         cp -r scripts release/
         cp README.md CHANGELOG.md LICENSE release/
-        tar -czf macos-ptt-dictation-release.tar.gz release/
+        tar -czf voxcore-release.tar.gz release/
         
     - name: Upload release artifact
       uses: actions/upload-artifact@v4
       with:
         name: release-bundle
-        path: macos-ptt-dictation-release.tar.gz
+        path: voxcore-release.tar.gz
         retention-days: 30
+    
+    - name: Create GitHub Release (on tag)
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v2
+      with:
+        draft: false
+        prerelease: false
+        files: |
+          voxcore-release.tar.gz
+          whisper-post-processor/dist/whisper-post.jar
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Status check - Required for branch protection
   status:
