@@ -74,7 +74,7 @@ echo -e "${GREEN}Selected device:${NC} [$BEST_DEVICE_IDX] $BEST_DEVICE_NAME"
 echo ""
 
 # Update config file
-CONFIG_FILE="$HOME/code/macos-ptt-dictation/hammerspoon/ptt_config.lua"
+CONFIG_FILE="$HOME/code/voxcore/hammerspoon/ptt_config.lua"
 if [ -f "$CONFIG_FILE" ]; then
     CURRENT_DEVICE=$(grep "AUDIO_DEVICE_INDEX" "$CONFIG_FILE" | grep -oE "[0-9]+" | head -1)
     

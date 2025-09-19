@@ -1,3 +1,46 @@
+# WARP: Repository Guardrails (Canonical)
+
+This document provides canonical repository guardrails for humans and AI assistants. It explains purpose, documentation locations, decision rules, and validation. Keep this header in every repository's WARP.md.
+
+## Documentation and privacy conventions
+- Public, user-facing docs: docs/
+- Private local workspace (not committed): internal/ (gitignored)
+- Private docs, drafts, playbooks: internal/docs/
+
+## Decision tree for creating files
+```
+Need to create a file?
+├─ Is it documentation?
+│  ├─ Public user docs → docs/
+│  └─ Private/local-only → internal/docs/ (untracked)
+├─ Is it code or config?
+│  └─ Place it in the repo's canonical directory (see README/docs)
+├─ Is it a test?
+│  └─ tests/ (fixtures/results should be gitignored)
+├─ Is it temporary/output/cache?
+│  └─ Do not commit; use /tmp or internal/ if you must keep locally
+└─ Unsure? Ask; prefer not to create.
+```
+
+## What not to commit
+- Secrets, personal data, production credentials
+- Build outputs, caches, editor swap/backup files
+- Large binaries unless explicitly required
+
+## Validation shortcuts
+```bash
+git status --porcelain
+git ls-files --others --exclude-standard
+find . -name "*.bak" -o -name ".DS_Store" -o -name "__pycache__"
+```
+
+## AI assistant directives
+- Read this header first
+- Work within repository conventions; do not restructure without approval
+- Prefer minimal diffs; preserve established patterns
+
+---
+
 # Canonical Repository Structure
 
 This document defines the canonical structure of the VoxCore repository.
@@ -166,7 +209,9 @@ The following patterns indicate files that should be removed:
 These directories may exist locally but should not be committed:
 
 ```
-docs-internal/                  # Internal documentation and notes
+internal/                       # Local private workspace (root-level, gitignored)
+internal/docs/                  # Internal documentation and notes (preferred)
+docs-internal/                  # Legacy internal docs (still ignored)
 tests/fixtures/personal/        # Personal test recordings  
 tests/fixtures/samples_current/ # Current test batch
 tests/results/                  # Test run outputs

@@ -18,7 +18,7 @@ Thanks for your interest in improving VoxCore.
 - Use 2-space indent and LF endings (see .editorconfig)
 
 ## Tests and validation
-- Run accuracy tests: `./scripts/testing/test_accuracy.sh`
+- Run tests: `make test-java-all`
 - If you add a user-facing knob or behavior change, add a note to README and CHANGELOG
 
 ## Commit messages

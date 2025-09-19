@@ -10,7 +10,7 @@ M.config = {
   base_url = "http://127.0.0.1:8765",
   startup_cmd = {
     "/usr/bin/env", "bash", "-lc",
-    "cd ~/code/macos-ptt-dictation/whisper-post-processor && java -cp build/libs/whisper-post.jar com.cliffmin.whisper.daemon.PTTServiceDaemon >/tmp/ptt_daemon.log 2>&1 &"
+    "cd ~/code/voxcore/whisper-post-processor && java -cp build/libs/whisper-post.jar com.cliffmin.whisper.daemon.PTTServiceDaemon >/tmp/ptt_daemon.log 2>&1 &"
   },
   health_timeout_sec = 1.5,
   enable_http_daemon = true,   -- if false, fall back to CLI

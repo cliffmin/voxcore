@@ -21,8 +21,8 @@ echo
 echo "=== Current model config ==="
 # Prefer XDG, then ~/.hammerspoon, then repo config
 CFG=""
-if [[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/macos-ptt-dictation/ptt_config.lua" ]]; then
-  CFG="${XDG_CONFIG_HOME:-$HOME/.config}/macos-ptt-dictation/ptt_config.lua"
+if [[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/voxcore/ptt_config.lua" ]]; then
+  CFG="${XDG_CONFIG_HOME:-$HOME/.config}/voxcore/ptt_config.lua"
 elif [[ -f "$HOME/.hammerspoon/ptt_config.lua" ]]; then
   CFG="$HOME/.hammerspoon/ptt_config.lua"
 elif [[ -f "$(pwd)/hammerspoon/ptt_config.lua" ]]; then

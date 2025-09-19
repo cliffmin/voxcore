@@ -7,7 +7,7 @@ echo "====================="
 echo ""
 echo "Configuration Summary (from ptt_config.lua):"
 echo "--------------------------------------------"
-grep -A3 "OUTPUT = {" ~/code/macos-ptt-dictation/hammerspoon/ptt_config.lua | sed 's/^/  /'
+grep -A3 "OUTPUT = {" ~/code/voxcore/hammerspoon/ptt_config.lua | sed 's/^/  /'
 echo ""
 echo "Expected Behaviors:"
 echo "-------------------"
