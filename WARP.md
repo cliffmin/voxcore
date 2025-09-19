@@ -116,8 +116,7 @@ voxcore/
 │   │   ├── analyze_logs.py
 │   │   ├── analyze_performance.sh
 │   │   └── compare_benchmarks.py
-│   ├── utilities/             # Helper utilities
-│   │   ├── punctuate.py
+│   │   ├── utilities/             # Helper utilities
 │   │   ├── generate_test_data.sh
 │   │   └── query_refiner_capabilities.lua
 │   ├── diagnostics/           # System diagnostics
