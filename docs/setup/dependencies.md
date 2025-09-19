@@ -46,11 +46,10 @@ VoxCore is a hybrid application with a clear separation of concerns:
    - Isolation: Runs in `~/.local/pipx/venvs/openai-whisper/`
    - Status: Being replaced by whisper-cpp for 5-10x speed improvement
 
-2. **deepmultilingualpunctuation** (Optional)
-   - Purpose: Restore punctuation in transcripts
-   - Installation: `pipx install deepmultilingualpunctuation`
-   - Isolation: Runs in `~/.local/pipx/venvs/deepmultilingualpunctuation/`
-   - Used by: `scripts/punctuate.py`
+2. **deepmultilingualpunctuation** (Deprecated)
+  - Purpose: Legacy Python punctuation restoration
+  - Status: Deprecated and not used by default. Replaced by Java PunctuationProcessor.
+  - If needed for experiments, install via `pipx install deepmultilingualpunctuation` and use `scripts/utilities/punctuate.py` manually.
 
 ### System Dependencies
 
