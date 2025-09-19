@@ -57,7 +57,7 @@ test-java-all: build-java
 # Auto-select best audio device
 auto-audio:
 	@echo "Auto-selecting audio device..."
-	@bash scripts/auto_select_audio_device.sh
+	@bash scripts/setup/auto_select_audio_device.sh
 
 # Clean test artifacts
 clean:

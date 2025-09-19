@@ -44,10 +44,19 @@ Merges artificially broken segments into continuous thoughts while preserving:
 - Natural pauses
 - Timing information (in JSON mode)
 
-### 4. Custom Dictionary
+### 4. Custom Dictionary Options
 
-Add your own corrections via `~/.config/ptt-dictation/dictionary.json`:
+You can apply custom corrections via either JSON (Java post-processor) or Lua (Hammerspoon plugin). Both can be used together; corrections are applied additively.
 
+Option A: JSON dictionary (Java post-processor)
+- Path priority (first found is loaded, later files can add/override):
+  - `~/.config/ptt-dictation/dictionary.json`
+  - `~/.config/ptt-dictation/corrections.json`
+  - `~/.config/voxcompose/corrections.json`
+  - `/usr/local/share/ptt-dictation/dictionary.json`
+  - `/usr/local/share/ptt-dictation/corrections.json`
+
+Example JSON (either flat map or {"replacements"} object):
 ```json
 {
   "replacements": {
@@ -57,6 +66,28 @@ Add your own corrections via `~/.config/ptt-dictation/dictionary.json`:
   }
 }
 ```
+
+Option B: Lua plugin corrections (Hammerspoon)
+1) Create the config directory
+```bash
+mkdir -p ~/.config/ptt-dictation
+```
+
+2) Copy the template and edit
+```bash
+cp examples/corrections.template.lua ~/.config/ptt-dictation/corrections.lua
+```
+
+3) Add your corrections
+```lua
+return {
+  ["acme corp"] = "ACME Corporation",
+  ["my project"] = "MyProject™",
+  ["team lead"] = "Tech Lead",
+}
+```
+
+See also: `docs/usage/dictionary-plugins.md` for details and advanced options.
 
 ## Usage
 
@@ -131,14 +162,14 @@ Output: "So we need to refactor the GitHub repository."
 
 ## Customization
 
-### Creating a Custom Dictionary
+### Creating a Custom Dictionary (JSON)
 
 1. Create the config directory:
 ```bash
 mkdir -p ~/.config/ptt-dictation
 ```
 
-2. Create `dictionary.json`:
+2. Create `~/.config/ptt-dictation/dictionary.json`:
 ```json
 {
   "replacements": {
@@ -149,7 +180,27 @@ mkdir -p ~/.config/ptt-dictation
 }
 ```
 
-3. The processor will automatically load your custom dictionary.
+The Java post-processor will automatically load the JSON dictionary if present.
+
+### Creating a Custom Dictionary (Lua)
+
+1. Create the config directory:
+```bash
+mkdir -p ~/.config/ptt-dictation
+```
+
+2. Create `~/.config/ptt-dictation/corrections.lua`:
+```lua
+return {
+  ["old term"] = "new term",
+  ["abbreviation"] = "Full Name",
+  ["misspelling"] = "correct spelling",
+}
+```
+
+The Hammerspoon layer will load these Lua corrections if configured.
+
+Note: You can use both JSON and Lua corrections; they complement each other.
 
 ### Disabling Specific Features
 
@@ -191,10 +242,17 @@ echo "um, test" | java -jar dist/whisper-post.jar
 
 ### Custom dictionary not loading
 
-Check the dictionary file location and format:
+Check for JSON dictionary (Java):
 ```bash
-cat ~/.config/ptt-dictation/dictionary.json | jq .
+ls -l ~/.config/ptt-dictation/dictionary.json || true
 ```
+
+Check for Lua corrections (Hammerspoon):
+```bash
+ls -l ~/.config/ptt-dictation/corrections.lua || true
+```
+
+If Lua corrections fail to load, temporarily remove recent edits and reload Hammerspoon. If JSON is not applied, ensure the file is valid JSON and readable.
 
 ### Performance issues
 

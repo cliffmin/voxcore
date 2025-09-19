@@ -21,14 +21,14 @@ local function loadConfig()
     cfg_path_used = "require:ptt_config"
     return
   end
-  -- XDG: prefer ~/.config/macos-ptt-dictation/ptt_config.lua or $XDG_CONFIG_HOME
+  -- XDG: prefer ~/.config/voxcore/ptt_config.lua or $XDG_CONFIG_HOME
   local function loadXdg()
     local xdg = os.getenv("XDG_CONFIG_HOME")
     local paths = {}
     if xdg and xdg ~= "" then
-      table.insert(paths, xdg .. "/macos-ptt-dictation/ptt_config.lua")
+      table.insert(paths, xdg .. "/voxcore/ptt_config.lua")
     end
-    table.insert(paths, (os.getenv("HOME") or "") .. "/.config/macos-ptt-dictation/ptt_config.lua")
+    table.insert(paths, (os.getenv("HOME") or "") .. "/.config/voxcore/ptt_config.lua")
     for _,p in ipairs(paths) do
       if p and hs.fs.attributes(p) then
         local okx, tx = pcall(dofile, p)
@@ -1424,7 +1424,7 @@ local function runWhisper(audioPath)
               else
                 py = "/usr/bin/env python3"
               end
-              argv = { py, (HOME .. "/code/macos-ptt-dictation/scripts/utilities/punctuate.py") }
+              argv = { py, (HOME .. "/code/voxcore/scripts/utilities/punctuate.py") }
             end
             -- Write temp file for input
             local tmp = os.tmpname()
@@ -1533,7 +1533,24 @@ local function runWhisper(audioPath)
             return mdPath
           end
 
+          local function updateLearningSideEffect(text)
+            -- Fire-and-forget: send text to VoxCompose learning hook if present
+            local hook = HOME .. "/code/voxcompose/tools/learn_from_text.py"
+            if (not text) or text == "" then return end
+            if not hs.fs.attributes(hook) then return end
+            local tmp = os.tmpname()
+            writeAll(tmp, text)
+            local bash = "/bin/bash"
+            local cmd = string.format("cat %q | /usr/bin/env python3 %q >/dev/null 2>&1; rm -f %q", tmp, hook, tmp)
+            pcall(function()
+              local t = hs.task.new(bash, function() end, {"-lc", cmd})
+              if t then t:start() end
+            end)
+          end
+
           local function finishWithText(finalText, extra)
+            -- Update learning side-effect (non-blocking)
+            updateLearningSideEffect(finalText)
             -- Optional terminal tweaks
             if ENSURE_TRAILING_PUNCT then finalText = ensureTrailingPunct(finalText) end
             if PASTE_TRAILING_NEWLINE then finalText = addTrailingNewline(finalText) end
