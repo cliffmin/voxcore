@@ -110,6 +110,12 @@ For development:
 2. Compare models for performance/accuracy trade-offs
 3. Test edge cases (background noise, accents, speed)
 
+## CI Policy (Solo-friendly)
+- Required and fast: Quick Validation, Java Compilation, Java Tests, Quality Checks
+- Non-required by default: Integration Tests (run on PRs but do not block; can be scheduled nightly)
+- Concurrency enabled: new pushes cancel in-progress runs for the same branch
+- “Require branch to be up to date” is disabled in protection (Merge Queue recommended if available)
+
 ## Expected Results
 
 With `base.en` model on golden dataset:
