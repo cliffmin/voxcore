@@ -34,7 +34,7 @@ Log analysis and monitoring:
 
 ### utilities/
 Utility scripts:
-- `punctuate.py` - Add punctuation to text (used by main system)
+- `punctuate.py` - DEPRECATED (Java PunctuationProcessor replaces it; not used by default)
 - `generate_test_data.sh` - Generate synthetic test data
 
 ### diagnostics/

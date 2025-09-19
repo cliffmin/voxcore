@@ -91,7 +91,7 @@ voxcore/
 │   ├── gradle/               # Gradle wrapper files
 │   ├── src/                  # Java source code
 │   │   ├── main/java/        # Main implementation
-│   │   │   └── processors/   # Text processors (Reflow, Context, Disfluency, Dictionary, etc.)
+│   │   │   │   └── processors/   # Text processors (Reflow, Disfluency, Dictionary, etc.)
 │   │   └── test/java/        # Tests (unit, integration; unit excludes @Tag("integration"))
 │   │       ├── processors/   # Unit tests for each processor
 │   │       └── integration/  # E2E integration tests
