@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 """
+DEPRECATED: This script is no longer used by the default runtime. Java PunctuationProcessor
+replaces this functionality. Consider using VoxCompose for adaptive/persistent behavior.
+
 Punctuate and capitalize ASR text using deepmultilingualpunctuation.
 
 Usage:
