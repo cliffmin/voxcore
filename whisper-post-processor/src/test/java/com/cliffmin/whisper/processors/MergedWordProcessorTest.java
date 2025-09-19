@@ -63,6 +63,15 @@ class MergedWordProcessorTest {
     }
     
     @Test
+    @DisplayName("Should split common tech compounds conservatively")
+    void testTechCompounds() {
+        assertThat(processor.process("githubactions pipeline"))
+            .isEqualTo("github actions pipeline");
+        assertThat(processor.process("jsonapi response"))
+            .isEqualTo("JSON API response");
+    }
+    
+    @Test
     @DisplayName("Should not modify correct text")
     void testNoModification() {
         String correct = "They configure the system properly";

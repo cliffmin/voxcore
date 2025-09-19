@@ -87,10 +87,13 @@ public class MergedWordProcessor implements TextProcessor {
         if (input.isEmpty()) return input;
         String result = input;
         
-        // First handle the special apostrophe patterns
+        // First handle the special apostrophe patterns (e.g., "that'slike" -> "that's like")
         result = fixApostropheContractions(result);
         
-        // Then handle the regular replacements
+        // Heuristic tech compound split (e.g., "githubactions" -> "github actions")
+        result = fixTechCompounds(result);
+        
+        // Then handle the curated replacements
         for (Map.Entry<Pattern, String> entry : replacements.entrySet()) {
             Matcher matcher = entry.getKey().matcher(result);
             
@@ -133,6 +136,42 @@ public class MergedWordProcessor implements TextProcessor {
         matcher.appendTail(sb);
         
         return sb.toString();
+    }
+    
+    /**
+     * Split common technical compounds where two words are merged without spaces.
+     * This is a conservative, stateless heuristic with a small suffix list to avoid false positives.
+     */
+    private String fixTechCompounds(String text) {
+        // Suffixes commonly seen as the second word in merged pairs (lowercase transcripts)
+        String[] suffixes = new String[]{
+            "actions","config","layer","module","service","manager","provider",
+            "adapter","handler","bridge","queue","cache","store","class","field","tests","test"
+        };
+        // For each suffix, split pattern like: \b([a-z]{3,})suffix\b -> $1 suffix
+        // Use case-insensitive matching and preserve leading capitalization if present
+        String result = text;
+        for (String suf : suffixes) {
+            Pattern p = Pattern.compile("\\b([a-z]{3,})" + Pattern.quote(suf) + "\\b", Pattern.CASE_INSENSITIVE);
+            Matcher m = p.matcher(result);
+            StringBuffer sb = new StringBuffer();
+            while (m.find()) {
+                String prefix = m.group(1);
+                String replacement = prefix + " " + suf;
+                // Preserve capitalization if original token started with uppercase
+                String token = m.group(0);
+                if (!token.isEmpty() && Character.isUpperCase(token.charAt(0))) {
+                    replacement = Character.toUpperCase(replacement.charAt(0)) + replacement.substring(1);
+                }
+                m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+            }
+            m.appendTail(sb);
+            result = sb.toString();
+        }
+        // Targeted known pairs that are frequent in logs/domains
+        result = result.replaceAll("\\bgithubactions\\b", "github actions");
+        result = result.replaceAll("\\bjsonapi\\b", "JSON API");
+        return result;
     }
     
     @Override
