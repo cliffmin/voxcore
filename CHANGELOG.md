@@ -6,6 +6,7 @@
 - build: adopt Gradle Version Catalog for whisper-post-processor dependencies (internal; no user-visible changes)
 
 ### Removed
+- Deprecated Python punctuation script (scripts/utilities/punctuate.py) and documentation references; Java PunctuationProcessor is the supported path.
 - ContextProcessor has been removed from VoxCore (daemon streaming pipeline), aligning with a stateless core. Adaptive/contextual casing moves to VoxCompose. No behavior change to the default CLI path.
 
 ## [0.4.0] - 2025-09-17

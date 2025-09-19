@@ -5,7 +5,7 @@
 VoxCore is a hybrid application with a clear separation of concerns:
 - **Core**: Lua (Hammerspoon) for macOS automation
 - **Post-processing**: Java for transcript cleaning
-- **Optional Tools**: Python via pipx for transcription and punctuation
+- **Optional Tools**: Python via pipx for transcription (optional)
 
 ## Dependency Management
 
@@ -31,11 +31,8 @@ VoxCore is a hybrid application with a clear separation of concerns:
 ├── venvs/
 │   ├── openai-whisper/        # Isolated venv for whisper
 │   │   └── bin/python          # Used by push_to_talk.lua
-│   └── deepmultilingualpunctuation/  # Isolated venv for punctuation
-│       └── bin/python          # Used by punctuate.py
 └── bin/
     ├── whisper                 # Executable symlink
-    └── deep-punctuate          # Executable symlink
 ```
 
 #### Current Python Dependencies
@@ -46,10 +43,6 @@ VoxCore is a hybrid application with a clear separation of concerns:
    - Isolation: Runs in `~/.local/pipx/venvs/openai-whisper/`
    - Status: Being replaced by whisper-cpp for 5-10x speed improvement
 
-2. **deepmultilingualpunctuation** (Deprecated)
-  - Purpose: Legacy Python punctuation restoration
-  - Status: Deprecated and not used by default. Replaced by Java PunctuationProcessor.
-  - If needed for experiments, install via `pipx install deepmultilingualpunctuation` and use `scripts/utilities/punctuate.py` manually.
 
 ### System Dependencies
 
@@ -99,7 +92,6 @@ brew install ffmpeg whisper-cpp openjdk
 brew install pipx
 pipx ensurepath
 pipx install openai-whisper              # Fallback transcription
-pipx install deepmultilingualpunctuation # Punctuation restoration
 ```
 
 ## Migration Path
@@ -110,7 +102,7 @@ The project is transitioning away from Python dependencies:
 |-----------|---------|---------|--------|
 | Transcription | openai-whisper (Python) | whisper-cpp (C++) | ✅ In Progress |
 | Post-processing | Java | Java | ✅ Complete |
-| Punctuation | deepmultilingualpunctuation (Python) | Optional/Native | 🔄 Planned |
+| Punctuation | Java | Java | ✅ Complete |
 
 ## Testing Dependencies
 
@@ -140,7 +132,6 @@ pipx list
 
 # Reinstall if needed
 pipx reinstall openai-whisper
-pipx reinstall deepmultilingualpunctuation
 ```
 
 ### Verify Isolation
@@ -157,7 +148,6 @@ ls -la ~/.local/bin/whisper
 ```bash
 # Remove Python tools completely
 pipx uninstall openai-whisper
-pipx uninstall deepmultilingualpunctuation
 
 # Remove pipx itself if desired
 pip uninstall pipx
