@@ -7,7 +7,7 @@ Overview
   - HTTP: /health, /transcribe, /metrics (Prometheus)
   - WebSocket: /ws (incremental processing of accumulated text)
 - Transcription: whisper.cpp via WhisperService/WhisperCppAdapter
-- Java Post-Processor Pipeline: Reflow → Context → Disfluency → MergedWord → Sentences → Capitalization → PunctuationProcessor → Dictionary → PunctuationNormalizer
+- Java Post-Processor Pipeline: Reflow → Disfluency → MergedWord → Sentences → Capitalization → PunctuationProcessor → Dictionary → PunctuationNormalizer
 - Config precedence: request > env/file (~/.config/ptt-dictation/config.json) > defaults
 - Outputs: pasted text (Hammerspoon), optional files/logs
 - Optional refine: VoxCompose remains supported but Java now covers most cleanup
@@ -17,7 +17,7 @@ Log example
 {
   "ts": "2025-08-30T21:59:30Z",
   "kind": "success",
-  "app": "macos-ptt-dictation",
+  "app": "voxcore",
   "model": "base.en",
   "device": "cpu",
   "beam_size": 3,

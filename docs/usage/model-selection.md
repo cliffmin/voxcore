@@ -118,8 +118,8 @@ INITIAL_PROMPT = table.concat({
 
 ### 1. Test model accuracy
 ```bash
-# Run enhanced accuracy test with your chosen model
-bash scripts/test_accuracy_enhanced.sh medium.en
+# Run Java tests (unit + integration)
+make test-java-all
 ```
 
 ### 2. Test real-world performance
@@ -157,12 +157,6 @@ rm -rf ~/.cache/whisper/medium.en*
 2. Check INITIAL_PROMPT includes your domain terms
 3. Update DICTIONARY_REPLACE for consistent mishears
 4. Consider upgrading to large-v3 for critical use
-
-## Model Comparison Details
-
-For detailed performance metrics and test results, see:
-- [Performance Analysis](performance_analysis.md)
-- [Model Comparison Report](model_comparison.md)
 
 ---
 
