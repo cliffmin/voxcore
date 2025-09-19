@@ -1406,6 +1406,7 @@ local function runWhisper(audioPath)
 
           -- Optionally restore punctuation/casing before downstream processors
           local punctuateMs = nil
+          -- DEPRECATED: legacy punctuator path (replaced by Java PunctuationProcessor / VoxCompose). Not used by default.
           local function applyPunctuatorIfEnabled(text)
             local pcfg = cfg.PUNCTUATOR or {}
             local enabled = (sessionKind == "toggle") and (pcfg.ENABLED_FOR_TOGGLE ~= false) or ((sessionKind == "hold") and (pcfg.ENABLED_FOR_HOLD == true))
@@ -1440,7 +1441,6 @@ local function runWhisper(audioPath)
             return text
           end
 
-          transcript = applyPunctuatorIfEnabled(transcript)
 
           -- Decide output behavior per session kind
           local DEFAULT_OUTPUT = {

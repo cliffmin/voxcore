@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Removed
+- ContextProcessor has been removed from VoxCore (daemon streaming pipeline), aligning with a stateless core. Adaptive/contextual casing moves to VoxCompose. No behavior change to the default CLI path.
+
 ## [0.4.0] - 2025-09-17
 - Java service (HTTP/WS) with configuration and metrics
 - Reliable start-of-speech capture (reduced first-word truncation due to warm service)
