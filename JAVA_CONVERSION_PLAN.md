@@ -154,21 +154,7 @@ public class RealtimeTranscriber {
 - [ ] VAD (Voice Activity Detection)
 
 ### 5.2 Context-Aware Processing
-```java
-package com.cliffmin.whisper.context;
-
-public class ContextProcessor {
-    - loadPreviousTranscriptions(n) -> Context
-    - applyContext(transcription, context) -> Enhanced
-    - learnUserPatterns() -> Model
-}
-```
-
-**Tasks**:
-- [ ] Session context management
-- [ ] User vocabulary learning
-- [ ] Automatic correction patterns
-- [ ] Domain-specific terminology
+Note: Context-aware/adaptive processing (e.g., casing learned from recent text) is out of scope for VoxCore. It belongs in VoxCompose (the refiner) and may export explicit rules to VoxCore dictionaries.
 
 ### 5.3 Performance Monitoring
 ```java

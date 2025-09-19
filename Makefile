@@ -11,6 +11,7 @@ help:
 	@echo "  make test-e2e     - Run end-to-end tests"  
 	@echo "  make test-smoke   - Run smoke tests"
 	@echo "  make auto-audio   - Auto-select best audio device"
+	@echo "  make version      - Show project version (git + Java CLI)"
 	@echo "  make clean        - Clean test artifacts"
 	@echo ""
 
@@ -57,7 +58,7 @@ test-java-all: build-java
 # Auto-select best audio device
 auto-audio:
 	@echo "Auto-selecting audio device..."
-	@bash scripts/auto_select_audio_device.sh
+	@bash scripts/setup/auto_select_audio_device.sh
 
 # Clean test artifacts
 clean:
@@ -72,6 +73,18 @@ clean:
 .PHONY: diag
 diag:
 	@bash scripts/diagnostics/collect_latest.sh
+
+# Version information (git + Java CLI)
+.PHONY: version
+version:
+	@echo "Git describe: $$(git describe --tags --match 'v[0-9]*' --always 2>/dev/null || echo 'no-tags')"
+	@echo -n "Java CLI (whisper-post) version: "
+	@if [ -f whisper-post-processor/dist/whisper-post.jar ]; then \
+	  java -jar whisper-post-processor/dist/whisper-post.jar --version 2>/dev/null || echo "unavailable"; \
+	else \
+	  v=$$(/usr/bin/awk -F\' "/^version\s*=\s*\'/ {print \$$2; exit}" whisper-post-processor/build.gradle 2>/dev/null); \
+	  if [ -n "$$v" ]; then echo "$$v (from build.gradle)"; else echo "unavailable"; fi; \
+	fi
 
 # Generate performance metrics graph (SVG) from latest tx_logs
 metrics-graph:
