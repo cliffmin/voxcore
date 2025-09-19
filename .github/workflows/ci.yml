@@ -31,16 +31,16 @@ jobs:
     runs-on: macos-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Set up Java
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: 'temurin'
         java-version: ${{ env.JAVA_VERSION }}
         
     - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
+      uses: gradle/actions/setup-gradle@v4
       with:
         gradle-version: ${{ env.GRADLE_VERSION }}
         
@@ -98,10 +98,10 @@ jobs:
     needs: java-tests
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Set up Java
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: 'temurin'
         java-version: ${{ env.JAVA_VERSION }}
@@ -133,7 +133,7 @@ jobs:
         pip install openai-whisper
         
     - name: Download test JAR
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: whisper-post-processor
         path: whisper-post-processor/dist/
@@ -194,7 +194,7 @@ jobs:
     runs-on: macos-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Install Lua
       run: |
@@ -239,7 +239,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Check documentation
       run: |
@@ -282,10 +282,10 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Set up Java
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: 'temurin'
         java-version: ${{ env.JAVA_VERSION }}

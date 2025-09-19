@@ -1406,6 +1406,7 @@ local function runWhisper(audioPath)
 
           -- Optionally restore punctuation/casing before downstream processors
           local punctuateMs = nil
+          -- DEPRECATED: legacy punctuator path (replaced by Java PunctuationProcessor / VoxCompose). Not used by default.
           local function applyPunctuatorIfEnabled(text)
             local pcfg = cfg.PUNCTUATOR or {}
             local enabled = (sessionKind == "toggle") and (pcfg.ENABLED_FOR_TOGGLE ~= false) or ((sessionKind == "hold") and (pcfg.ENABLED_FOR_HOLD == true))
@@ -1440,7 +1441,6 @@ local function runWhisper(audioPath)
             return text
           end
 
-          transcript = applyPunctuatorIfEnabled(transcript)
 
           -- Decide output behavior per session kind
           local DEFAULT_OUTPUT = {
@@ -1533,7 +1533,24 @@ local function runWhisper(audioPath)
             return mdPath
           end
 
+          local function updateLearningSideEffect(text)
+            -- Fire-and-forget: send text to VoxCompose learning hook if present
+            local hook = HOME .. "/code/voxcompose/tools/learn_from_text.py"
+            if (not text) or text == "" then return end
+            if not hs.fs.attributes(hook) then return end
+            local tmp = os.tmpname()
+            writeAll(tmp, text)
+            local bash = "/bin/bash"
+            local cmd = string.format("cat %q | /usr/bin/env python3 %q >/dev/null 2>&1; rm -f %q", tmp, hook, tmp)
+            pcall(function()
+              local t = hs.task.new(bash, function() end, {"-lc", cmd})
+              if t then t:start() end
+            end)
+          end
+
           local function finishWithText(finalText, extra)
+            -- Update learning side-effect (non-blocking)
+            updateLearningSideEffect(finalText)
             -- Optional terminal tweaks
             if ENSURE_TRAILING_PUNCT then finalText = ensureTrailingPunct(finalText) end
             if PASTE_TRAILING_NEWLINE then finalText = addTrailingNewline(finalText) end
