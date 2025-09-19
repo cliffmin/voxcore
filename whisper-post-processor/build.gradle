@@ -24,7 +24,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.10.1'
     
     // String utilities
-    implementation 'org.apache.commons:commons-lang3:3.14.0'
+    implementation 'org.apache.commons:commons-lang3:3.18.0'
     
     // Logging
     implementation 'org.slf4j:slf4j-simple:2.0.9'
