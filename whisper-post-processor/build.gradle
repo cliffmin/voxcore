@@ -18,33 +18,33 @@ repositories {
 
 dependencies {
     // CLI framework
-    implementation 'info.picocli:picocli:4.7.5'
+    implementation libs.picocli
     
     // JSON processing
-    implementation 'com.google.code.gson:gson:2.13.2'
+    implementation libs.gson
     
     // String utilities
-    implementation 'org.apache.commons:commons-lang3:3.18.0'
+    implementation libs.commonsLang3
     
     // Logging
-    implementation 'org.slf4j:slf4j-simple:2.0.9'
+    implementation libs.slf4jSimple
 
     // HTTP server for daemon
-    implementation 'io.undertow:undertow-core:2.3.10.Final'
-    implementation 'io.undertow:undertow-websockets-jsr:2.3.10.Final'
+    implementation libs.undertowCore
+    implementation libs.undertowWebsocketsJsr
 
     // Metrics
-    implementation 'io.micrometer:micrometer-core:1.11.5'
-    implementation 'io.micrometer:micrometer-registry-prometheus:1.11.5'
+    implementation libs.micrometerCore
+    implementation libs.micrometerPrometheus
     
     // Testing
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.10.1'
-    testImplementation 'org.junit.platform:junit-platform-launcher:1.13.4'
-    testImplementation 'org.junit.platform:junit-platform-suite-api:1.13.4'
-    testImplementation 'org.junit.platform:junit-platform-suite-engine:1.13.4'
-    testImplementation 'org.assertj:assertj-core:3.27.4'
-    testImplementation 'org.mockito:mockito-core:5.11.0'
+    testImplementation libs.junitJupiter
+    testImplementation libs.junitJupiterEngine
+    testImplementation libs.junitPlatformLauncher
+    testImplementation libs.junitPlatformSuiteApi
+    testImplementation libs.junitPlatformSuiteEngine
+    testImplementation libs.assertjCore
+    testImplementation libs.mockitoCore
 }
 
 // Configure JAR manifest
