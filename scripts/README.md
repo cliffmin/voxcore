@@ -14,12 +14,16 @@ Installation and configuration scripts:
 
 ### testing/
 Test and validation scripts:
-- `test_accuracy.sh` - Test transcription accuracy
-- `test_performance.sh` - Performance benchmarking
-- `test_integration.sh` - Full integration testing
-- `test_dictionary_plugin.sh` - Test dictionary plugin system
-- `e2e_test.sh` - End-to-end testing
-- `quick_benchmark.sh` - Quick performance check
+- `daemon_health.sh` - Check daemon health and endpoints
+- `debug_recording.sh` - Audio device debugging (system-specific)
+- `test_f13_modes.sh` - Keyboard shortcut testing (macOS-specific)
+
+Most legacy shell tests were migrated to Java. See `testing/MIGRATION.md` and use:
+- `make test-java` (unit tests)
+- `make test-java-integration` (E2E integration)
+- `make test-java-all` (unit + integration)
+
+Additional E2E and benchmarks live under `tests/integration/`.
 
 ### analysis/
 Log analysis and monitoring:
@@ -30,7 +34,7 @@ Log analysis and monitoring:
 
 ### utilities/
 Utility scripts:
-- `punctuate.py` - Add punctuation to text (used by main system)
+- `punctuate.py` - DEPRECATED (Java PunctuationProcessor replaces it; not used by default)
 - `generate_test_data.sh` - Generate synthetic test data
 
 ### diagnostics/
