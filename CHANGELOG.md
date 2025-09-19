@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Changed
+- build: adopt Gradle Version Catalog for whisper-post-processor dependencies (internal; no user-visible changes)
+
 ### Removed
 - ContextProcessor has been removed from VoxCore (daemon streaming pipeline), aligning with a stateless core. Adaptive/contextual casing moves to VoxCompose. No behavior change to the default CLI path.
 
