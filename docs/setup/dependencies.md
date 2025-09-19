@@ -102,7 +102,7 @@ The project is transitioning away from Python dependencies:
 |-----------|---------|---------|--------|
 | Transcription | openai-whisper (Python) | whisper-cpp (C++) | ✅ In Progress |
 | Post-processing | Java | Java | ✅ Complete |
-| Punctuation | deepmultilingualpunctuation (Python) | Optional/Native | 🔄 Planned |
+| Punctuation | Java | Java | ✅ Complete |
 
 ## Testing Dependencies
 
@@ -132,7 +132,6 @@ pipx list
 
 # Reinstall if needed
 pipx reinstall openai-whisper
-pipx reinstall deepmultilingualpunctuation
 ```
 
 ### Verify Isolation
@@ -149,7 +148,6 @@ ls -la ~/.local/bin/whisper
 ```bash
 # Remove Python tools completely
 pipx uninstall openai-whisper
-pipx uninstall deepmultilingualpunctuation
 
 # Remove pipx itself if desired
 pip uninstall pipx
