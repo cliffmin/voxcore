@@ -1406,38 +1406,8 @@ local function runWhisper(audioPath)
 
           -- Optionally restore punctuation/casing before downstream processors
           local punctuateMs = nil
-          -- DEPRECATED: legacy punctuator path (replaced by Java PunctuationProcessor / VoxCompose). Not used by default.
+          -- Deprecated punctuator removed; Java PunctuationProcessor handles punctuation. No-op.
           local function applyPunctuatorIfEnabled(text)
-            local pcfg = cfg.PUNCTUATOR or {}
-            local enabled = (sessionKind == "toggle") and (pcfg.ENABLED_FOR_TOGGLE ~= false) or ((sessionKind == "hold") and (pcfg.ENABLED_FOR_HOLD == true))
-            if (not enabled) or (not text) or text == "" then return text end
-            -- Resolve command
-            local cmdv = pcfg.CMD
-            local argv
-            if type(cmdv) == "table" and #cmdv > 0 then
-              argv = cmdv
-            else
-              -- default: prefer pipx venv python if present, else system python3
-              local pipxPy = HOME .. "/.local/pipx/venvs/deepmultilingualpunctuation/bin/python"
-              local py
-              if hs.fs.attributes(pipxPy) then
-                py = pipxPy
-              else
-                py = "/usr/bin/env python3"
-              end
-              argv = { py, (HOME .. "/code/voxcore/scripts/utilities/punctuate.py") }
-            end
-            -- Write temp file for input
-            local tmp = os.tmpname()
-            writeAll(tmp, text)
-            local started = nowMs()
-            local cmd = table.concat(argv, ' ') .. " -f " .. string.format("%q", tmp) .. " 2>/dev/null"
-            local out = hs.execute(cmd)
-            punctuateMs = nowMs() - started
-            os.remove(tmp)
-            if out and #out > 0 then
-              return out:gsub("\n+$", "")
-            end
             return text
           end
 
