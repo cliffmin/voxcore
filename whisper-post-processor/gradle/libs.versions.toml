@@ -1,0 +1,28 @@
+[versions]
+picocli = "4.7.5"
+gson = "2.13.2"
+commonsLang3 = "3.18.0"
+slf4j = "2.0.9"
+undertow = "2.3.10.Final"
+micrometer = "1.11.5"
+junitJupiter = "5.10.1"
+junitPlatform = "1.13.4"
+assertj = "3.27.4"
+mockito = "5.11.0"
+
+[libraries]
+picocli = { module = "info.picocli:picocli", version.ref = "picocli" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+commonsLang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commonsLang3" }
+slf4jSimple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
+undertowCore = { module = "io.undertow:undertow-core", version.ref = "undertow" }
+undertowWebsocketsJsr = { module = "io.undertow:undertow-websockets-jsr", version.ref = "undertow" }
+micrometerCore = { module = "io.micrometer:micrometer-core", version.ref = "micrometer" }
+micrometerPrometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer" }
+junitJupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junitJupiter" }
+junitJupiterEngine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junitJupiter" }
+junitPlatformLauncher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junitPlatform" }
+junitPlatformSuiteApi = { module = "org.junit.platform:junit-platform-suite-api", version.ref = "junitPlatform" }
+junitPlatformSuiteEngine = { module = "org.junit.platform:junit-platform-suite-engine", version.ref = "junitPlatform" }
+assertjCore = { module = "org.assertj:assertj-core", version.ref = "assertj" }
+mockitoCore = { module = "org.mockito:mockito-core", version.ref = "mockito" }
