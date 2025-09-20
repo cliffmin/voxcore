@@ -115,6 +115,10 @@ For development:
 - Non-required by default: Integration Tests (run on PRs but do not block; can be scheduled nightly)
 - Concurrency enabled: new pushes cancel in-progress runs for the same branch
 - “Require branch to be up to date” is disabled in protection (Merge Queue recommended if available)
+- PR titles follow Conventional Commits: (feat|fix|docs|refactor|test|chore|style|perf)(scope?): description
+
+
+<!-- ci/streamline-protection: trigger sync -->
 
 ## Expected Results
 
