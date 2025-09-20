@@ -420,6 +420,48 @@ public class AudioProcessor {
         return Math.sqrt(mean) / 32768.0; // Normalize to 0-1 range
     }
     
+    /**
+     * Pad leading silence to an audio file by the specified milliseconds.
+     * Returns the output path.
+     */
+    public Path padLeadingSilence(Path inputPath, Path outputPath, int padMs) throws IOException {
+        if (padMs <= 0) return Files.copy(inputPath, outputPath, StandardCopyOption.REPLACE_EXISTING);
+        String ffmpegPath = findFFmpeg();
+        if (ffmpegPath == null) {
+            // If FFmpeg not available, just copy
+            Files.copy(inputPath, outputPath, StandardCopyOption.REPLACE_EXISTING);
+            return outputPath;
+        }
+        // Ensure output is Whisper-compatible and prepend silence using adelay
+        List<String> command = List.of(
+            ffmpegPath,
+            "-i", inputPath.toString(),
+            "-af", "adelay=" + padMs + ":all=1",
+            "-ar", String.valueOf(WHISPER_SAMPLE_RATE),
+            "-ac", String.valueOf(WHISPER_CHANNELS),
+            "-sample_fmt", "s16",
+            "-y",
+            outputPath.toString()
+        );
+        try {
+            Process process = new ProcessBuilder(command)
+                .redirectErrorStream(true)
+                .start();
+            boolean completed = process.waitFor(30, TimeUnit.SECONDS);
+            if (!completed) {
+                process.destroyForcibly();
+                throw new IOException("FFmpeg padLeadingSilence timed out");
+            }
+            if (process.exitValue() != 0) {
+                throw new IOException("FFmpeg padLeadingSilence failed with exit code: " + process.exitValue());
+            }
+            return outputPath;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("FFmpeg padLeadingSilence interrupted", e);
+        }
+    }
+
     private String findFFmpeg() {
         String[] paths = {
             "/usr/local/bin/ffmpeg",
