@@ -1200,6 +1200,10 @@ local function onFFExit(code, stdout, stderr)
     -- Switch to transcribing indicator
     updateIndicator("transcribing")
     recording = false
+    -- Timing probe: recording stop
+    if startMs then
+      logEvent("record_stop", { rec_ms = (nowMs() - startMs), held_ms = heldMs })
+    end
 
     -- Track early-condition reasons without aborting output
     local fallbackReason = nil
@@ -1310,6 +1314,10 @@ local function runWhisper(audioPath)
 
         whStdoutBuf, whStderrBuf = {}, {}
         local txStart = nowMs()
+        -- Timing probe: transcription start delta from key-down
+        if f13DownAt then
+          logEvent("tx_start", { delta_ms = (txStart - f13DownAt) })
+        end
         local testNow = isTestMode()
 
         whisperTask = hs.task.new(WHISPER, function(wcode, wout, werr)
@@ -1743,6 +1751,10 @@ local function runWhisper(audioPath)
     return
   end
   startMs = nowMs()
+  -- Timing probe: how long from key-down to ffmpeg start
+  if f13DownAt then
+    logEvent("record_start", { t_ms = startMs, delta_ms = (startMs - f13DownAt) })
+  end
   heldMs = 0
   recordPeak = 0.0
   recording = true
@@ -1907,9 +1919,13 @@ f13Hotkey = hs.hotkey.bind(holdMods, holdKey,
   function() -- pressed
     log.i("PTT pressed (" .. holdStr .. ")")
     f13DownAt = nowMs()
-    -- Start a timer to begin recording after HOLD_THRESHOLD_MS if still held
-    clearHoldTimer()
-    holdStartTimer = hs.timer.doAfter((HOLD_THRESHOLD_MS or 150)/1000, startHoldAfterThreshold)
+    -- Immediately start recording (pre-roll): don't wait for HOLD_THRESHOLD_MS
+    sessionKind = "hold"
+    ignoreHoldThreshold = false
+    isShiftToggle = false
+    startRecording()
+    -- Timing probe
+    logEvent("key_down", { t_ms = f13DownAt })
   end,
   function() -- released
     log.i("PTT released (" .. holdStr .. ")")

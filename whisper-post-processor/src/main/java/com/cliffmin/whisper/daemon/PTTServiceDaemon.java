@@ -125,6 +125,17 @@ public class PTTServiceDaemon {
             Path normalized = Files.createTempFile("ptt_norm_", ".wav");
             audio.normalizeForWhisper(audioPath, normalized);
 
+            // Pre-roll: pad a small leading silence to avoid cutting initial phonemes
+            Path padded = Files.createTempFile("ptt_pad_", ".wav");
+            try {
+                audio.padLeadingSilence(normalized, padded, 200); // 200 ms
+                Files.deleteIfExists(normalized);
+                normalized = padded;
+            } catch (Exception e) {
+                // Non-fatal: fall back to normalized
+                Files.deleteIfExists(padded);
+            }
+
             // Determine language and model (request > config > auto by duration)
             double duration = audio.getDuration(normalized);
             String selectedModel;
