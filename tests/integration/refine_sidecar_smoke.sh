@@ -5,11 +5,17 @@ IFS=$'\n\t'
 # VoxCompose smoke test: sidecar output
 # Requires Ollama running locally with the target model pulled.
 
-JAR="$HOME/code/voxcompose/build/libs/voxcompose-0.1.0-all.jar"
-if [[ ! -f "$JAR" ]]; then
-  echo "ERR: Jar not found: $JAR" >&2
-  echo "Build with: (cd ~/code/voxcompose && ./gradlew --no-daemon clean fatJar)" >&2
-  exit 2
+# Prefer CLI; fallback to local JAR
+if command -v voxcompose >/dev/null 2>&1; then
+  VOX_CMD="voxcompose"
+else
+  JAR="$HOME/code/voxcompose/build/libs/voxcompose-0.1.0-all.jar"
+  if [[ ! -f "$JAR" ]]; then
+    echo "ERR: VoxCompose CLI not found and jar missing: $JAR" >&2
+    echo "Build with: (cd ~/code/voxcompose && ./gradlew --no-daemon clean fatJar)" >&2
+    exit 2
+  fi
+  VOX_CMD="java -jar \"$JAR\""
 fi
 
 # Quick check if Ollama is reachable; skip test if not.
@@ -24,7 +30,7 @@ OUT_FILE="$(mktemp)"
 ERR_FILE="$(mktemp)"
 
 set +e
-java -jar "$JAR" --model llama3.1 --timeout-ms 5000 --sidecar "$SIDE" \
+$VOX_CMD --model llama3.1 --timeout-ms 5000 --sidecar "$SIDE" \
   1>"$OUT_FILE" 2>"$ERR_FILE" <<<"$INPUT"
 RC=$?
 set -e
