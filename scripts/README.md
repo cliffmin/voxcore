@@ -34,6 +34,7 @@ Log analysis and monitoring:
 
 ### utilities/
 Utility scripts:
+- [removed] `punctuate.py` (fully deprecated; replaced by Java PunctuationProcessor)
 - `generate_test_data.sh` - Generate synthetic test data
 
 ### diagnostics/
