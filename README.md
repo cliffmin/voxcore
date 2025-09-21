@@ -1,114 +1,36 @@
-# VoxCore (formerly macOS Push-to-Talk Dictation)
+# VoxCore
 
-Note: To enforce branch discipline locally, you can configure a pre-push guard to prevent direct pushes to main:
+[![CI](https://github.com/cliffmin/voxcore/actions/workflows/ci.yml/badge.svg)](https://github.com/cliffmin/voxcore/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-```bash
-git config --local hooks.prepush "scripts/ci/prepush.sh"
-```
+Offline push-to-talk dictation for macOS. Hold a hotkey to record, release to transcribe, and paste at the cursor — fully on-device.
 
-[![CI](https://github.com/cliffmin/voxcore/actions/workflows/ci.yml/badge.svg)](https://github.com/cliffmin/voxcore/actions/workflows/ci.yml) 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
-**VoxCore: Offline push-to-talk voice dictation for macOS.** Hold a hotkey to record, release to transcribe, and paste text at the cursor.
-
-## Features
-
-- 🏠 **100% Offline** - All transcription happens on-device, no internet required
-- ⚡ **Fast** - Sub-second response for short recordings with whisper-cpp
-- ⌨️ **System-wide** - Works in any macOS application
-- 🎯 **Smart** - Automatically selects model based on recording length
-- 🧹 **Clean** - Removes "um", "uh" and other speech disfluencies
-- 📝 **Direct** - Pastes transcribed text at cursor position
-
-## Quick Start
+## Quick start
 
 ```bash
-# Install dependencies
 brew install --cask hammerspoon
 brew install ffmpeg whisper-cpp openjdk@17
 
-# Clone and setup
 git clone https://github.com/cliffmin/voxcore.git
 cd voxcore
 ./scripts/setup/install.sh
-
-# Build Java post-processor (optional but recommended)
+# optional
 make build-java
-
-# Reload Hammerspoon to activate
 ```
 
-## Usage
+## Use it
+- Hold Cmd+Alt+Ctrl+Space to record; release to paste
+- Add Shift for toggle mode (start/stop)
+- Customize keys and options in ~/.hammerspoon/ptt_config.lua
 
-Default keybindings:
-1. **Hold** `Cmd+Alt+Ctrl+Space` to record
-2. **Release** to transcribe and paste
-3. **Add Shift** for toggle mode (long-form recording)
+## Docs
+- Setup: docs/setup.md
+- Usage: docs/usage.md
+- Architecture: docs/development/architecture.md
+- Post-processor CLI: whisper-post-processor/README.md
 
-You can customize keybindings in `~/.hammerspoon/ptt_config.lua` - see [Configuration](docs/setup/configuration.md) for details.
-
-## Documentation
-
-- **[Setup Guide](docs/setup/)** - Installation, configuration, troubleshooting
-- **[Usage Guide](docs/usage/)** - Features, models, dictionaries
-- **[Post-Processing](docs/usage/post-processing.md)** - Disfluency removal and text cleanup
-- **[Development](docs/development/)** - Architecture, testing, contributing
-- **[API Reference](docs/api/)** - Plugin and integration APIs
-
-## Performance
-
-| Recording Length | Typical Speed | Model Used | Accuracy |
-|-----------------|---------------|------------|----------|
-| < 21 seconds | <1 second | base.en | Good for general dictation |
-| > 21 seconds | 2-5 seconds | medium.en | Better for technical content |
-
-### Speed Improvements
-- **whisper-cpp**: 5-10x faster than Python implementation
-- **Dynamic model selection**: Balances speed vs accuracy
-- **Optimized preprocessing**: Reduces latency
-
-## Requirements
-
-### System
-- macOS 11.0+ (Big Sur or later)
-- 8GB RAM recommended
-- Disk space:
-  - **600MB** for whisper-cpp models (recommended)
-  - **1.7GB** for OpenAI Whisper models (if using Python version)
-
-### Software
-- **Hammerspoon** 0.9.100+ - macOS automation framework
-- **FFmpeg** 6.0+ - Audio processing
-- **Java** 17+ - Post-processor for text cleanup
-
-### Transcription (choose one)
-- **whisper-cpp** (recommended) - Fast C++ implementation, 5-10x speed
-- **openai-whisper** (optional) - Original Python implementation
-
-### Models Used
-- **base.en** (75MB) - Fast transcription for recordings <21 seconds
-- **medium.en** (500MB) - Accurate transcription for recordings >21 seconds
-
-The system automatically selects the appropriate model based on recording length.
-
-## Installation Details
-
-After running the install script:
-1. Configuration is symlinked to `~/.hammerspoon/`
-2. Reload Hammerspoon from the menu bar
-3. Test with the default keybinding (Cmd+Alt+Ctrl+Space)
-
-For troubleshooting, see [Setup Guide](docs/setup/).
-
-## Contributing
-
-Contributions welcome! Please:
-- Follow the structure defined in [WARP.md](WARP.md)
-- Add tests for new features
-- Update documentation as needed
-
-See [Development Documentation](docs/development/) for architecture details.
+## Notes
+- Fast by default via whisper-cpp; model auto-selection balances speed/accuracy
+- Native Java post-processing cleans disfluencies, punctuation, and capitalization
 
 ## License
-
-MIT - See [LICENSE](LICENSE) for details.
+MIT — see LICENSE

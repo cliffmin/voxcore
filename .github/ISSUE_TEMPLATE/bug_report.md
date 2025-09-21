@@ -11,9 +11,9 @@ A clear and concise description of what the bug is.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Press F13 to start recording
+1. Hold Cmd+Alt+Ctrl+Space to start recording
 2. Speak for X seconds
-3. Release F13
+3. Release to transcribe and paste
 4. See error
 
 **Expected behavior**
