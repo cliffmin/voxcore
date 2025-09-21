@@ -8,7 +8,6 @@ set -euo pipefail
 
 # Repo root for voxcore
 REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-VOX_JAR="$HOME/code/voxcompose/build/libs/voxcompose-0.1.0-all.jar"
 WHISPER_BIN="$HOME/.local/bin/whisper"
 MODEL="llama3.1"
 TMP_DIR="$(mktemp -d)"
@@ -41,10 +40,17 @@ if [[ ! -x "$WHISPER_BIN" ]]; then
   echo "Whisper CLI not found at $WHISPER_BIN" >&2
   exit 1
 fi
-if [[ ! -f "$VOX_JAR" ]]; then
-  echo "VoxCompose jar missing: $VOX_JAR" >&2
-  echo "Build it first: ~/code/voxcompose/gradlew --no-daemon -p ~/code/voxcompose clean fatJar" >&2
-  exit 1
+# Resolve voxcompose command: prefer CLI, fallback to local JAR
+if command -v voxcompose >/dev/null 2>&1; then
+  VOX_CMD="voxcompose"
+else
+  VOX_JAR="$HOME/code/voxcompose/build/libs/voxcompose-0.1.0-all.jar"
+  if [[ ! -f "$VOX_JAR" ]]; then
+    echo "VoxCompose CLI not found and jar missing at $VOX_JAR" >&2
+    echo "Build it first: (cd ~/code/voxcompose && ./gradlew --no-daemon clean fatJar)" >&2
+    exit 1
+  fi
+  VOX_CMD="/usr/bin/java -jar $VOX_JAR"
 fi
 
 # Transcribe with Whisper (JSON+TXT) into temp dir
@@ -89,7 +95,7 @@ fi
 # Refine with VoxCompose -> Markdown
 OUT_MD="$TMP_DIR/refined.md"
 cat "$INPUT_TXT" | \
-  /usr/bin/env java -jar "$VOX_JAR" \
+  $VOX_CMD \
     --model "$MODEL" \
     --timeout-ms 10000 \
     --memory "$HOME/Library/Application Support/voxcompose/memory.jsonl" \

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse, os, subprocess, time, json
+import argparse, os, subprocess, time, json, shutil
 from pathlib import Path
 
 
@@ -24,7 +24,7 @@ def whisper_transcribe(whisper: Path, wav: Path, outdir: Path, model='base.en', 
 
 
 def run_voxcompose(vox_bin: str, text: str, sidecar: Path) -> (int, float, str):
-    # Runs: echo text | java -jar vox.jar --sidecar sidecar.json
+    # Runs: echo text | voxcompose --sidecar sidecar.json
     t0 = time.monotonic()
     try:
         p = subprocess.Popen([vox_bin, '--sidecar', str(sidecar)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -58,7 +58,7 @@ def main():
     ap.add_argument('--whisper', default=str(Path.home()/'.local/bin/whisper'))
     ap.add_argument('--model', default='base.en')
     ap.add_argument('--lang', default='en')
-    ap.add_argument('--vox-bin', default=f"/usr/bin/java -jar {Path.home()}/code/voxcompose/build/libs/voxcompose-0.1.0-all.jar", help='Command to run VoxCompose (java -jar path)')
+    ap.add_argument('--vox-bin', default='voxcompose', help='Command to run VoxCompose; default uses CLI on PATH, fallback to local JAR')
     args = ap.parse_args()
 
     base = Path(args.baseline_dir)
@@ -66,9 +66,19 @@ def main():
         print(json.dumps({'error':'not_dir','path':str(base)}))
         return
 
-    # Resolve voxcompose bin: if string contains spaces, use shell
-    vox_bin = args.vox-bin if hasattr(args, 'vox-bin') else args.vox_bin
-    use_shell = True if ' ' in vox_bin else False
+    # Resolve voxcompose bin: prefer CLI on PATH, fallback to local jar
+    vox_bin = args.vox_bin
+    use_shell = False
+    if vox_bin == 'voxcompose':
+        if shutil.which('voxcompose'):
+            vox_bin = 'voxcompose'
+            use_shell = False
+        else:
+            jar = Path.home()/ 'code' / 'voxcompose' / 'build' / 'libs' / 'voxcompose-0.1.0-all.jar'
+            vox_bin = f"/usr/bin/java -jar {jar}"
+            use_shell = True
+    else:
+        use_shell = (' ' in vox_bin)
 
     whisper = Path(args.whisper)
     wavs = list_wavs(base, args.bucket)
