@@ -2,7 +2,7 @@
 picocli = "4.7.5"
 gson = "2.13.2"
 commonsLang3 = "3.18.0"
-slf4j = "2.0.9"
+slf4j = "2.0.17"
 undertow = "2.3.10.Final"
 micrometer = "1.11.5"
 junitJupiter = "5.10.1"
