@@ -40,19 +40,39 @@ local function loadConfig()
     return false
   end
   if loadXdg() then return end
-  -- Fallback: load repo-local config next to this file
+  -- Fallback: load repo-local config next to this file (resolve symlinks)
   local src = debug.getinfo(1, "S").source or ""
   local selfPath = src:match("^@(.*)$")
   if selfPath then
-    local dir = selfPath:match("^(.*)/[^/]+$")
-    local cand = dir and (dir .. "/ptt_config.lua") or nil
-    if cand and hs.fs.attributes(cand) then
-      local ok2, t2 = pcall(dofile, cand)
-      if ok2 and type(t2) == "table" then
-        cfg = t2
-        cfg_loaded = true
-        cfg_path_used = cand
-        return
+    local function _realpath(p)
+      if not p or p == "" then return p end
+      -- Try Python realpath for robust symlink resolution; fall back to original path
+      local cmd = string.format([[python3 - <<'PY'
+import os
+p = %q
+print(os.path.realpath(p))
+PY
+]], p)
+      local out = hs.execute(cmd) or ""
+      out = out:gsub("%s+$", "")
+      return (out ~= "" and out) or p
+    end
+    local dirs = {}
+    local realSelf = _realpath(selfPath)
+    local dir1 = realSelf:match("^(.*)/[^/]+$")
+    local dir2 = (selfPath ~= realSelf) and (selfPath:match("^(.*)/[^/]+$")) or nil
+    if dir1 then table.insert(dirs, dir1) end
+    if dir2 and dir2 ~= dir1 then table.insert(dirs, dir2) end
+    for _, dir in ipairs(dirs) do
+      local cand = dir .. "/ptt_config.lua"
+      if cand and hs.fs.attributes(cand) then
+        local ok2, t2 = pcall(dofile, cand)
+        if ok2 and type(t2) == "table" then
+          cfg = t2
+          cfg_loaded = true
+          cfg_path_used = cand
+          return
+        end
       end
     end
   end

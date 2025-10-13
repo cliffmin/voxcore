@@ -21,10 +21,10 @@ tests/fixtures/golden/
 .config/
 ptt_config.lua
 
-# Internal documentation
-internal/
-internal/docs/
-docs-internal/
+# Local workspace only (not committed)
+/internal/
+
+# docs/internal/ IS committed (internal project docs)
 
 # IDE
 .idea/
