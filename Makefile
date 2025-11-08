@@ -1,4 +1,4 @@
-.PHONY: help test test-audio test-e2e test-smoke test-java test-java-integration install clean auto-audio metrics-graph demo-gif build-java
+.PHONY: help test test-audio test-e2e test-smoke test-java test-java-integration install clean auto-audio metrics-graph demo-gif build-java daemon stop-daemon
 
 # Default target
 help:
@@ -124,3 +124,12 @@ status:
 check-audio:
 	@echo "Audio Devices:"
 	@/opt/homebrew/bin/ffmpeg -f avfoundation -list_devices true -i "" 2>&1 | grep -A 10 "audio devices:" | grep "^\[" || echo "No devices found"
+
+# Start PTT daemon for audio padding
+daemon: build-java
+	@bash scripts/setup/start_daemon.sh
+
+# Stop PTT daemon
+stop-daemon:
+	@echo "Stopping PTT daemon..."
+	@pkill -f "PTTServiceDaemon" 2>/dev/null && echo "✓ Daemon stopped" || echo "No daemon running"

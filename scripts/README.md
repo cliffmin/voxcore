@@ -8,12 +8,16 @@ Organized utility scripts for the VoxCore system.
 Installation and configuration scripts:
 - `install.sh` - Main installation script
 - `uninstall.sh` - Clean uninstallation
+- `setup_daemon_service.sh` - Setup PTT daemon as LaunchAgent for auto-start
+- `start_daemon.sh` - Manually start PTT daemon
 - `setup_fast_whisper.sh` - Configure whisper-cpp for performance
 - `migrate_dictionary.sh` - Migrate personal corrections to external file
 - `auto_select_audio_device.sh` - Auto-configure audio input device
+- `setup_ollama_service.sh` - Setup Ollama service for VoxCompose integration
 
 ### testing/
 Test and validation scripts:
+- `test_daemon_service.sh` - Test daemon service setup script
 - `daemon_health.sh` - Check daemon health and endpoints
 - `debug_recording.sh` - Audio device debugging (system-specific)
 - `test_f13_modes.sh` - Keyboard shortcut testing (macOS-specific)
