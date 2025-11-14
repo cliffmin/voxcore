@@ -13,6 +13,13 @@ AUDIO_DEVICE_INDEX = 1  -- Set to your microphone index (1 = MacBook Pro Microph
 ```
 Use `Cmd+Alt+Ctrl+I` to list available devices.
 
+Notes:
+- macOS may expose your iPhone as an input ("iPhone … Microphone") via Continuity. If recordings switch to iPhone unexpectedly, set AUDIO_DEVICE_INDEX to your Mac’s built‑in mic (see device list), or run `make auto-audio` to auto‑select and update `~/.hammerspoon/ptt_config.lua`.
+- Device list (CLI):
+  ```bash
+  /opt/homebrew/bin/ffmpeg -f avfoundation -list_devices true -i '' 2>&1 | sed -n 's/^\[AVFoundation.*\] //p'
+  ```
+
 ### Transcription Model
 ```lua
 INITIAL_PROMPT = "..."  -- Domain-specific vocabulary to improve accuracy
