@@ -14,6 +14,11 @@ help:
 	@echo "  make version      - Show project version (git + Java CLI)"
 	@echo "  make clean        - Clean test artifacts"
 	@echo ""
+	@echo "Version Management:"
+	@echo "  make organize-recordings      - Organize recordings by version"
+	@echo "  make organize-recordings-dry-run - Preview organization (no changes)"
+	@echo "  make compare-versions         - Compare performance across versions"
+	@echo ""
 
 # Install dependencies and setup
 install:
@@ -101,6 +106,20 @@ demo-gif:
 .PHONY: sweep-threshold
 sweep-threshold:
 	@/usr/bin/env python3 scripts/metrics/sweep_threshold.py --golden tests/fixtures/golden --models base.en medium.en --start 6 --end 40 --step 2 | tee tests/results/threshold_sweep_$$(/bin/date +%Y%m%d_%H%M).json
+
+# Version management and recording organization
+.PHONY: organize-recordings compare-versions
+organize-recordings:
+	@echo "Organizing recordings by version..."
+	@bash scripts/utilities/organize_by_version.sh
+
+organize-recordings-dry-run:
+	@echo "Preview: Organizing recordings by version (dry-run)..."
+	@bash scripts/utilities/organize_by_version.sh --dry-run
+
+compare-versions:
+	@echo "Comparing performance across versions..."
+	@python3 scripts/analysis/compare_versions.py
 
 # Development helpers
 reload:

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Automatically select and configure the best available audio device
-# Priority: Bluetooth earbuds > MacBook mic > any available
+# Priority: Bluetooth earbuds > MacBook mic > iPhone/iPad > others
 
 set -euo pipefail
 
@@ -40,7 +40,7 @@ get_device_priority() {
     elif echo "$name" | grep -i "MacBook.*Microphone" > /dev/null; then
         echo "2"  # Second priority for built-in mic
     elif echo "$name" | grep -iE "(iPhone|iPad)" > /dev/null; then
-        echo "3"  # Third priority for iOS devices
+        echo "99"  # De-prioritize Continuity devices by default
     else
         echo "4"  # Lowest priority for others
     fi
@@ -73,27 +73,46 @@ fi
 echo -e "${GREEN}Selected device:${NC} [$BEST_DEVICE_IDX] $BEST_DEVICE_NAME"
 echo ""
 
-# Update config file
-CONFIG_FILE="$HOME/code/voxcore/hammerspoon/ptt_config.lua"
-if [ -f "$CONFIG_FILE" ]; then
-    CURRENT_DEVICE=$(grep "AUDIO_DEVICE_INDEX" "$CONFIG_FILE" | grep -oE "[0-9]+" | head -1)
-    
+# Update live Hammerspoon config (preferred)
+CONFIG_FILE="$HOME/.hammerspoon/ptt_config.lua"
+if [ ! -f "$CONFIG_FILE" ]; then
+    # Create from sample if available in repo
+    SAMPLE="$HOME/code/voxcore/hammerspoon/ptt_config.lua.sample"
+    if [ -f "$SAMPLE" ]; then
+        echo "Creating $CONFIG_FILE from sample..."
+        cp "$SAMPLE" "$CONFIG_FILE"
+    else
+        echo "Creating minimal $CONFIG_FILE ..."
+        printf "return {\n  AUDIO_DEVICE_INDEX = %s,\n}\n" "$BEST_DEVICE_IDX" > "$CONFIG_FILE"
+    fi
+fi
+
+# Ensure AUDIO_DEVICE_INDEX exists and update it
+if grep -q "AUDIO_DEVICE_INDEX" "$CONFIG_FILE"; then
+    CURRENT_DEVICE=$(grep "AUDIO_DEVICE_INDEX" "$CONFIG_FILE" | grep -oE "[0-9]+" | head -1 || echo "")
     if [ "$CURRENT_DEVICE" != "$BEST_DEVICE_IDX" ]; then
-        echo "Updating config from device $CURRENT_DEVICE to $BEST_DEVICE_IDX..."
-        sed -i '' "s/AUDIO_DEVICE_INDEX = [0-9]*/AUDIO_DEVICE_INDEX = $BEST_DEVICE_IDX/" "$CONFIG_FILE"
-        echo -e "${GREEN}✓ Config updated${NC}"
-        
-        # Reload Hammerspoon if running
-        if pgrep -x "Hammerspoon" > /dev/null; then
-            echo "Reloading Hammerspoon..."
-            hs -c "hs.reload()" 2>/dev/null || true
-            echo -e "${GREEN}✓ Hammerspoon reloaded${NC}"
+        echo "Updating config from device ${CURRENT_DEVICE:-unset} to $BEST_DEVICE_IDX..."
+        sed -i '' "s/AUDIO_DEVICE_INDEX = [0-9]*/AUDIO_DEVICE_INDEX = $BEST_DEVICE_IDX/" "$CONFIG_FILE" || true
+        # If no match replaced (edge cases), append it
+        if ! grep -q "AUDIO_DEVICE_INDEX = $BEST_DEVICE_IDX" "$CONFIG_FILE"; then
+            perl -0777 -pe 'BEGIN{$d=shift}@ARGV; if(!/AUDIO_DEVICE_INDEX/){s/return\s*\{\s*/"return {\n  AUDIO_DEVICE_INDEX = $d,\n"/}' "$BEST_DEVICE_IDX" "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE" || true
         fi
+        echo -e "${GREEN}✓ Config updated${NC}"
     else
         echo -e "${GREEN}✓ Config already using device $BEST_DEVICE_IDX${NC}"
     fi
 else
-    echo -e "${YELLOW}⚠ Config file not found at $CONFIG_FILE${NC}"
+    # Insert key near top of return table
+    echo "Injecting AUDIO_DEVICE_INDEX into $CONFIG_FILE ..."
+    perl -0777 -pe 'BEGIN{$d=shift}@ARGV; s/return\s*\{\s*/"return {\n  AUDIO_DEVICE_INDEX = $d,\n"/;' "$BEST_DEVICE_IDX" "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+    echo -e "${GREEN}✓ Config updated${NC}"
+fi
+
+# Reload Hammerspoon if running
+if pgrep -x "Hammerspoon" > /dev/null; then
+    echo "Reloading Hammerspoon..."
+    hs -c "hs.reload()" 2>/dev/null || true
+    echo -e "${GREEN}✓ Hammerspoon reloaded${NC}"
 fi
 
 # Test recording
