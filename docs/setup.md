@@ -24,6 +24,8 @@ Your config lives at ~/.hammerspoon/ptt_config.lua. A sample is installed by the
 
 - Default hotkeys: Hold Cmd+Alt+Ctrl+Space to record; add Shift for toggle mode
 - Audio device: set AUDIO_DEVICE_INDEX in ptt_config.lua (use diagnostics to list devices)
+  - Tip: To avoid Continuity iPhone Microphone, pin the built‑in mic index (often 2) or run: make auto-audio
+  - List devices: /opt/homebrew/bin/ffmpeg -f avfoundation -list_devices true -i '' 2>&1 | sed -n 's/^\[AVFoundation.*\] //p'
 - Post-processing: enabled natively via Java pipeline; no Python required
 
 ## Troubleshooting

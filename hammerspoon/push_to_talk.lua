@@ -1456,6 +1456,20 @@ local function runWhisper(audioPath)
             }
             if extra then for k,v in pairs(extra) do payload[k]=v end end
             logEvent("success", payload)
+            
+            -- Record version metadata for this session
+            if sessionDir then
+              local rr = repoRoot()
+              if rr and rr ~= "" then
+                local versionScript = rr .. "/scripts/utilities/record_version.sh"
+                if hs.fs.attributes(versionScript) then
+                  -- Fire-and-forget: record version metadata
+                  pcall(function()
+                    hs.task.new("/bin/bash", nil, {versionScript, sessionDir}):start()
+                  end)
+                end
+              end
+            end
 
             -- Export test fixture when in test mode
             local tcfg = cfg.TEST_FIXTURE_EXPORT or {}

@@ -1,6 +1,7 @@
 # Build artifacts
 build/
 dist/
+bin/
 *.egg-info/
 __pycache__/
 *.pyc
@@ -34,6 +35,7 @@ docs-internal/
 .vscode/
 *.swp
 *.swo
+.history/
 
 # OS
 .DS_Store
