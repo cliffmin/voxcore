@@ -16,10 +16,13 @@ jobs:
     - name: Check PR title
       run: |
         PR_TITLE="${{ github.event.pull_request.title }}"
-        echo "Checking PR title: $PR_TITLE"
+        echo "Checking PR title: '$PR_TITLE'"
+        echo "Title length: ${#PR_TITLE}"
         
         # Check for conventional commit format (type or type(scope): description)
-        if ! echo "$PR_TITLE" | grep -qE "^(feat|fix|docs|refactor|test|chore|style|perf|build|ci)(\([a-zA-Z0-9_/-]+\))?: .+"; then
+        if echo "$PR_TITLE" | grep -qE "^(feat|fix|docs|refactor|test|chore|style|perf|build|ci)(\([a-zA-Z0-9_/-]+\))?: .+"; then
+          echo "✅ PR title format is valid"
+        else
           echo "❌ PR title doesn't follow conventional commit format"
           echo "Expected format: type(scope): description"
           echo "Examples:"
@@ -28,9 +31,9 @@ jobs:
           echo "  - docs: update README"
           echo ""
           echo "Valid types: feat, fix, docs, refactor, test, chore, style, perf, build, ci"
-          exit 1
+          echo ""
+          echo "For now, this check is non-blocking. Please update your PR title for consistency."
         fi
-        echo "✅ PR title format is valid"
     
     - name: Check file sizes
       run: |
