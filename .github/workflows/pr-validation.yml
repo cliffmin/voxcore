@@ -16,11 +16,18 @@ jobs:
     - name: Check PR title
       run: |
         PR_TITLE="${{ github.event.pull_request.title }}"
-        # Check for conventional commit format
-        if ! echo "$PR_TITLE" | grep -qE "^(feat|fix|docs|refactor|test|chore|style|perf)(\(.+\))?: .+"; then
+        echo "Checking PR title: $PR_TITLE"
+        
+        # Check for conventional commit format (type or type(scope): description)
+        if ! echo "$PR_TITLE" | grep -qE "^(feat|fix|docs|refactor|test|chore|style|perf|build|ci)(\([a-zA-Z0-9_/-]+\))?: .+"; then
           echo "❌ PR title doesn't follow conventional commit format"
           echo "Expected format: type(scope): description"
-          echo "Example: feat(processor): add disfluency removal"
+          echo "Examples:"
+          echo "  - feat(processor): add disfluency removal"
+          echo "  - fix: correct year typo in version script"
+          echo "  - docs: update README"
+          echo ""
+          echo "Valid types: feat, fix, docs, refactor, test, chore, style, perf, build, ci"
           exit 1
         fi
         echo "✅ PR title format is valid"
@@ -46,12 +53,17 @@ jobs:
     
     - name: Validate Markdown
       run: |
-        # Check for broken Markdown syntax
+        # Check for broken Markdown syntax (warnings only, don't fail)
+        echo "=== Markdown Validation ==="
         for file in $(find . -name "*.md" -not -path "./.git/*"); do
-          if ! head -1 "$file" | grep -q "^#" && [ "$(wc -l < "$file")" -gt 10 ]; then
-            echo "⚠️  $file might be missing a header"
+          if [ -f "$file" ]; then
+            # Check if file has a header (non-critical)
+            if ! head -1 "$file" | grep -q "^#" && [ "$(wc -l < "$file")" -gt 10 ]; then
+              echo "⚠️  $file might be missing a header (non-critical)"
+            fi
           fi
         done
+        echo "✅ Markdown validation complete"
 
   # Java compilation check - fast feedback
   java-compile:
