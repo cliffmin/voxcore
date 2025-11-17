@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/cliffmin/voxcore/actions/workflows/ci.yml/badge.svg)](https://github.com/cliffmin/voxcore/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/cliffmin/voxcore/branch/main/graph/badge.svg)](https://codecov.io/gh/cliffmin/voxcore) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) ![macOS](https://img.shields.io/badge/macOS-11%2B-blue) ![Java 17+](https://img.shields.io/badge/Java-17%2B-orange)
 
-**Fast, private, secure transcription for macOS.** Hold a hotkey anywhere—ChatGPT, Slack, email, code—speak, and your words paste at the cursor in under a second. Your voice never touches the cloud. Your recordings are yours forever.
+**Fast, private, secure transcription for macOS.** Hold a hotkey anywhere—ChatGPT, Slack, email, code—speak, and your words paste at the cursor in under a second. Your voice never touches the cloud. Your recordings are automatically stored and yours forever.
 
 100% local AI. No tokens, no subscriptions, no compromises.
 
