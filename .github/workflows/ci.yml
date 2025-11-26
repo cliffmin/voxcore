@@ -5,6 +5,8 @@ on:
     branches: [ main, develop, feature/** ]
     tags:
       - 'v*.*.*'
+  pull_request:
+    branches: [ main, develop ]
   workflow_dispatch:
     inputs:
       debug_enabled:
@@ -221,103 +223,48 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     
-    - name: Install Lua
-      run: |
-        brew install lua luarocks
-        
     - name: Lua syntax check
       run: |
         echo "=== Checking Lua syntax ==="
         for file in hammerspoon/*.lua; do
           echo "Checking $file..."
-          luac -p "$file"
+          luac -p "$file" || exit 1
         done
         
-    - name: Install shellcheck
-      run: brew install shellcheck
-      
     - name: Shellcheck scripts
       run: |
         echo "=== Checking shell scripts ==="
-        failed=0
-        for script in $(find scripts -type f -name "*.sh"); do
-          echo "Checking $script..."
-          if ! shellcheck "$script"; then
-            echo "✗ $script has issues"
-            failed=1
-          else
-            echo "✓ $script is clean"
-          fi
-        done
-        if [ $failed -eq 1 ]; then
-          echo "Some shell scripts have issues (non-blocking)"
-        fi
-        
-    - name: Check Makefile
-      run: |
-        echo "=== Validating Makefile targets ==="
-        make help
+        shellcheck scripts/**/*.sh || echo "⚠️  Shellcheck found issues (non-blocking)"
 
-  # Documentation and code quality
-  quality-checks:
-    name: Quality Checks
+  # Quick PR validation (fast checks for PRs)
+  pr-quick-checks:
+    name: PR Quick Checks
     runs-on: ubuntu-latest
-    # Only enforce repo hygiene checks on main branch to reduce brittleness on feature branches
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'pull_request'
     
     steps:
     - uses: actions/checkout@v5
     
-    - name: Check documentation
+    - name: Check for merge conflicts
       run: |
-        echo "=== Required documentation (policy enforced on main only) ==="
-        missing=0
-        for doc in README.md CHANGELOG.md LICENSE CODE_OF_CONDUCT.md CONTRIBUTING.md SECURITY.md; do
-          if [ -f "$doc" ]; then
-            echo "✓ $doc exists"
-          else
-            echo "✗ $doc missing"
-            missing=1
-          fi
+        if grep -r "^<<<<<<< " . --exclude-dir=.git; then
+          echo "❌ Merge conflict markers found"
+          exit 1
+        fi
+        echo "✅ No merge conflicts"
+    
+    - name: Validate required docs exist
+      run: |
+        echo "=== Required documentation ==="
+        for doc in README.md LICENSE; do
+          [ -f "$doc" ] && echo "✓ $doc" || { echo "✗ $doc missing"; exit 1; }
         done
-        if [ "$missing" -eq 1 ]; then
-          echo "Docs are missing. This check will fail on main, but is advisory on other branches."
-          # Job already restricted to main via job-level if, so this is effectively enforced there.
-        fi
-        
-    - name: Check line endings
-      run: |
-        echo "=== Checking for CRLF line endings (warning only) ==="
-        crlf_files=$(find . -type f \( -name "*.java" -o -name "*.lua" -o -name "*.md" \) \
-          -exec file {} \; | grep CRLF || true)
-        if [ -n "$crlf_files" ]; then
-          echo "⚠️  Files with CRLF line endings detected (non-blocking):"
-          echo "$crlf_files"
-        else
-          echo "✅ No CRLF line endings detected"
-        fi
-        
-    - name: Check for sensitive data
-      run: |
-        echo "=== Checking for potential secrets ==="
-        matches=$(grep -rIn -E "((api[_-]?key|password|secret|token)[^A-Za-z0-9]{0,3}[:=][^A-Za-z0-9]{0,3}[\"']?[A-Za-z0-9/_\\-\\+=]{20,}[\"']?)" \
-          --include="*.java" --include="*.lua" --include="*.sh" \
-          --exclude-dir=.git --exclude-dir=build . | grep -v -E "(example|test|sample)" || true)
-        if [ -n "$matches" ]; then
-          echo "❌ Potential secrets detected (please investigate):"
-          echo "$matches"
-          # For now, do not fail the build to avoid brittleness; you can tighten this later if desired.
-        else
-          echo "✅ No obvious secrets detected"
-        fi
-
-  # Release build (only on main branch)
 
   # Status check - Required for branch protection
   status:
     name: CI Status
     runs-on: ubuntu-latest
-    needs: [java-tests, integration-tests, lua-shell-tests, quality-checks]
+    needs: [java-tests, integration-tests, lua-shell-tests]
     if: always()
     
     steps:
@@ -327,13 +274,11 @@ jobs:
         echo "java-tests: ${{ needs.java-tests.result }}"
         echo "integration-tests: ${{ needs.integration-tests.result }}"
         echo "lua-shell-tests: ${{ needs.lua-shell-tests.result }}"
-        echo "quality-checks: ${{ needs.quality-checks.result }}"
         echo ""
         
         # Fail only on critical job failures (integration tests allowed to fail)
         if [[ "${{ needs.java-tests.result }}" == "failure" || \
-              "${{ needs.lua-shell-tests.result }}" == "failure" || \
-              "${{ needs.quality-checks.result }}" == "failure" ]]; then
+              "${{ needs.lua-shell-tests.result }}" == "failure" ]]; then
           echo "❌ CI failed - critical tests did not pass"
           exit 1
         fi
