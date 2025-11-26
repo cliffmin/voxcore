@@ -13,6 +13,7 @@ Welcome to the VoxCore documentation. This guide will help you install, configur
 
 ### Development
 - **[Architecture](development/architecture.md)** - System design and plugin model
+- **[Versioning](development/versioning.md)** - Version management and release process
 - **[Testing](development/testing.md)** - Running and writing tests
 - **[Release Process](development/release.md)** - How releases are created
 - **[Dependency Policy](development/dependency-policy.md)** - Managing dependencies
