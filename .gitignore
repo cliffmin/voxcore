@@ -56,3 +56,7 @@ VoiceNotes/
 Documents/VoiceNotes/
 .env
 .envrc
+
+# Generated test reports
+whisper-post-processor/jacoco/
+whisper-post-processor/tests/
