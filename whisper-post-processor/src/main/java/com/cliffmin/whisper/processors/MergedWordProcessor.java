@@ -87,8 +87,20 @@ public class MergedWordProcessor implements TextProcessor {
         if (input.isEmpty()) return input;
         String result = input;
         
-        // First handle the special apostrophe patterns
+        // First fix sentence boundary merging (word.Word -> word. Word)
+        result = fixSentenceBoundaryMerging(result);
+        
+        // Then handle the special apostrophe patterns
         result = fixApostropheContractions(result);
+        
+        // Handle generic word+conjunction patterns
+        result = fixWordConjunctionMerging(result);
+        
+        // Handle the+word patterns
+        result = fixTheWordMerging(result);
+        
+        // Handle missing sentence boundaries (toThen -> to. Then)
+        result = fixMissingSentenceBoundary(result);
         
         // Then handle the regular replacements
         for (Map.Entry<Pattern, String> entry : replacements.entrySet()) {
@@ -114,6 +126,141 @@ public class MergedWordProcessor implements TextProcessor {
         }
         
         return result;
+    }
+    
+    /**
+     * Fix sentence boundary merging: word.Word -> word. Word
+     * Handles period, question mark, and exclamation point.
+     */
+    private String fixSentenceBoundaryMerging(String text) {
+        // Pattern: word followed by sentence-ending punctuation followed immediately by capital letter
+        Pattern pattern = Pattern.compile("(\\w)([.!?])([A-Z])");
+        
+        Matcher matcher = pattern.matcher(text);
+        StringBuffer sb = new StringBuffer();
+        
+        while (matcher.find()) {
+            String lastChar = matcher.group(1);
+            String punct = matcher.group(2);
+            String nextChar = matcher.group(3);
+            String replacement = lastChar + punct + " " + nextChar;
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(sb);
+        
+        return sb.toString();
+    }
+    
+    /**
+     * Fix word+conjunction merging: statementand -> statement and
+     * Handles common conjunctions: and, or, but, then, so
+     */
+    private String fixWordConjunctionMerging(String text) {
+        // Pattern: 3+ letter word followed by common conjunction/pronoun
+        Pattern pattern = Pattern.compile("\\b(\\w{3,})(and|or|but|you)\\b", 
+            Pattern.CASE_INSENSITIVE);
+        
+        Matcher matcher = pattern.matcher(text);
+        StringBuffer sb = new StringBuffer();
+        
+        while (matcher.find()) {
+            String word1 = matcher.group(1);
+            String word2 = matcher.group(2);
+            
+            // Skip if combined is a known word
+            if (isLikelyFalsePositive(word1, word2)) {
+                continue;
+            }
+            
+            String replacement = word1 + " " + word2;
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(sb);
+        
+        return sb.toString();
+    }
+    
+    /**
+     * Fix lowercase word followed by capitalized word (sentence boundary without punctuation)
+     * Example: toThen -> to. Then
+     */
+    private String fixMissingSentenceBoundary(String text) {
+        // Pattern: lowercase word ending, immediately followed by capitalized word
+        Pattern pattern = Pattern.compile("\\b([a-z]+)([A-Z][a-z]+)\\b");
+        
+        Matcher matcher = pattern.matcher(text);
+        StringBuffer sb = new StringBuffer();
+        
+        while (matcher.find()) {
+            String word1 = matcher.group(1);
+            String word2 = matcher.group(2);
+            
+            // Skip camelCase technical terms
+            if (word1.length() > 5 && word2.length() > 3) {
+                // Likely intentional camelCase, skip
+                continue;
+            }
+            
+            // This looks like a missing sentence boundary
+            String replacement = word1 + ". " + word2;
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(sb);
+        
+        return sb.toString();
+    }
+    
+    /**
+     * Fix the+word merging: thecustom -> the custom
+     * Only handles patterns NOT already covered by the hardcoded replacements.
+     */
+    private String fixTheWordMerging(String text) {
+        // Pattern: "the" followed by lowercase word (not already handled)
+        Pattern pattern = Pattern.compile("\\bthe([a-z]{3,})\\b");
+        
+        Matcher matcher = pattern.matcher(text);
+        StringBuffer sb = new StringBuffer();
+        
+        while (matcher.find()) {
+            String word = matcher.group(1);
+            String lower = word.toLowerCase();
+            
+            // Skip known words that legitimately start with "the"
+            if (lower.equals("m") || lower.equals("n") || lower.equals("re") || 
+                lower.equals("se") || lower.equals("y") || lower.equals("ir") ||
+                lower.equals("ory") || lower.equals("sis") || lower.equals("me") ||
+                lower.equals("mes") || lower.equals("ater") || lower.equals("atre") ||
+                lower.equals("sis") || lower.equals("ater")) {
+                continue;
+            }
+            
+            // Skip patterns already handled by hardcoded replacements
+            // (they*, with*, in*, for*, from*, at*, by*, to*, and*, of*)
+            if (lower.startsWith("y") || // they*
+                lower.startsWith("configure") || lower.startsWith("don") || 
+                lower.startsWith("can") || lower.startsWith("were") ||
+                lower.startsWith("have") || lower.startsWith("need") ||
+                lower.startsWith("should") || lower.startsWith("would") ||
+                lower.startsWith("could") || lower.startsWith("might") ||
+                lower.startsWith("are") || lower.startsWith("will")) {
+                continue;
+            }
+            
+            String replacement = "the " + word;
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(sb);
+        
+        return sb.toString();
+    }
+    
+    private boolean isLikelyFalsePositive(String word1, String word2) {
+        String combined = (word1 + word2).toLowerCase();
+        // Known words that look like merged words but aren't
+        return combined.equals("brand") || combined.equals("grandor") ||
+               combined.equals("wander") || combined.equals("pander") ||
+               combined.equals("banter") || combined.equals("cantor") ||
+               combined.equals("mentor") || combined.equals("render");
     }
     
     private String fixApostropheContractions(String text) {
