@@ -1,4 +1,4 @@
-.PHONY: help test test-audio test-e2e test-smoke test-java test-java-integration install clean auto-audio metrics-graph demo-gif build-java
+.PHONY: help test test-audio test-e2e test-smoke test-java test-java-integration install clean auto-audio metrics-graph demo-gif build-java dev dev-install
 
 # Default target
 help:
@@ -6,7 +6,8 @@ help:
 	@echo "====================================="
 	@echo ""
 	@echo "Development:"
-	@echo "  make dev          - Build & install locally (restart daemon)"
+	@echo "  make dev-install  - Build & install locally (restart daemon)"
+	@echo "  make dev          - Alias for dev-install"
 	@echo "  make build-java   - Build Java post-processor only"
 	@echo "  make reload       - Reload Hammerspoon config"
 	@echo "  make status       - Show current status"
@@ -132,7 +133,7 @@ compare-versions:
 # Development helpers
 
 # Local dev install: build, restart daemon, reload Hammerspoon
-dev:
+dev-install:
 	@echo "=== Local Dev Install ==="
 	@echo "1. Building JAR..."
 	@cd whisper-post-processor && gradle shadowJar --no-daemon -q
@@ -146,6 +147,9 @@ dev:
 	@curl -s http://127.0.0.1:8765/health | grep -q '"status":"ok"' && echo "✓ Daemon running" || echo "✗ Daemon not responding (will start on first use)"
 	@echo ""
 	@echo "Done! Test with a recording."
+
+# Alias for dev-install
+dev: dev-install
 
 reload:
 	@echo "Reloading Hammerspoon..."
