@@ -82,6 +82,8 @@ public class PTTServiceDaemon {
         var pipeline = new com.cliffmin.whisper.pipeline.ProcessingPipeline();
         pipeline.addProcessor(new com.cliffmin.whisper.processors.ReflowProcessor());
         pipeline.addProcessor(new com.cliffmin.whisper.processors.DisfluencyProcessor());
+        pipeline.addProcessor(new com.cliffmin.whisper.processors.ContractionNormalizer());
+        pipeline.addProcessor(new com.cliffmin.whisper.processors.ConjunctionFollowerSplitter());
         pipeline.addProcessor(new com.cliffmin.whisper.processors.MergedWordProcessor());
         pipeline.addProcessor(new com.cliffmin.whisper.processors.SentenceBoundaryProcessor());
         pipeline.addProcessor(new com.cliffmin.whisper.processors.CapitalizationProcessor());

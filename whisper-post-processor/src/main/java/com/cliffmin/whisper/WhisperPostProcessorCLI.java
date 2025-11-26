@@ -193,6 +193,10 @@ public class WhisperPostProcessorCLI implements Callable<Integer> {
             pipeline.addProcessor(new DisfluencyProcessor());
         }
         
+        // Contractions + conjunction split helpers
+        pipeline.addProcessor(new ContractionNormalizer());
+        pipeline.addProcessor(new ConjunctionFollowerSplitter());
+        
         if (!disableMergedWords) {
             pipeline.addProcessor(new MergedWordProcessor());
         }

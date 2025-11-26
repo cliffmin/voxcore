@@ -9,8 +9,9 @@ import java.util.regex.Pattern;
  */
 public class SentenceBoundaryProcessor implements TextProcessor {
     
-    // Pattern to detect lowercase followed by uppercase with little/no space
-    private static final Pattern SENTENCE_BOUNDARY = Pattern.compile("([a-z])\\s?([A-Z])");
+    // Pattern to detect lowercase followed DIRECTLY by uppercase (no space) - indicates merged sentence
+    // If there's already a space, don't add a period
+    private static final Pattern MERGED_SENTENCE_BOUNDARY = Pattern.compile("([a-z])([A-Z])");
     
     // Pattern to detect very long sentences that could be split
     private static final Pattern LONG_SENTENCE = Pattern.compile("[^.!?]{200,}");
@@ -34,17 +35,38 @@ public class SentenceBoundaryProcessor implements TextProcessor {
         return result;
     }
     
+    // Common short words that precede nouns - should not get periods
+    private static final java.util.Set<String> ARTICLES_AND_PREPOSITIONS = java.util.Set.of(
+        "the", "a", "an", "this", "that", "these", "those",
+        "my", "your", "his", "her", "its", "our", "their",
+        "some", "any", "no", "every", "each", "all", "both",
+        "in", "on", "at", "by", "for", "with", "of", "from", "to",
+        "and", "or", "but", "so", "if", "as", "like"
+    );
+    
     private String fixMissingSentenceBoundaries(String text) {
-        Matcher matcher = SENTENCE_BOUNDARY.matcher(text);
+        Matcher matcher = MERGED_SENTENCE_BOUNDARY.matcher(text);
         StringBuffer sb = new StringBuffer();
         
         while (matcher.find()) {
             String lastChar = matcher.group(1);
             String nextChar = matcher.group(2);
+            int matchStart = matcher.start();
             
             // Don't add period after "I" or in known acronyms
-            if (!"i".equals(lastChar) && !isLikelyAcronym(text, matcher.start())) {
-                matcher.appendReplacement(sb, lastChar + ". " + nextChar);
+            if (!"i".equals(lastChar) && !isLikelyAcronym(text, matchStart)) {
+                // Check if the preceding word is an article/preposition
+                String precedingWord = extractPrecedingWord(text, matchStart);
+                if (precedingWord != null && ARTICLES_AND_PREPOSITIONS.contains(precedingWord.toLowerCase())) {
+                    // Just add space, not a period (article + proper noun)
+                    matcher.appendReplacement(sb, lastChar + " " + nextChar);
+                } else if (isLikelyCamelCase(text, matchStart)) {
+                    // Looks like camelCase (e.g., VoxCore) - just add space
+                    matcher.appendReplacement(sb, lastChar + " " + nextChar);
+                } else {
+                    // Likely a sentence boundary (e.g., "works.Now")
+                    matcher.appendReplacement(sb, lastChar + ". " + nextChar);
+                }
             } else {
                 matcher.appendReplacement(sb, lastChar + " " + nextChar);
             }
@@ -52,6 +74,36 @@ public class SentenceBoundaryProcessor implements TextProcessor {
         matcher.appendTail(sb);
         
         return sb.toString();
+    }
+    
+    /**
+     * Check if this looks like camelCase (part of a compound word/name).
+     * Returns true if the word starts with uppercase (likely proper noun compound).
+     */
+    private boolean isLikelyCamelCase(String text, int position) {
+        // Find the start of the word containing the match
+        int wordStart = position;
+        while (wordStart > 0 && Character.isLetter(text.charAt(wordStart - 1))) {
+            wordStart--;
+        }
+        // If the word starts with uppercase, it's likely a proper noun compound like VoxCore
+        return wordStart < text.length() && Character.isUpperCase(text.charAt(wordStart));
+    }
+    
+    /**
+     * Extract the word ending at (or just before) the given position.
+     */
+    private String extractPrecedingWord(String text, int position) {
+        // Find the start of the word containing position
+        int end = position + 1; // include the matched lowercase char
+        int start = position;
+        while (start > 0 && Character.isLetter(text.charAt(start - 1))) {
+            start--;
+        }
+        if (start < end && end <= text.length()) {
+            return text.substring(start, end);
+        }
+        return null;
     }
     
     private boolean isLikelyAcronym(String text, int position) {
