@@ -8,6 +8,9 @@ Manual workflow to emulate the push-to-talk flow using an existing audio file.
 # Build JAR and ensure daemon will start on first use
 make dev-install
 
+# Print the processed text (no paste)
+make process-file AUDIO=/absolute/path/to/audio.wav [MODEL=base.en]
+
 # Transcribe and paste the result at the cursor
 make paste-file AUDIO=/absolute/path/to/audio.wav [MODEL=base.en]
 ```
@@ -23,6 +26,7 @@ The implementation lives at `scripts/utilities/transcribe_and_paste.sh`.
 Options:
 - `AUDIO` (required): absolute path to audio
 - `MODEL` (optional): whisper model name (e.g., `base.en`, `small.en`)
+- `make process-file` prints only (no paste)
 - Add `--no-paste` to the script to just print instead of pasting.
 
 ## Troubleshooting
