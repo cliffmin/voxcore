@@ -161,9 +161,9 @@ status:
 	@echo "==============="
 
 # Transcribe an audio file and print the output
-# Usage: make transcribe /path/to/audio.wav
+# Usage: make transcribe [/path/to/audio.wav]  (defaults to latest recording)
 transcribe:
-	@bash scripts/utilities/transcribe_and_paste.sh "$(filter-out $@,$(MAKECMDGOALS))" --no-paste
+	@bash scripts/utilities/transcribe_and_paste.sh $(if $(filter-out $@,$(MAKECMDGOALS)),"$(filter-out $@,$(MAKECMDGOALS))",) --no-paste
 
 # Allow any argument to be passed without error
 %:
