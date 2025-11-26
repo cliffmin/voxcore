@@ -217,41 +217,63 @@ public class WhisperCppAdapter implements WhisperService {
             
             JsonObject root = JsonParser.parseString(jsonOutput).getAsJsonObject();
             
-            // Extract transcription
-            JsonObject transcription = root.getAsJsonObject("transcription");
-            if (transcription == null) {
-                throw new TranscriptionException("No transcription found in output");
-            }
-            
-            String text = transcription.get("text").getAsString();
-            String language = transcription.has("language") 
-                ? transcription.get("language").getAsString() 
-                : "en";
-            
-            // Parse segments
+            // whisper.cpp outputs "transcription" as an array of segments
+            // (not an object with text/segments fields like openai-whisper)
             List<Segment> segments = new ArrayList<>();
-            if (transcription.has("segments")) {
-                JsonArray segmentArray = transcription.getAsJsonArray("segments");
-                for (int i = 0; i < segmentArray.size(); i++) {
-                    JsonObject seg = segmentArray.get(i).getAsJsonObject();
-                    segments.add(new Segment(
-                        i,
-                        seg.get("start").getAsDouble(),
-                        seg.get("end").getAsDouble(),
-                        seg.get("text").getAsString(),
-                        seg.has("confidence") ? seg.get("confidence").getAsDouble() : 1.0
-                    ));
+            StringBuilder textBuilder = new StringBuilder();
+            String language = "en";
+            
+            // Get language from result object if available
+            if (root.has("result") && root.get("result").isJsonObject()) {
+                JsonObject result = root.getAsJsonObject("result");
+                if (result.has("language")) {
+                    language = result.get("language").getAsString();
                 }
             }
             
-            // Calculate duration
+            // Parse transcription array
+            if (root.has("transcription") && root.get("transcription").isJsonArray()) {
+                JsonArray transcriptionArray = root.getAsJsonArray("transcription");
+                for (int i = 0; i < transcriptionArray.size(); i++) {
+                    JsonObject seg = transcriptionArray.get(i).getAsJsonObject();
+                    String segText = seg.has("text") ? seg.get("text").getAsString() : "";
+                    textBuilder.append(segText);
+                    
+                    // Parse offsets (milliseconds) to seconds
+                    double start = 0, end = 0;
+                    if (seg.has("offsets") && seg.get("offsets").isJsonObject()) {
+                        JsonObject offsets = seg.getAsJsonObject("offsets");
+                        start = offsets.get("from").getAsDouble() / 1000.0;
+                        end = offsets.get("to").getAsDouble() / 1000.0;
+                    }
+                    
+                    segments.add(new Segment(i, start, end, segText, 1.0));
+                }
+            } else if (root.has("transcription") && root.get("transcription").isJsonObject()) {
+                // Fallback for object format (openai-whisper style)
+                JsonObject transcription = root.getAsJsonObject("transcription");
+                textBuilder.append(transcription.has("text") ? transcription.get("text").getAsString() : "");
+                if (transcription.has("language")) {
+                    language = transcription.get("language").getAsString();
+                }
+            } else {
+                throw new TranscriptionException("No transcription found in output");
+            }
+            
+            String text = textBuilder.toString().trim();
+            
+            // Calculate duration from last segment
             double duration = segments.isEmpty() ? 0 : 
                 segments.get(segments.size() - 1).getEnd();
             
             // Metadata
             Map<String, Object> metadata = new HashMap<>();
-            metadata.put("model", transcription.has("model") ? 
-                transcription.get("model").getAsString() : "unknown");
+            if (root.has("model") && root.get("model").isJsonObject()) {
+                JsonObject model = root.getAsJsonObject("model");
+                metadata.put("model", model.has("type") ? model.get("type").getAsString() : "unknown");
+            } else {
+                metadata.put("model", "unknown");
+            }
             metadata.put("implementation", "whisper.cpp");
             
             return new TranscriptionResult(text, segments, language, duration, metadata);

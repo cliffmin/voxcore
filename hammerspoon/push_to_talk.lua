@@ -185,11 +185,11 @@ local function loadExternalDictionary()
   -- Try multiple possible sources in order of preference
   local sources = {
     -- User's personal dictionary
-    HOME .. "/.config/ptt-dictation/corrections.lua",
+    HOME .. "/.config/voxcore/corrections.lua",
     -- VoxCompose learned corrections (if available)
     HOME .. "/.config/voxcompose/corrections.lua",
     -- System-wide shared corrections
-    "/usr/local/share/ptt-dictation/corrections.lua"
+    "/usr/local/share/voxcore/corrections.lua"
   }
   
   for _, path in ipairs(sources) do
