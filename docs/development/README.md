@@ -11,6 +11,7 @@ Documentation for VoxCore developers and contributors.
 ## Development Workflow
 
 - **[Local Testing](local-testing.md)** - Test changes locally (`make dev-install`)
+- **[Transcribe File](transcribe-file.md)** - Transcribe a local audio file and paste (`make paste-file`)
 - **[Testing](testing.md)** - Running tests and writing new tests
 - **[Release Process](release.md)** - How to create releases
 - **[Release Procedures](release-process.md)** - Detailed release procedures
