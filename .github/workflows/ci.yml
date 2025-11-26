@@ -28,23 +28,43 @@ jobs:
   # Java tests - Core functionality
   java-tests:
     name: Java Tests
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0  # Need full history for changed files check
+    
+    - name: Check if only docs changed
+      id: docs_check
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          if echo "$CHANGED_FILES" | grep -qvE '^(docs/|README\.md|CHANGELOG\.md|CONTRIBUTING\.md|LICENSE|SECURITY\.md|CODE_OF_CONDUCT\.md)'; then
+            echo "code_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "code_changed=false" >> $GITHUB_OUTPUT
+            echo "Only docs changed, skipping Java tests"
+          fi
+        else
+          echo "code_changed=true" >> $GITHUB_OUTPUT
+        fi
     
     - name: Set up Java
+      if: steps.docs_check.outputs.code_changed == 'true'
       uses: actions/setup-java@v5
       with:
         distribution: 'temurin'
         java-version: ${{ env.JAVA_VERSION }}
         
     - name: Setup Gradle
+      if: steps.docs_check.outputs.code_changed == 'true'
       uses: gradle/actions/setup-gradle@v4
       with:
         gradle-version: ${{ env.GRADLE_VERSION }}
         
     - name: Cache Gradle packages
+      if: steps.docs_check.outputs.code_changed == 'true'
       uses: actions/cache@v4
       with:
         path: |
@@ -55,14 +75,16 @@ jobs:
           ${{ runner.os }}-gradle-
     
     - name: Build Java post-processor (no tests; produce dist jar)
+      if: steps.docs_check.outputs.code_changed == 'true'
       run: |
         cd whisper-post-processor
         gradle clean buildAll --no-daemon --stacktrace
         
     - name: Run Java unit tests (unit only)
+      if: steps.docs_check.outputs.code_changed == 'true'
       run: |
         cd whisper-post-processor
-        gradle test --no-daemon --info --stacktrace
+        gradle test --no-daemon
 
     - name: Unit test summary
       if: always()
