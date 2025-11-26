@@ -35,11 +35,7 @@ Installation and configuration scripts.
 
 - `install.sh` - Main installation script
 - `auto_select_audio_device.sh` - Automatically detect and configure best audio device
-- `migrate_dictionary.sh` - Migrate dictionary from old format
-- `setup_fast_whisper.sh` - Setup fast-whisper (deprecated, use whisper-cpp)
-- `setup_ollama_service.sh` - Setup Ollama service for LLM refinement
 - `uninstall.sh` - Uninstall VoxCore
-- `update_voxcompose_config.sh` - Update VoxCompose configuration
 
 ### `testing/`
 Testing utilities and test scripts.
