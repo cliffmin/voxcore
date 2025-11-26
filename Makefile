@@ -136,7 +136,7 @@ compare-versions:
 dev-install:
 	@echo "=== Local Dev Install ==="
 	@echo "1. Building JAR..."
-	@cd whisper-post-processor && gradle shadowJar --no-daemon -q
+	@cd whisper-post-processor && ./gradlew shadowJar --no-daemon -q
 	@echo "2. Stopping daemon..."
 	@pkill -f "PTTServiceDaemon" 2>/dev/null || true
 	@sleep 0.5
