@@ -164,12 +164,12 @@ status:
 # Transcribe an audio file and paste like live PTT
 paste-file:
 	@if [ -z "$(AUDIO)" ]; then echo "Usage: make paste-file AUDIO=/abs/audio.wav [MODEL=...]"; exit 2; fi
-	@bash scripts/utilities/transcribe_and_paste.sh "$(AUDIO)" $(if [ -n "$(MODEL)" ]; then echo --model $(MODEL); fi)
+	@bash scripts/utilities/transcribe_and_paste.sh "$(AUDIO)" $(if $(MODEL),--model $(MODEL),)
 
 # Process an audio file and print the output (no paste)
 process-file:
 	@if [ -z "$(AUDIO)" ]; then echo "Usage: make process-file AUDIO=/abs/audio.wav [MODEL=...]"; exit 2; fi
-	@bash scripts/utilities/transcribe_and_paste.sh "$(AUDIO)" $(if [ -n "$(MODEL)" ]; then echo --model $(MODEL); fi) --no-paste
+	@bash scripts/utilities/transcribe_and_paste.sh "$(AUDIO)" $(if $(MODEL),--model $(MODEL),) --no-paste
 
 # Alias
 test-file: process-file
