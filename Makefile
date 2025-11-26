@@ -11,6 +11,7 @@ help:
 	@echo "  make build-java   - Build Java post-processor only"
 	@echo "  make reload       - Reload Hammerspoon config"
 	@echo "  make status       - Show current status"
+	@echo "  make paste-file AUDIO=/abs/audio.wav [MODEL=...]  - Transcribe file and paste"
 	@echo ""
 	@echo "Testing:"
 	@echo "  make test         - Run all tests"
@@ -158,6 +159,20 @@ reload:
 status:
 	@echo "Current Status:"
 	@echo "==============="
+
+# Transcribe an audio file and paste like live PTT
+paste-file:
+	@if [ -z "$(AUDIO)" ]; then echo "Usage: make paste-file AUDIO=/abs/audio.wav [MODEL=...]"; exit 2; fi
+	@bash scripts/utilities/transcribe_and_paste.sh "$(AUDIO)" $(if [ -n "$(MODEL)" ]; then echo --model $(MODEL); fi)
+	@if [ -z "$(PATH)" ]; then :; fi
+	@if [ -z "$(PATH)" ]; then :; fi
+	@if [ -z "$(PATH)" ]; then :; fi
+	@if [ -z "$(PATH)" ]; then :; fi
+	@if [ -z "$(PATH)" ]; then :; fi
+	@if [ -z "$(PATH)" ]; then :; fi
+	@if [ -z "$(PATH)" ]; then :; fi
+	@if [ -z "$(PATH)" ]; then :; fi
+	@PATH=$(PATH) bash scripts/utilities/transcribe_and_paste.sh "$(PATH)" $(if [ -n "$(MODEL)" ]; then echo --model $(MODEL); fi)
 	@echo -n "Hammerspoon: "
 	@pgrep -x "Hammerspoon" > /dev/null && echo "✓ Running" || echo "✗ Not running"
 	@echo -n "Module: "
