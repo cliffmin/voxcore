@@ -147,6 +147,13 @@ public class DictionaryProcessor implements TextProcessor {
         m.put("git", "Git");
         m.put("gitlab", "GitLab");
         m.put("bitbucket", "Bitbucket");
+        // VoxCore project terms
+        m.put("voxcore", "VoxCore");
+        m.put("vox core", "VoxCore");
+        m.put("voxcompose", "VoxCompose");
+        m.put("vox compose", "VoxCompose");
+        m.put("hammerspoon", "Hammerspoon");
+        m.put("whisper", "Whisper");
         return m;
     }
     

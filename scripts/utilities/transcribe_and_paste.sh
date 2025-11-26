@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Transcribe a local audio file and paste the post-processed text at the cursor
 # Usage:
-#   scripts/utilities/transcribe_and_paste.sh /abs/path/to/audio.wav [-m MODEL] [--no-paste]
+#   scripts/utilities/transcribe_and_paste.sh [/abs/path/to/audio.wav] [-m MODEL] [--no-paste]
+#   If no path provided, uses the latest recording from ~/Documents/VoiceNotes/
 #
 # Behavior:
 # - Tries PTTServiceDaemon at http://127.0.0.1:8765 first (fast path; normalizes audio)
@@ -11,13 +12,46 @@
 
 set -euo pipefail
 
-if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 /path/audio.(wav|m4a|mp3|...) [-m MODEL] [--no-paste]" >&2
-  exit 2
+# Find latest recording if no path provided
+find_latest_recording() {
+  local notes_dir="${HOME}/Documents/VoiceNotes"
+  if [[ ! -d "$notes_dir" ]]; then
+    echo "" && return
+  fi
+  # Find most recent directory, then look for .norm.wav or .wav
+  local latest_dir
+  latest_dir=$(ls -1td "$notes_dir"/2025-* 2>/dev/null | head -1)
+  if [[ -z "$latest_dir" ]]; then
+    echo "" && return
+  fi
+  # Prefer normalized wav, fall back to regular wav
+  local base
+  base=$(basename "$latest_dir")
+  if [[ -f "$latest_dir/${base}.norm.wav" ]]; then
+    echo "$latest_dir/${base}.norm.wav"
+  elif [[ -f "$latest_dir/${base}.wav" ]]; then
+    echo "$latest_dir/${base}.wav"
+  else
+    echo ""
+  fi
+}
+
+AUDIO=""
+if [[ $# -ge 1 && "${1}" != -* ]]; then
+  AUDIO="${1}"
+  shift || true
+else
+  AUDIO=$(find_latest_recording)
+  if [[ -n "$AUDIO" ]]; then
+    echo "Using latest: $AUDIO" >&2
+  fi
 fi
 
-AUDIO="${1}"
-shift || true
+if [[ -z "$AUDIO" ]]; then
+  echo "Usage: $0 [/path/audio.wav] [-m MODEL] [--no-paste]" >&2
+  echo "       If no path, uses latest from ~/Documents/VoiceNotes/" >&2
+  exit 2
+fi
 MODEL=""
 PASTE=1
 
@@ -80,34 +114,9 @@ if [[ -z "$TEXT" ]]; then
   exit 1
 fi
 
-# Locate whisper-post.jar or executable
-find_post() {
-  # 1) dist jar
-  if [[ -f "whisper-post-processor/dist/whisper-post.jar" ]]; then echo "whisper-post-processor/dist/whisper-post.jar"; return; fi
-  # 2) build libs *-all.jar
-  J=$(ls -1 whisper-post-processor/build/libs/*-all.jar 2>/dev/null | head -1 || true)
-  if [[ -n "$J" ]]; then echo "$J"; return; fi
-  # 3) whisper-post on PATH
-  if command -v whisper-post >/dev/null 2>&1; then echo "whisper-post"; return; fi
-  echo ""; return
-}
-
-POST_BIN=$(find_post)
-if [[ -z "$POST_BIN" ]]; then
-  echo "Building Java post-processor..." >&2
-  (cd whisper-post-processor && ./gradlew -q shadowJar)
-  POST_BIN=$(find_post)
-fi
-
-process_text() {
-  if [[ "$POST_BIN" == *.jar ]]; then
-    java -jar "$POST_BIN"
-  else
-    "$POST_BIN"
-  fi
-}
-
-OUT=$(printf '%s' "$TEXT" | process_text)
+# The daemon already applies post-processing, so we can use TEXT directly.
+# Note: If running CLI manually (not via daemon), use `echo "$text" | whisper-post` 
+OUT="$TEXT"
 
 if [[ $PASTE -eq 0 ]]; then
   printf '%s

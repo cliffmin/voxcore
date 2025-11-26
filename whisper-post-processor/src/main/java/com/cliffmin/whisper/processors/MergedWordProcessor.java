@@ -65,6 +65,35 @@ public class MergedWordProcessor implements TextProcessor {
         addReplacement("doneit", "done it");
         addReplacement("thisall", "this all");
         addReplacement("yeahsets", "yeah sets");
+        addReplacement("willbe", "will be");
+        addReplacement("bothbecause", "both because");
+        addReplacement("theintegration", "the integration");
+        addReplacement("theperformance", "the performance");
+        addReplacement("kindof", "kind of");
+        addReplacement("typeof", "type of");
+        addReplacement("sortof", "sort of");
+        addReplacement("alot", "a lot");
+        addReplacement("aswell", "as well");
+        addReplacement("infact", "in fact");
+        addReplacement("atleast", "at least");
+        addReplacement("sofar", "so far");
+        addReplacement("inthat", "in that");
+        addReplacement("sothat", "so that");
+        addReplacement("suchthat", "such that");
+        addReplacement("likethe", "like the");
+        addReplacement("justthe", "just the");
+        addReplacement("butthe", "but the");
+        addReplacement("orthe", "or the");
+        addReplacement("becausethe", "because the");
+        addReplacement("sincethe", "since the");
+        addReplacement("whenthe", "when the");
+        addReplacement("wherethe", "where the");
+        addReplacement("shouldbe", "should be");
+        addReplacement("wouldbe", "would be");
+        addReplacement("couldbe", "could be");
+        addReplacement("mightbe", "might be");
+        addReplacement("mustbe", "must be");
+        addReplacement("canbe", "can be");
         
         // Technical terms
         addReplacement("apikey", "API key");
@@ -188,6 +217,7 @@ public class MergedWordProcessor implements TextProcessor {
     /**
      * Fix lowercase word followed by capitalized word (sentence boundary without punctuation)
      * Example: toThen -> to. Then
+     * BUT NOT: theVox -> the Vox (that's an article, not a sentence boundary)
      */
     private String fixMissingSentenceBoundary(String text) {
         // Pattern: lowercase word ending, immediately followed by capitalized word
@@ -196,13 +226,43 @@ public class MergedWordProcessor implements TextProcessor {
         Matcher matcher = pattern.matcher(text);
         StringBuffer sb = new StringBuffer();
         
+        // Common short words that precede nouns (not sentence boundaries)
+        java.util.Set<String> articles = java.util.Set.of(
+            "the", "a", "an", "this", "that", "these", "those",
+            "my", "your", "his", "her", "its", "our", "their",
+            "some", "any", "no", "every", "each", "all", "both",
+            "in", "on", "at", "by", "for", "with", "of", "from",
+            "and", "or", "but", "so", "if", "as", "like"
+        );
+        
+        // Words that typically start new sentences (sentence boundaries)
+        java.util.Set<String> sentenceStarters = java.util.Set.of(
+            "Then", "Now", "However", "Therefore", "Thus", "Hence",
+            "Also", "First", "Second", "Third", "Finally", "Next",
+            "Meanwhile", "Otherwise", "Instead"
+        );
+        
         while (matcher.find()) {
             String word1 = matcher.group(1);
             String word2 = matcher.group(2);
             
-            // Skip camelCase technical terms
+            // If word2 is a sentence starter, always add period (even after "to")
+            if (sentenceStarters.contains(word2)) {
+                String replacement = word1 + ". " + word2;
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+                continue;
+            }
+            
+            // Skip if word1 is an article/determiner/preposition - just add space, not period
+            if (articles.contains(word1.toLowerCase())) {
+                // This is "theVox" -> "the Vox", not a sentence boundary
+                String replacement = word1 + " " + word2;
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+                continue;
+            }
+            
+            // Skip camelCase technical terms (both parts long)
             if (word1.length() > 5 && word2.length() > 3) {
-                // Likely intentional camelCase, skip
                 continue;
             }
             
