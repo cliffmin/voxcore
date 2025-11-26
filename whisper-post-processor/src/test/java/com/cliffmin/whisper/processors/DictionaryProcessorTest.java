@@ -2,18 +2,13 @@ package com.cliffmin.whisper.processors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 
 public class DictionaryProcessorTest {
     private DictionaryProcessor processor;
-    
-    @TempDir
-    Path tempDir;
     
     @BeforeEach
     void setUp() {
@@ -22,7 +17,6 @@ public class DictionaryProcessorTest {
     
     @Test
     void testDefaultReplacements() {
-        // Test some default technical term replacements
         String input = "I'm using github for version control.";
         String result = processor.process(input);
         assertThat(result).isEqualTo("I'm using GitHub for version control.");
@@ -51,32 +45,15 @@ public class DictionaryProcessorTest {
     }
     
     @Test
-    void testCustomDictionaryFile() throws IOException {
-        // Create a custom dictionary file
-        Path configDir = tempDir.resolve(".config/ptt-dictation");
-        Files.createDirectories(configDir);
-        Path dictFile = configDir.resolve("dictionary.json");
-        
-        String customDict = """
-            {
-                "replacements": {
-                    "testword": "REPLACED",
-                    "oldterm": "newterm"
-                }
-            }
-            """;
-        Files.writeString(dictFile, customDict);
-        
-        // Create processor with custom dictionary location
-        System.setProperty("user.home", tempDir.toString());
-        DictionaryProcessor customProcessor = new DictionaryProcessor();
+    void testCustomDictionary() {
+        Map<String, String> custom = new HashMap<>();
+        custom.put("testword", "REPLACED");
+        custom.put("oldterm", "newterm");
+        DictionaryProcessor customProcessor = new DictionaryProcessor(custom);
         
         String input = "This testword and oldterm should change.";
         String result = customProcessor.process(input);
         assertThat(result).isEqualTo("This REPLACED and newterm should change.");
-        
-        // Reset system property
-        System.clearProperty("user.home");
     }
     
     @Test
@@ -87,19 +64,31 @@ public class DictionaryProcessorTest {
     }
     
     @Test
-    void testPreserveOriginalCase() {
-        String input = "Python python PYTHON";
+    void testCloudProviders() {
+        String input = "We deploy to aws and gcp with kubernetes.";
         String result = processor.process(input);
-        assertThat(result).isEqualTo("Python Python Python");
+        assertThat(result).isEqualTo("We deploy to AWS and GCP with Kubernetes.");
     }
     
     @Test
-    void testPhraseReplacement() {
-        // If the processor supports phrase replacements
-        String input = "machine learning and artificial intelligence";
+    void testAITerms() {
+        String input = "Using llm and ml for ai applications with chatgpt.";
         String result = processor.process(input);
-        // Default dictionary may have ML and AI mappings
-        assertThat(result).contains("machine learning", "artificial intelligence");
+        assertThat(result).isEqualTo("Using LLM and ML for AI applications with ChatGPT.");
+    }
+    
+    @Test
+    void testOperatingSystems() {
+        String input = "Runs on macos, linux, and ios.";
+        String result = processor.process(input);
+        assertThat(result).isEqualTo("Runs on macOS, Linux, and iOS.");
+    }
+    
+    @Test
+    void testFrameworks() {
+        String input = "Built with react, vue, and springboot.";
+        String result = processor.process(input);
+        assertThat(result).isEqualTo("Built with React, Vue, and Spring Boot.");
     }
     
     @Test
@@ -133,25 +122,5 @@ public class DictionaryProcessorTest {
         String input = "The javascript API returns json data from github.";
         String result = processor.process(input);
         assertThat(result).isEqualTo("The JavaScript API returns JSON data from GitHub.");
-    }
-    
-    @Test
-    void testInvalidDictionary() throws IOException {
-        // Create an invalid dictionary file
-        Path configDir = tempDir.resolve(".config/ptt-dictation");
-        Files.createDirectories(configDir);
-        Path dictFile = configDir.resolve("dictionary.json");
-        
-        Files.writeString(dictFile, "invalid json content");
-        
-        System.setProperty("user.home", tempDir.toString());
-        DictionaryProcessor customProcessor = new DictionaryProcessor();
-        
-        // Should fall back to defaults on error
-        String input = "Testing github fallback.";
-        String result = customProcessor.process(input);
-        assertThat(result).isEqualTo("Testing GitHub fallback.");
-        
-        System.clearProperty("user.home");
     }
 }

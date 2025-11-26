@@ -1,28 +1,23 @@
 package com.cliffmin.whisper.processors;
 
 import com.cliffmin.whisper.pipeline.TextProcessor;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Applies dictionary-based word replacements from external configuration.
- * Loads corrections from user config or VoxCompose learned corrections.
+ * Applies dictionary-based word replacements for common tech terms.
+ * 
+ * This processor handles proper capitalization of technical terminology
+ * that Whisper often outputs in lowercase. For user-specific customization
+ * and learned corrections, use VoxCompose plugin.
  */
 public class DictionaryProcessor implements TextProcessor {
     
     private final Map<String, String> replacements;
     
     public DictionaryProcessor() {
-        this.replacements = loadDictionary();
+        this.replacements = defaultReplacements();
     }
     
     public DictionaryProcessor(Map<String, String> replacements) {
@@ -51,116 +46,119 @@ public class DictionaryProcessor implements TextProcessor {
         return result;
     }
     
-    private Map<String, String> loadDictionary() {
-        Map<String, String> dict = defaultReplacements();
-        
-        // Try loading from multiple sources
-        String home = System.getProperty("user.home");
-        String[] paths = {
-            home + "/.config/ptt-dictation/dictionary.json",
-            home + "/.config/ptt-dictation/corrections.json",
-            home + "/.config/voxcompose/corrections.json",
-            "/usr/local/share/ptt-dictation/dictionary.json",
-            "/usr/local/share/ptt-dictation/corrections.json"
-        };
-        
-        for (String pathStr : paths) {
-            Path path = Paths.get(pathStr);
-            if (Files.exists(path)) {
-                try {
-                    Map<String, String> loaded = loadJsonDictionary(path);
-                    if (!loaded.isEmpty()) {
-                        dict.putAll(loaded);
-                        System.err.println("Loaded dictionary from: " + pathStr);
-                        // Do not break; allow later files to add/override
-                    }
-                } catch (IOException e) {
-                    // Try next source
-                }
-            }
-        }
-        
-        // Also check for environment variable
-        String customDict = System.getenv("PTT_DICTIONARY_PATH");
-        if (customDict != null) {
-            try {
-                Map<String, String> custom = loadJsonDictionary(Paths.get(customDict));
-                dict.putAll(custom);
-            } catch (IOException e) {
-                System.err.println("Failed to load custom dictionary: " + e.getMessage());
-            }
-        }
-        
-        return dict;
-    }
-    
-    private Map<String, String> loadJsonDictionary(Path path) throws IOException {
-        Gson gson = new Gson();
-        String content = new String(Files.readAllBytes(path));
-        
-        // 1) Support simple map { "key": "value" }
-        try {
-            TypeToken<Map<String, String>> typeToken = new TypeToken<Map<String, String>>() {};
-            Map<String, String> m = gson.fromJson(content, typeToken.getType());
-            if (m != null) return m;
-        } catch (Exception ignore) {}
-        
-        // 2) Support { "replacements": { ... } }
-        try {
-            com.google.gson.JsonObject obj = gson.fromJson(content, com.google.gson.JsonObject.class);
-            if (obj != null && obj.has("replacements") && obj.get("replacements").isJsonObject()) {
-                Map<String, String> result = new HashMap<>();
-                for (var e : obj.getAsJsonObject("replacements").entrySet()) {
-                    result.put(e.getKey(), e.getValue().getAsString());
-                }
-                return result;
-            }
-        } catch (Exception ignore) {}
-        
-        // 3) VoxCompose format
-        try {
-            VoxComposeDict voxDict = gson.fromJson(content, VoxComposeDict.class);
-            Map<String, String> result = new HashMap<>();
-            if (voxDict != null && voxDict.corrections != null) {
-                for (Map.Entry<String, VoxCorrection> entry : voxDict.corrections.entrySet()) {
-                    if (entry.getValue().confidence > 0.8) {
-                        result.put(entry.getKey(), entry.getValue().to);
-                    }
-                }
-            }
-            return result;
-        } catch (Exception ignore) {}
-        
-        return new HashMap<>();
-    }
-    
     private Map<String, String> defaultReplacements() {
         Map<String, String> m = new HashMap<>();
-        // Common tech terms used in tests and typical transcripts
+        // Common tech terms - proper capitalization
         m.put("github", "GitHub");
         m.put("javascript", "JavaScript");
         m.put("typescript", "TypeScript");
         m.put("nodejs", "Node.js");
+        m.put("node.js", "Node.js");
         m.put("json", "JSON");
         m.put("xml", "XML");
+        m.put("html", "HTML");
+        m.put("css", "CSS");
         m.put("api", "API");
+        m.put("apis", "APIs");
+        m.put("rest", "REST");
+        m.put("graphql", "GraphQL");
+        m.put("sql", "SQL");
+        m.put("nosql", "NoSQL");
         m.put("python", "Python");
+        m.put("golang", "Go");
+        m.put("kotlin", "Kotlin");
+        m.put("rust", "Rust");
+        m.put("java", "Java");
+        m.put("aws", "AWS");
+        m.put("gcp", "GCP");
+        m.put("azure", "Azure");
+        m.put("docker", "Docker");
+        m.put("kubernetes", "Kubernetes");
+        m.put("k8s", "K8s");
+        m.put("ios", "iOS");
+        m.put("macos", "macOS");
+        m.put("linux", "Linux");
+        m.put("windows", "Windows");
+        m.put("postgresql", "PostgreSQL");
+        m.put("postgres", "Postgres");
+        m.put("mongodb", "MongoDB");
+        m.put("redis", "Redis");
+        m.put("elasticsearch", "Elasticsearch");
+        m.put("npm", "npm");
+        m.put("yarn", "Yarn");
+        m.put("webpack", "Webpack");
+        m.put("vite", "Vite");
+        m.put("react", "React");
+        m.put("vue", "Vue");
+        m.put("angular", "Angular");
+        m.put("svelte", "Svelte");
+        m.put("nextjs", "Next.js");
+        m.put("next.js", "Next.js");
+        m.put("nuxt", "Nuxt");
+        m.put("springboot", "Spring Boot");
+        m.put("spring boot", "Spring Boot");
+        m.put("django", "Django");
+        m.put("flask", "Flask");
+        m.put("fastapi", "FastAPI");
+        m.put("oauth", "OAuth");
+        m.put("jwt", "JWT");
+        m.put("http", "HTTP");
+        m.put("https", "HTTPS");
+        m.put("url", "URL");
+        m.put("urls", "URLs");
+        m.put("uri", "URI");
+        m.put("uuid", "UUID");
+        m.put("id", "ID");
+        m.put("ids", "IDs");
+        m.put("cpu", "CPU");
+        m.put("gpu", "GPU");
+        m.put("ram", "RAM");
+        m.put("ssd", "SSD");
+        m.put("ci", "CI");
+        m.put("cd", "CD");
+        m.put("cicd", "CI/CD");
+        m.put("ci/cd", "CI/CD");
+        m.put("devops", "DevOps");
+        m.put("sre", "SRE");
+        m.put("cli", "CLI");
+        m.put("gui", "GUI");
+        m.put("ui", "UI");
+        m.put("ux", "UX");
+        m.put("ai", "AI");
+        m.put("ml", "ML");
+        m.put("llm", "LLM");
+        m.put("llms", "LLMs");
+        m.put("gpt", "GPT");
+        m.put("chatgpt", "ChatGPT");
+        m.put("openai", "OpenAI");
+        m.put("anthropic", "Anthropic");
+        m.put("claude", "Claude");
+        m.put("ollama", "Ollama");
+        m.put("langchain", "LangChain");
+        m.put("salesforce", "Salesforce");
+        m.put("jira", "Jira");
+        m.put("slack", "Slack");
+        m.put("notion", "Notion");
+        m.put("figma", "Figma");
+        m.put("vs code", "VS Code");
+        m.put("vscode", "VS Code");
+        m.put("intellij", "IntelliJ");
+        m.put("xcode", "Xcode");
+        m.put("git", "Git");
+        m.put("gitlab", "GitLab");
+        m.put("bitbucket", "Bitbucket");
+        // VoxCore project terms
+        m.put("voxcore", "VoxCore");
+        m.put("vox core", "VoxCore");
+        m.put("voxcompose", "VoxCompose");
+        m.put("vox compose", "VoxCompose");
+        m.put("hammerspoon", "Hammerspoon");
+        m.put("whisper", "Whisper");
         return m;
     }
     
     @Override
     public int getPriority() {
         return 35; // Run after structural processors but before final cleanup
-    }
-    
-    // VoxCompose dictionary format
-    private static class VoxComposeDict {
-        public Map<String, VoxCorrection> corrections;
-    }
-    
-    private static class VoxCorrection {
-        public String to;
-        public double confidence;
-        public int count;
     }
 }

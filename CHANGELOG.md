@@ -9,6 +9,29 @@
 - Deprecated Python punctuation script (scripts/utilities/punctuate.py) and documentation references; Java PunctuationProcessor is the supported path.
 - ContextProcessor has been removed from VoxCore (daemon streaming pipeline), aligning with a stateless core. Adaptive/contextual casing moves to VoxCompose. No behavior change to the default CLI path.
 
+## [0.5.0] - 2025-11-26
+### Highlights
+- **Improved transcription quality**: Fixed incorrect sentence boundaries (no more "the. Project. Vox. Core")
+- **Better proper noun handling**: CamelCase compounds like VoxCore preserved correctly
+- **Developer experience**: `make transcribe` now auto-selects latest recording
+
+### Added
+- SentenceBoundaryProcessor: Articles/prepositions no longer trigger false sentence breaks
+- SentenceBoundaryProcessor: CamelCase detection prevents splitting compound names (VoxCore, GitHub)
+- MergedWordProcessor: Sentence-starter detection (Then, Now, However) for proper boundaries
+- MergedWordProcessor: 25+ new merged word patterns (willbe, shouldbe, kindof, sortof, etc.)
+- DictionaryProcessor: VoxCore ecosystem terms (VoxCore, VoxCompose, Hammerspoon, Whisper)
+- `make transcribe` auto-selects latest recording from ~/Documents/VoiceNotes/ when no path given
+- Real recording test fixtures in tests/fixtures/golden/real/ (local only, gitignored)
+
+### Fixed
+- Sentence boundaries no longer incorrectly added after articles ("the Project" not "the. Project")
+- Double post-processing removed from transcribe_and_paste.sh (daemon already processes)
+- CamelCase proper nouns no longer split ("VoxCore" stays "VoxCore", not "Vox. Core")
+
+### Changed
+- transcribe_and_paste.sh simplified: uses daemon output directly without re-processing
+
 ## [0.4.0] - 2025-09-17
 - Java service (HTTP/WS) with configuration and metrics
 - Reliable start-of-speech capture (reduced first-word truncation due to warm service)

@@ -1,22 +1,32 @@
-.PHONY: help test test-audio test-e2e test-smoke test-java test-java-integration install clean auto-audio metrics-graph demo-gif build-java
+.PHONY: help test test-audio test-e2e test-smoke test-java test-java-integration install clean auto-audio metrics-graph demo-gif build-java dev dev-install
 
 # Default target
 help:
 	@echo "VoxCore - Make Targets"
 	@echo "====================================="
 	@echo ""
-	@echo "  make install      - Install dependencies and setup symlinks"
+	@echo "Development:"
+	@echo "  make dev-install  - Build & install locally (restart daemon)"
+	@echo "  make dev          - Alias for dev-install"
+	@echo "  make build-java   - Build Java post-processor only"
+	@echo "  make reload       - Reload Hammerspoon config"
+	@echo "  make status       - Show current status"
+	@echo "  make transcribe /path/to/audio.wav  - Transcribe file and print output"
+	@echo ""
+	@echo "Testing:"
 	@echo "  make test         - Run all tests"
+	@echo "  make test-java    - Run Java unit tests"
 	@echo "  make test-audio   - Test audio device configuration"
-	@echo "  make test-e2e     - Run end-to-end tests"  
 	@echo "  make test-smoke   - Run smoke tests"
+	@echo ""
+	@echo "Setup:"
+	@echo "  make install      - Install dependencies and setup symlinks"
 	@echo "  make auto-audio   - Auto-select best audio device"
-	@echo "  make version      - Show project version (git + Java CLI)"
+	@echo "  make version      - Show project version"
 	@echo "  make clean        - Clean test artifacts"
 	@echo ""
 	@echo "Version Management:"
 	@echo "  make organize-recordings      - Organize recordings by version"
-	@echo "  make organize-recordings-dry-run - Preview organization (no changes)"
 	@echo "  make compare-versions         - Compare performance across versions"
 	@echo ""
 
@@ -122,6 +132,26 @@ compare-versions:
 	@python3 scripts/analysis/compare_versions.py
 
 # Development helpers
+
+# Local dev install: build, restart daemon, reload Hammerspoon
+dev-install:
+	@echo "=== Local Dev Install ==="
+	@echo "1. Building JAR..."
+	@cd whisper-post-processor && ./gradlew shadowJar --no-daemon -q
+	@echo "2. Stopping daemon..."
+	@pkill -f "PTTServiceDaemon" 2>/dev/null || true
+	@sleep 0.5
+	@echo "3. Reloading Hammerspoon (will auto-start daemon)..."
+	@hs -c "hs.reload()" 2>/dev/null || echo "Hammerspoon not running"
+	@sleep 1
+	@echo "4. Checking daemon health..."
+	@curl -s http://127.0.0.1:8765/health | grep -q '"status":"ok"' && echo "✓ Daemon running" || echo "✗ Daemon not responding (will start on first use)"
+	@echo ""
+	@echo "Done! Test with a recording."
+
+# Alias for dev-install
+dev: dev-install
+
 reload:
 	@echo "Reloading Hammerspoon..."
 	@hs -c "hs.reload()" 2>/dev/null || echo "Hammerspoon not running"
@@ -129,15 +159,15 @@ reload:
 status:
 	@echo "Current Status:"
 	@echo "==============="
-	@echo -n "Hammerspoon: "
-	@pgrep -x "Hammerspoon" > /dev/null && echo "✓ Running" || echo "✗ Not running"
-	@echo -n "Module: "
-	@hs -c "require('push_to_talk'); print('✓ Loaded')" 2>/dev/null || echo "✗ Not loaded"
-	@echo -n "Audio device: "
-	@grep "AUDIO_DEVICE_INDEX" hammerspoon/ptt_config.lua | grep -oE "[0-9]+" | head -1 | xargs -I {} echo "Device :{}"
-	@echo ""
-	@echo "Recent recordings:"
-	@ls -lt ~/Documents/VoiceNotes/ 2>/dev/null | head -4 | tail -3 | awk '{print "  " $$9 " " $$10 " " $$11}'
+
+# Transcribe an audio file and print the output
+# Usage: make transcribe [/path/to/audio.wav]  (defaults to latest recording)
+transcribe:
+	@bash scripts/utilities/transcribe_and_paste.sh $(if $(filter-out $@,$(MAKECMDGOALS)),"$(filter-out $@,$(MAKECMDGOALS))",) --no-paste
+
+# Allow any argument to be passed without error
+%:
+	@:
 
 # Quick device check
 check-audio:
