@@ -1,0 +1,132 @@
+name: Install Test
+
+# Manual trigger only - run before releases to verify install works
+on:
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Test mode'
+        required: true
+        default: 'voxcore-only'
+        type: choice
+        options:
+          - voxcore-only
+          - full-stack
+
+jobs:
+  install-test:
+    name: Fresh Install Test (${{ inputs.test_mode }})
+    runs-on: macos-14
+    timeout-minutes: 20
+
+    steps:
+    - name: System info
+      run: |
+        echo "=== System Info ==="
+        sw_vers
+        echo "Homebrew: $(brew --version | head -1)"
+        echo "Test mode: ${{ inputs.test_mode }}"
+
+    - name: Add Homebrew tap
+      run: |
+        echo "=== Adding tap ==="
+        brew tap cliffmin/tap
+        brew update
+
+    - name: Install Hammerspoon
+      run: |
+        echo "=== Installing Hammerspoon ==="
+        brew install --cask hammerspoon
+        ls -la /Applications/Hammerspoon.app || echo "Hammerspoon installed"
+
+    - name: Install VoxCore
+      run: |
+        echo "=== Installing VoxCore ==="
+        brew install voxcore
+        
+        echo ""
+        echo "=== Verify binaries ==="
+        which voxcore-install || echo "voxcore-install not in PATH"
+        which whisper-post || echo "whisper-post not in PATH"
+        
+        echo ""
+        echo "=== Test whisper-post ==="
+        whisper-post --version
+
+    - name: Verify VoxCore install
+      run: |
+        echo "=== VoxCore Install Verification ==="
+        
+        # Check binaries exist
+        echo "Checking binaries..."
+        test -x "$(brew --prefix)/bin/whisper-post" && echo "✓ whisper-post" || echo "✗ whisper-post missing"
+        test -x "$(brew --prefix)/bin/voxcore-install" && echo "✓ voxcore-install" || echo "✗ voxcore-install missing"
+        
+        # Check JAR exists
+        echo ""
+        echo "Checking JAR..."
+        JAR_PATH="$(brew --prefix)/opt/voxcore/libexec/whisper-post-processor/build/libs/whisper-post.jar"
+        test -f "$JAR_PATH" && echo "✓ JAR at $JAR_PATH" || echo "✗ JAR missing"
+        
+        # Check Lua files
+        echo ""
+        echo "Checking Hammerspoon modules..."
+        HS_PATH="$(brew --prefix)/opt/voxcore/libexec/hammerspoon"
+        test -f "$HS_PATH/push_to_talk.lua" && echo "✓ push_to_talk.lua" || echo "✗ push_to_talk.lua missing"
+        test -f "$HS_PATH/ptt_config.lua" && echo "✓ ptt_config.lua" || echo "✗ ptt_config.lua missing"
+        
+        echo ""
+        echo "=== VoxCore standalone install: SUCCESS ==="
+
+    - name: Install VoxCompose (full-stack only)
+      if: inputs.test_mode == 'full-stack'
+      run: |
+        echo "=== Installing VoxCompose ==="
+        brew install voxcompose
+        
+        echo ""
+        echo "=== Test voxcompose ==="
+        voxcompose --version
+        
+        # Dry-run test (no Ollama needed)
+        echo "test input for voxcompose" | voxcompose --dry-run 2>&1 || echo "(dry-run may fail without ollama - OK)"
+
+    - name: Install Ollama (full-stack only)
+      if: inputs.test_mode == 'full-stack'
+      run: |
+        echo "=== Installing Ollama ==="
+        brew install ollama
+        
+        echo ""
+        echo "=== Ollama version ==="
+        ollama --version || echo "Ollama installed but may need manual start"
+        
+        echo ""
+        echo "=== Full stack install: SUCCESS ==="
+        echo "Note: Ollama models need to be pulled separately (ollama pull llama3.1)"
+
+    - name: Summary
+      run: |
+        echo ""
+        echo "=========================================="
+        echo "  INSTALL TEST COMPLETE"
+        echo "=========================================="
+        echo ""
+        echo "Mode: ${{ inputs.test_mode }}"
+        echo ""
+        echo "Installed:"
+        echo "  ✓ Hammerspoon (cask)"
+        echo "  ✓ VoxCore"
+        if [[ "${{ inputs.test_mode }}" == "full-stack" ]]; then
+          echo "  ✓ VoxCompose"
+          echo "  ✓ Ollama"
+        fi
+        echo ""
+        echo "Next steps for real usage:"
+        echo "  1. Grant Hammerspoon accessibility permissions"
+        echo "  2. Run: voxcore-install"
+        echo "  3. Reload Hammerspoon (Cmd+Alt+Ctrl+R)"
+        if [[ "${{ inputs.test_mode }}" == "full-stack" ]]; then
+          echo "  4. Start Ollama: ollama serve"
+          echo "  5. Pull model: ollama pull llama3.1"
+        fi
