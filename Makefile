@@ -11,7 +11,8 @@ help:
 	@echo "  make build-java   - Build Java post-processor only"
 	@echo "  make reload       - Reload Hammerspoon config"
 	@echo "  make status       - Show current status"
-	@echo "  make paste-file AUDIO=/abs/audio.wav [MODEL=...]  - Transcribe file and paste"
+	@echo "  make paste-file   AUDIO=/abs/audio.wav [MODEL=...]  - Transcribe file and paste"
+	@echo "  make process-file AUDIO=/abs/audio.wav [MODEL=...]  - Print processed text (no paste)"
 	@echo ""
 	@echo "Testing:"
 	@echo "  make test         - Run all tests"
@@ -164,6 +165,14 @@ status:
 paste-file:
 	@if [ -z "$(AUDIO)" ]; then echo "Usage: make paste-file AUDIO=/abs/audio.wav [MODEL=...]"; exit 2; fi
 	@bash scripts/utilities/transcribe_and_paste.sh "$(AUDIO)" $(if [ -n "$(MODEL)" ]; then echo --model $(MODEL); fi)
+
+# Process an audio file and print the output (no paste)
+process-file:
+	@if [ -z "$(AUDIO)" ]; then echo "Usage: make process-file AUDIO=/abs/audio.wav [MODEL=...]"; exit 2; fi
+	@bash scripts/utilities/transcribe_and_paste.sh "$(AUDIO)" $(if [ -n "$(MODEL)" ]; then echo --model $(MODEL); fi) --no-paste
+
+# Alias
+test-file: process-file
 	@if [ -z "$(PATH)" ]; then :; fi
 	@if [ -z "$(PATH)" ]; then :; fi
 	@if [ -z "$(PATH)" ]; then :; fi
