@@ -11,7 +11,7 @@ fi
 
 VERSION="$1"
 
-# Validate version format (semver)
+# Validate version format (semver) 
 if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
     echo "Error: Version must be in semver format (e.g., 0.5.0)"
     exit 1
@@ -32,7 +32,7 @@ sed -i '' "s/version = \".*\"/version = \"$VERSION\"/" whisper-post-processor/sr
 DATE=$(date +%Y-%m-%d)
 echo "→ Updating CHANGELOG.md"
 if grep -q "## \[Unreleased\]" CHANGELOG.md; then
-    sed -i '' "s/## \[Unreleased\]/## [Unreleased]\n\n## [$VERSION] - $DATE/" CHANGELOG.md
+    sed -i '' "s/## \[Unreleased\]/## [Unreleased]\n\n## [$VERSION] - $DATE/" CHANGELOG.md 
 else
     echo "Warning: No [Unreleased] section found in CHANGELOG.md"
 fi
