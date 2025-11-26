@@ -2,6 +2,19 @@
 
 # Generate comprehensive golden test dataset with diverse voices and speaking styles
 # Includes perfect speech, natural speech with disfluencies, and challenging technical terms
+#
+# FILE STRUCTURE (per sample):
+#   {name}.txt           - Gold transcript (expected output)
+#   {name}.wav           - TTS-generated audio
+#   {name}.json          - Metadata (voice, rate, timestamps)
+#   {name}.raw.txt       - Raw whisper output (created by rebaseline_golden.sh)
+#   {name}.processed.txt - Post-processed output (created during testing)
+#   {name}.whisper.json  - Full whisper JSON (created by rebaseline_golden.sh)
+#
+# USAGE:
+#   ./scripts/utilities/generate_test_data.sh              # Generate all samples
+#   ./scripts/utilities/rebaseline_golden.sh               # Capture whisper raw output
+#   python3 scripts/utilities/compare_accuracy.py tests/fixtures/golden  # Compare
 
 set -euo pipefail
 
@@ -116,6 +129,21 @@ Then, um, the business logic layer handles processing. \
 And finally, the data layer communicates with the database. \
 Each layer is, you know, independent."
 
+# ============ MERGED WORDS (Whisper tends to merge these) ============
+# These test cases specifically target word separation issues
+
+generate_sample "challenging" "merged_contractions" "$VOICE_FEMALE" "$RATE_NORMAL" \
+"I think it's like the best approach. That's the main concern. What's the status? Don't know yet, but I'm going to find out. It's really important that we can't just ignore this."
+
+generate_sample "challenging" "merged_prepositions" "$VOICE_MALE" "$RATE_FAST" \
+"Send it to the team and check with the manager. Look at the documentation for the API. Get data from the database in the morning. Store it on the server by the deadline."
+
+generate_sample "challenging" "merged_pronouns" "$VOICE_FEMALE_UK" "$RATE_NORMAL" \
+"They configure the system. They don't understand the issue. They can't access the repository. They were supposed to fix it. They have the credentials. They need more time. They should review it first."
+
+generate_sample "challenging" "merged_mixed" "$VOICE_MALE_US" "$RATE_FAST" \
+"So basically it's like they configure everything with the settings. That's the approach they don't want. I'm going to check if they have access to the API with the new credentials."
+
 # ============ CHALLENGING TECHNICAL TERMS (Known mishears) ============
 
 generate_sample "challenging" "technical_mishears_1" "$VOICE_FEMALE" "$RATE_NORMAL" \
@@ -195,6 +223,9 @@ echo "  - Female: $VOICE_FEMALE, $VOICE_FEMALE_UK"
 echo "  - Multiple speaking rates: $RATE_SLOW, $RATE_NORMAL, $RATE_FAST wpm"
 echo ""
 echo "Next steps:"
-echo "1. Run tests: make test-java-all"
-echo "2. Compare transcription quality across different sample types"
-echo "3. Identify which speaking styles work best with Whisper"
+echo "1. Run rebaseline to capture whisper raw output:"
+echo "   ./scripts/utilities/rebaseline_golden.sh"
+echo "2. Compare accuracy:"
+echo "   python3 scripts/utilities/compare_accuracy.py tests/fixtures/golden -v"
+echo "3. Run full test suite:"
+echo "   make test-java-all"
