@@ -137,7 +137,7 @@ return {
   LOWCONF_AVG_LOGPROB = -1.0,
   -- Dictionary replacements are now loaded from external files
   -- To use custom corrections:
-  -- 1. Create ~/.config/ptt-dictation/corrections.lua
+  -- 1. Create ~/.config/voxcore/corrections.lua
   -- 2. Add your personal corrections there
   -- 3. Or wait for VoxCompose integration for automatic learning
   DICTIONARY_REPLACE = nil,  -- Will auto-load from external sources

@@ -1,5 +1,5 @@
 -- Personal Correction Dictionary Template
--- Copy this file to ~/.config/ptt-dictation/corrections.lua and customize
+-- Copy this file to ~/.config/voxcore/corrections.lua and customize
 --
 -- This dictionary will be automatically loaded by push-to-talk dictation
 -- to fix common mishearings specific to your voice/accent/domain
