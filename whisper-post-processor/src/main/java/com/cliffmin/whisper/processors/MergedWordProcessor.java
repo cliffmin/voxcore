@@ -61,6 +61,11 @@ public class MergedWordProcessor implements TextProcessor {
         addReplacement("atthe", "at the");
         addReplacement("bythe", "by the");
         
+        // Specific merges seen in field data
+        addReplacement("doneit", "done it");
+        addReplacement("thisall", "this all");
+        addReplacement("yeahsets", "yeah sets");
+        
         // Technical terms
         addReplacement("apikey", "API key");
         addReplacement("apikeys", "API keys");
