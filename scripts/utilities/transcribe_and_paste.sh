@@ -61,7 +61,7 @@ if ! is_up; then
 fi
 
 # Call daemon
-REQ=$(jq -nc --arg p "$(cd "$(dirname "$AUDIO")" && pwd)/$(basename "$AUDIO")" --arg m "$MODEL" '{path:$p} + ( $m|length>0 and {model:$m} or {} )')
+REQ=$(jq -nc --arg p "$(cd "$(dirname "$AUDIO")" && pwd)/$(basename "$AUDIO")" --arg m "$MODEL" '{path:$p} + ( if ($m|length)>0 then {model:$m} else {} end )')
 RESP=$(curl -fsS -H 'Content-Type: application/json' -d "$REQ" "$TX_URL" || true)
 if [[ -z "$RESP" ]]; then
   echo "Error: daemon /transcribe returned no data" >&2

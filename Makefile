@@ -11,8 +11,7 @@ help:
 	@echo "  make build-java   - Build Java post-processor only"
 	@echo "  make reload       - Reload Hammerspoon config"
 	@echo "  make status       - Show current status"
-	@echo "  make paste-file   AUDIO=/abs/audio.wav [MODEL=...]  - Transcribe file and paste"
-	@echo "  make process-file AUDIO=/abs/audio.wav [MODEL=...]  - Print processed text (no paste)"
+	@echo "  make transcribe /path/to/audio.wav  - Transcribe file and print output"
 	@echo ""
 	@echo "Testing:"
 	@echo "  make test         - Run all tests"
@@ -161,36 +160,14 @@ status:
 	@echo "Current Status:"
 	@echo "==============="
 
-# Transcribe an audio file and paste like live PTT
-paste-file:
-	@if [ -z "$(AUDIO)" ]; then echo "Usage: make paste-file AUDIO=/abs/audio.wav [MODEL=...]"; exit 2; fi
-	@bash scripts/utilities/transcribe_and_paste.sh "$(AUDIO)" $(if $(MODEL),--model $(MODEL),)
+# Transcribe an audio file and print the output
+# Usage: make transcribe /path/to/audio.wav
+transcribe:
+	@bash scripts/utilities/transcribe_and_paste.sh "$(filter-out $@,$(MAKECMDGOALS))" --no-paste
 
-# Process an audio file and print the output (no paste)
-process-file:
-	@if [ -z "$(AUDIO)" ]; then echo "Usage: make process-file AUDIO=/abs/audio.wav [MODEL=...]"; exit 2; fi
-	@bash scripts/utilities/transcribe_and_paste.sh "$(AUDIO)" $(if $(MODEL),--model $(MODEL),) --no-paste
-
-# Alias
-test-file: process-file
-	@if [ -z "$(PATH)" ]; then :; fi
-	@if [ -z "$(PATH)" ]; then :; fi
-	@if [ -z "$(PATH)" ]; then :; fi
-	@if [ -z "$(PATH)" ]; then :; fi
-	@if [ -z "$(PATH)" ]; then :; fi
-	@if [ -z "$(PATH)" ]; then :; fi
-	@if [ -z "$(PATH)" ]; then :; fi
-	@if [ -z "$(PATH)" ]; then :; fi
-	@PATH=$(PATH) bash scripts/utilities/transcribe_and_paste.sh "$(PATH)" $(if [ -n "$(MODEL)" ]; then echo --model $(MODEL); fi)
-	@echo -n "Hammerspoon: "
-	@pgrep -x "Hammerspoon" > /dev/null && echo "✓ Running" || echo "✗ Not running"
-	@echo -n "Module: "
-	@hs -c "require('push_to_talk'); print('✓ Loaded')" 2>/dev/null || echo "✗ Not loaded"
-	@echo -n "Audio device: "
-	@grep "AUDIO_DEVICE_INDEX" hammerspoon/ptt_config.lua | grep -oE "[0-9]+" | head -1 | xargs -I {} echo "Device :{}"
-	@echo ""
-	@echo "Recent recordings:"
-	@ls -lt ~/Documents/VoiceNotes/ 2>/dev/null | head -4 | tail -3 | awk '{print "  " $$9 " " $$10 " " $$11}'
+# Allow any argument to be passed without error
+%:
+	@:
 
 # Quick device check
 check-audio:
