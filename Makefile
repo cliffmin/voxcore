@@ -34,10 +34,10 @@ test-audio:
 	@echo "Testing audio device configuration..."
 	@bash scripts/testing/debug_recording.sh
 
-# Run smoke tests (F13 modes)
+# Run smoke tests (daemon health check)
 test-smoke:
 	@echo "Running smoke tests..."
-	@bash scripts/testing/test_f13_modes.sh
+	@bash scripts/testing/daemon_health.sh
 
 # Build Java post-processor
 build-java:

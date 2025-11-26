@@ -42,7 +42,6 @@ Testing utilities and test scripts.
 
 - `daemon_health.sh` - Check Java daemon health
 - `debug_recording.sh` - Debug audio recording issues
-- `test_f13_modes.sh` - Test F13 keybinding modes
 
 ### `utilities/`
 General-purpose utilities for development and operations.
