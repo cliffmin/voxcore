@@ -22,6 +22,10 @@ Welcome to the VoxCore documentation. This guide will help you install, configur
 ### API Reference
 - **[Whisper Service](api/whisper-service.md)** - Java transcription service API
 
+### Official Plugins
+- **[VoxCompose](https://github.com/cliffmin/voxcompose)** - ML-based transcript refinement via local LLMs (Ollama)
+  - [Integration Guide](https://github.com/cliffmin/voxcompose/blob/main/docs/voxcore-integration.md)
+
 ## Documentation Structure
 
 ```
