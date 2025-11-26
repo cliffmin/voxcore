@@ -223,12 +223,15 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     
+    - name: Install Lua
+      run: sudo apt-get update && sudo apt-get install -y lua5.3
+    
     - name: Lua syntax check
       run: |
         echo "=== Checking Lua syntax ==="
         for file in hammerspoon/*.lua; do
           echo "Checking $file..."
-          luac -p "$file" || exit 1
+          luac5.3 -p "$file" || exit 1
         done
         
     - name: Shellcheck scripts
@@ -264,7 +267,7 @@ jobs:
   status:
     name: CI Status
     runs-on: ubuntu-latest
-    needs: [java-tests, integration-tests, lua-shell-tests]
+    needs: [java-tests, lua-shell-tests]
     if: always()
     
     steps:
@@ -272,19 +275,14 @@ jobs:
       run: |
         echo "=== CI Job Status ==="
         echo "java-tests: ${{ needs.java-tests.result }}"
-        echo "integration-tests: ${{ needs.integration-tests.result }}"
         echo "lua-shell-tests: ${{ needs.lua-shell-tests.result }}"
         echo ""
         
-        # Fail only on critical job failures (integration tests allowed to fail)
+        # Fail only on critical job failures
         if [[ "${{ needs.java-tests.result }}" == "failure" || \
               "${{ needs.lua-shell-tests.result }}" == "failure" ]]; then
           echo "❌ CI failed - critical tests did not pass"
           exit 1
-        fi
-        
-        if [[ "${{ needs.integration-tests.result }}" == "failure" ]]; then
-          echo "⚠️  Integration tests failed (non-blocking)"
         fi
         
         echo "✅ CI passed"
