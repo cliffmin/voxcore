@@ -229,8 +229,8 @@ Available metrics:
 
 ## Additional Resources
 
-- **Full Documentation**: [docs/development/versioning.md](docs/development/versioning.md)
-- **Script Details**: [scripts/README.md](scripts/README.md)
-- **Release Process**: [docs/development/release.md](docs/development/release.md)
+- **Full Documentation**: [development/versioning.md](development/versioning.md)
+- **Script Details**: [../scripts/README.md](../scripts/README.md)
+- **Release Process**: [development/release.md](development/release.md)
 - **Semantic Versioning**: [semver.org](https://semver.org/)
 

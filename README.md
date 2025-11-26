@@ -277,14 +277,14 @@ It's open source - audit the code, verify the claims.
 
 ## Documentation
 
-- **[Setup Guide](docs/setup.md)** - Installation and configuration
-- **[Usage Guide](docs/usage.md)** - How to use VoxCore
-- **[Performance](PERFORMANCE.md)** - Benchmarks and speed improvements
+- **[Setup Guide](docs/setup/)** - Installation and configuration
+- **[Usage Guide](docs/usage/)** - How to use VoxCore
+- **[Performance](docs/performance.md)** - Benchmarks and speed improvements
 - **[Configuration](docs/setup/configuration.md)** - Customize behavior
 - **[Troubleshooting](docs/setup/troubleshooting.md)** - Common issues
 - **[Contributing](CONTRIBUTING.md)** - Development guidelines
 - **[Architecture](docs/development/architecture.md)** - System design
-- **[Versioning](VERSIONING_QUICK_START.md)** - Releases and version management
+- **[Versioning](docs/versioning.md)** - Releases and version management
 
 ## FAQ
 
