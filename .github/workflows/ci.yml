@@ -65,31 +65,16 @@ jobs:
     - name: Run Java unit tests (unit only)
       run: |
         cd whisper-post-processor
-        gradle test --no-daemon --info --stacktrace
+        gradle test --no-daemon
 
-    - name: Unit test summary
-      if: always()
-      run: |
-        echo "=== Unit Test Summary ==="
-        awk '/tests/ && /completed/' build/reports/tests/test/index.html || true
-        
     - name: Generate test report
-      if: always()
+      if: github.ref == 'refs/heads/main'
       run: |
         cd whisper-post-processor
-        gradle jacocoTestReport --no-daemon || echo "JaCoCo report generation failed"
-        
-    - name: Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: java-test-results
-        path: |
-          whisper-post-processor/build/reports/tests/
-          whisper-post-processor/build/reports/jacoco/
+        gradle jacocoTestReport --no-daemon
     
     - name: Upload coverage to Codecov
-      if: always()
+      if: github.ref == 'refs/heads/main'
       uses: codecov/codecov-action@v4
       with:
         files: ./whisper-post-processor/build/reports/jacoco/test/jacocoTestReport.xml
