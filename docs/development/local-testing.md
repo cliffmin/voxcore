@@ -6,12 +6,12 @@ How to test changes locally before creating a PR.
 
 ```bash
 # Build, restart daemon, reload Hammerspoon - all in one
-make dev
+make dev-install   # or just: make dev
 ```
 
 Then test with a voice recording.
 
-## What `make dev` Does
+## What `make dev-install` Does
 
 1. **Builds JAR** - `gradle shadowJar` in whisper-post-processor/
 2. **Stops daemon** - Kills running PTTServiceDaemon process
@@ -45,7 +45,7 @@ curl http://127.0.0.1:8765/health
 ## Testing Workflow
 
 1. Make code changes
-2. Run `make dev`
+2. Run `make dev-install` (or `make dev`)
 3. Do a test recording (press your PTT key, speak, release)
 4. Check the output
 5. If issues, check logs:
