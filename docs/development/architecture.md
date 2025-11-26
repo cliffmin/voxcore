@@ -17,7 +17,7 @@
 - **Java Post-Processor Pipeline**: Stateless algorithmic processing
   - Reflow → Disfluency → MergedWord → Sentences → Capitalization → PunctuationProcessor → Dictionary → PunctuationNormalizer
   - **All processors are pure functions** - no state, no learning
-- **Config precedence**: request > env/file (~/.config/ptt-dictation/config.json) > defaults
+- **Config precedence**: request > env/file (~/.config/voxcore/config.json) > defaults
 - **Outputs**: pasted text (Hammerspoon), optional files/logs
 - **Optional refine**: VoxCompose (separate project) for ML-based enhancement
 
