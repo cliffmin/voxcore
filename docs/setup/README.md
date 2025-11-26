@@ -30,13 +30,9 @@ Your config lives at ~/.hammerspoon/ptt_config.lua. A sample is installed by the
 
 ## Troubleshooting
 
-- Whisper not found: brew install whisper-cpp (or verify it’s in PATH)
-- No audio captured: verify input device and test with make test-audio
-- Slow or missing first word: Java daemon and pre-roll padding reduce truncation; ensure Java build exists (make build-java)
-- Logs: ~/Documents/VoiceNotes/tx_logs/tx-YYYY-MM-DD.jsonl (toggle via ptt_config.lua)
+See [Configuration](configuration.md) for common issues.
 
-## Uninstall
-
-```bash
-./scripts/setup/uninstall.sh
-```
+**Quick fixes:**
+- Wrong mic: Check `AUDIO_DEVICE_INDEX` in config
+- Whisper not found: `brew install whisper-cpp`
+- No audio: Test with `make test-audio`
