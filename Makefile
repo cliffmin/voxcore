@@ -173,3 +173,7 @@ transcribe:
 check-audio:
 	@echo "Audio Devices:"
 	@/opt/homebrew/bin/ffmpeg -f avfoundation -list_devices true -i "" 2>&1 | grep -A 10 "audio devices:" | grep "^\[" || echo "No devices found"
+
+# Real recording accuracy (baseline vs current daemon output)
+real-accuracy:
+	@python3 scripts/metrics/real_accuracy.py
