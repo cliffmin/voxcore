@@ -11,6 +11,7 @@ VoxCore has undergone significant performance improvements across major versions
 | **0.3.0** | <1 second | **whisper-cpp integration** | **5-10x faster** |
 | **0.4.0** | <1 second | Java service (warm start, reduced first-word truncation) | Maintained speed |
 | **0.4.3** | <1 second | Smart post-processing, version tracking | Maintained speed |
+| **0.5.0** | <1 second | Accuracy bump (~+2% on tests), new boundary/merged-word processors | Maintained speed |
 
 ## Major Performance Milestones
 
@@ -59,6 +60,19 @@ VoxCore has undergone significant performance improvements across major versions
 - Still <1 second for typical prompts (5-15 seconds of audio)
 - Smart model switching at 21-second threshold
 - Post-processing overhead: 50-100ms
+
+### v0.5.0: Post-Processing Quality (Maintained Speed)
+
+**Focus: Better text boundaries and merged-word handling at the same latency.**
+
+- SentenceBoundaryProcessor keeps sentences intact (no stray splits like `the. Project. Vox. Core`).
+- MergedWordProcessor expands patterns for common splits (`willbe`, `shouldbe`, `kindof`, `sortof`, etc.).
+- DictionaryProcessor keeps Vox ecosystem terms together and properly cased (`VoxCore`, `VoxCompose`, `Hammerspoon`, `Whisper`).
+
+**Performance & accuracy:**
+- Automated post-processor tests show ~+2% accuracy vs 0.4.3.
+- Post-processing still <100 ms; end-to-end transcription remains <1s for short clips.
+- Reproduce on your data: `scripts/analysis/compare_versions.py -v 0.4.3 0.5.0 --metrics transcription_time duration chars`.
 
 ## Detailed Benchmarks
 
@@ -315,4 +329,3 @@ python tests/integration/benchmark_against_baseline.py
 - `~/Documents/VoiceNotes/tx_logs/` - Your actual usage metrics
 
 **Last updated:** v0.4.3 (November 2024)
-
