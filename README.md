@@ -238,6 +238,12 @@ VoxCore: Transcribes locally, works perfectly
 | **Cost** | ✅ $0 | ⚠️ Subscription | ❌ Burns tokens | ✅ Free |
 | **Rate Limits** | ✅ None | ⚠️ Has limits | ❌ Token limits | ⚠️ Unknown |
 
+## Recent improvements (quality at same speed)
+
+- New post-processors keep sentences together (no more `the. Project. Vox. Core`) and merge common splits while respecting Vox-family terms (`VoxCore`, `VoxCompose`, `Hammerspoon`, `Whisper`).
+- Automated accuracy tests show ~+2% vs 0.4.3 with no added cost; post-processing stays <100 ms, so end-to-end remains <1s for short clips.
+- Verify on your data: `scripts/analysis/compare_versions.py -v 0.4.3 0.5.0 --metrics transcription_time duration chars` (uses your recorded set to show speed/quality deltas).
+
 ## Core Features
 
 ### Universal Transcription
