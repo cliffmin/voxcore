@@ -170,6 +170,26 @@ cd voxcore && ./scripts/setup/install.sh
 ```
 </details>
 
+## Upgrading
+
+Keep VoxCore up-to-date with the latest improvements:
+
+```bash
+brew update
+brew upgrade voxcore
+voxcore-install  # Updates Hammerspoon integration
+```
+
+After upgrading:
+- Reload Hammerspoon (⌘+⌥+⌃+R or click menubar → "Reload Config")
+- Your config (`~/.hammerspoon/ptt_config.lua`) is preserved
+- Your recordings in `~/Documents/VoiceNotes/` are preserved
+
+To check your current version:
+```bash
+voxcore-install  # Shows installed version
+```
+
 ## The Problem VoxCore Solves
 
 **You're working across multiple AI apps daily** (ChatGPT, Claude, Cursor, Perplexity). Each has different or missing voice input. Some burn your API tokens. Some require internet. None save your recordings.
@@ -325,6 +345,7 @@ It's open source - audit the code, verify the claims.
 - **[Contributing](CONTRIBUTING.md)** - Development guidelines
 - **[Architecture](docs/development/architecture.md)** - System design
 - **[Versioning](docs/versioning.md)** - Releases and version management
+- **[Release Guide](RELEASE_GUIDE.md)** - Complete release process for VoxCore and VoxCompose
 
 ## FAQ
 
@@ -383,6 +404,8 @@ A: Yes. Edit `~/.hammerspoon/ptt_config.lua`.
 - **Stateful processing** - Builds user profile over time
 
 **Install or not?** Your choice. VoxCore works perfectly standalone.
+
+**See also:** [VoxCompose Integration Guide](https://github.com/cliffmin/voxcompose/blob/main/docs/voxcore-integration.md) for setup instructions.
 
 ### Future: Community Extensions
 
