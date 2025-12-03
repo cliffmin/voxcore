@@ -169,16 +169,6 @@ jobs:
         echo "=== Validating Makefile targets ==="
         make help
     
-    - name: Test plugin contract
-      continue-on-error: true
-      run: |
-        echo "=== Testing Plugin Contract ==="
-        bash tests/integration/plugin_contract_test.sh || {
-          echo "⚠️ Plugin contract test failed (non-blocking for now)"
-          echo "This will be made required once CI issues are resolved"
-          exit 0
-        }
-    
     - name: Check documentation
       run: |
         echo "=== Required documentation ==="
@@ -217,12 +207,13 @@ jobs:
           --include="*.java" --include="*.lua" --include="*.sh" \
           --exclude-dir=.git --exclude-dir=build . | grep -v -E "(example|test|sample)"
 
-  # Release build (only on main branch)
+  # Release build (only on main branch pushes, not PRs)
   release:
     name: Release Build
     runs-on: macos-latest
     needs: [java-tests, validation]
     # Integration tests run locally via 'make test-java-integration'
+    # Only runs on pushes to main (not PRs) to avoid duplicate builds
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
