@@ -4,6 +4,12 @@
 
 set -euo pipefail
 
+# Verify dependencies
+if ! command -v jq >/dev/null 2>&1; then
+    echo "Error: jq is required but not installed" >&2
+    exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MOCK_PLUGIN="$SCRIPT_DIR/mock_refiner_plugin.sh"
 
@@ -43,17 +49,22 @@ fi
 # Test 3: Capabilities endpoint
 echo ""
 echo "Test 3: Capabilities negotiation"
-CAPS=$(bash "$MOCK_PLUGIN" --capabilities 2>&1) || {
-    echo "❌ FAIL - Mock plugin failed to run: $CAPS" >&2
+set +e  # Temporarily disable exit on error to capture output
+CAPS=$(bash "$MOCK_PLUGIN" --capabilities 2>&1)
+CAPS_EXIT=$?
+set -e  # Re-enable exit on error
+
+if [[ $CAPS_EXIT -ne 0 ]]; then
+    echo "❌ FAIL - Mock plugin failed to run (exit code $CAPS_EXIT): $CAPS" >&2
     FAILED=1
-    CAPS=""
-}
-if [[ -n "$CAPS" ]] && echo "$CAPS" | jq -e '.activation.long_form.min_duration' >/dev/null 2>&1; then
-    echo "✅ PASS - Capabilities endpoint returns valid JSON"
-else
+elif [[ -z "$CAPS" ]]; then
+    echo "❌ FAIL - Mock plugin returned empty output" >&2
+    FAILED=1
+elif ! echo "$CAPS" | jq -e '.activation.long_form.min_duration' >/dev/null 2>&1; then
     echo "❌ FAIL - Invalid capabilities response: $CAPS" >&2
-    echo "jq available: $(command -v jq || echo 'not found')" >&2
     FAILED=1
+else
+    echo "✅ PASS - Capabilities endpoint returns valid JSON"
 fi
 
 # Test 4: Empty input handling
