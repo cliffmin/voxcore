@@ -2,7 +2,8 @@
 # Mock plugin for testing VoxCore's plugin integration contract
 # Simulates a plugin that receives stdin and returns refined output
 
-set -euo pipefail
+# Use less strict error handling for CI compatibility
+set -e
 
 # Parse arguments
 DURATION=""
@@ -23,8 +24,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Read input from stdin
-INPUT=$(cat)
+# Read input from stdin (handle empty input gracefully)
+INPUT=$(cat || echo "")
 
 # Simple mock refinement: prefix with "refined: "
 # In real plugins, this would do actual processing
