@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/cliffmin/voxcore/actions/workflows/ci.yml/badge.svg)](https://github.com/cliffmin/voxcore/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/cliffmin/voxcore/branch/main/graph/badge.svg)](https://codecov.io/gh/cliffmin/voxcore) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) ![macOS](https://img.shields.io/badge/macOS-11%2B-blue) ![Java 17+](https://img.shields.io/badge/Java-17%2B-orange)
 
-**Never lose a recording again.** VoxCore transcribes your voice locally, saves every recording, and works everywhere—ChatGPT, Claude, Cursor, Slack, email, anywhere you type. One hotkey. Zero tokens. 4-5x faster than cloud. 100% private.
+**Universal voice-to-anything hotkey.** VoxCore captures once and pastes anywhere—ChatGPT, Claude, Cursor, Slack, email—while saving every recording so you never lose work. One hotkey. Zero tokens. Sub-second, on-device, private by default.
 
-100% local AI. No tokens, no subscriptions, no compromises.
+Built for AI prompt workflows and cross-app dictation: fast local transcription, WAV backups for reliability, and optional VoxCompose plugin for adaptive refinement when you want LLM polish.
 
 ---
 
