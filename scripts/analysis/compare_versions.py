@@ -200,6 +200,12 @@ def main():
         help='Versions to compare (default: 0.3.0 0.4.0 0.4.3)'
     )
     parser.add_argument(
+        '--exclude-versions',
+        nargs='+',
+        default=[],
+        help='Versions to exclude from analysis (e.g., performance-only versions)'
+    )
+    parser.add_argument(
         '--metrics',
         nargs='+',
         default=['transcription_time', 'duration', 'chars'],
@@ -219,7 +225,17 @@ def main():
         print(f"Run: ./scripts/utilities/organize_by_version.sh")
         return 1
     
-    compare_versions(args.base_dir, args.versions, args.metrics)
+    # Filter out excluded versions
+    versions = [v for v in args.versions if v not in args.exclude_versions]
+    if not versions:
+        print("Error: All versions excluded")
+        return 1
+    
+    if args.exclude_versions:
+        print(f"Excluding versions: {', '.join(args.exclude_versions)}")
+        print()
+    
+    compare_versions(args.base_dir, versions, args.metrics)
     return 0
 
 
