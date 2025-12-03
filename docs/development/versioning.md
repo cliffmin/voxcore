@@ -143,7 +143,23 @@ python scripts/analysis/compare_versions.py --versions 0.4.0 0.4.3
 
 # Focus on specific metrics
 python scripts/analysis/compare_versions.py --metrics transcription_time accuracy
+
+# Exclude performance-only versions (not suitable for accuracy analysis)
+python scripts/analysis/compare_versions.py \
+  --versions 0.3.0 0.4.0 0.4.3 0.5.0 \
+  --exclude-versions 0.4.1 0.4.2 \
+  --metrics transcription_time accuracy
+
+# Include VoxCompose recordings (default: excluded for clean VoxCore metrics)
+python scripts/analysis/compare_versions.py --include-voxcompose
+
+# Only include specific VoxCompose version
+python scripts/analysis/compare_versions.py --voxcompose-version 1.0.0
 ```
+
+**Note**: 
+- Some versions may include performance enhancements that make recordings unsuitable for accuracy analysis. Use `--exclude-versions` to filter these out.
+- By default, recordings made with VoxCompose are excluded to measure VoxCore performance in isolation. Use `--include-voxcompose` to include them, or `--voxcompose-version X.Y.Z` to filter by specific VoxCompose version.
 
 Output example:
 ```
