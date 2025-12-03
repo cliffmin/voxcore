@@ -2,8 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+- Golden test audio fixtures (25 synthetic WAV files) for accuracy testing
+- CI/CD install and upgrade test workflows (runs on PRs and main branch)
+- Plugin contract tests and mock plugin for verifying plugin integration
+- Performance baseline establishment and comparison scripts
+- VoxCompose version filtering support in `compare_versions.py` (exclude/include by version)
+- Plugin testing strategy documentation (docs/development/PLUGIN_TESTING_STRATEGY.md)
+
 ### Changed
 - build: adopt Gradle Version Catalog for whisper-post-processor dependencies (internal; no user-visible changes)
+- `compare_versions.py`: Now excludes VoxCompose recordings by default for clean VoxCore metrics (use `--include-voxcompose` to include)
 
 ### Removed
 - Deprecated Python punctuation script (scripts/utilities/punctuate.py) and documentation references; Java PunctuationProcessor is the supported path.
