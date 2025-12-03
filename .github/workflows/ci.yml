@@ -280,6 +280,7 @@ jobs:
         echo "validation: ${{ needs.validation.result }}"
         echo ""
         echo "ℹ️  Integration tests run locally via 'make test-java-integration'"
+        echo "ℹ️  Install/upgrade tests run in separate workflow (.github/workflows/install-upgrade-test.yml)"
         echo ""
         
         # Fail on critical job failures

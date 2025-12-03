@@ -63,6 +63,25 @@ Test transcription accuracy against synthetic golden fixtures:
 
 The comparison script exits with code 1 if WER increases by >1% (regression).
 
+## Performance Baseline Tests
+
+Test transcription performance against baseline fixtures:
+
+```bash
+# 1. Create baseline fixture (if needed)
+python3 tests/util/select_best_fixtures.py
+
+# 2. Establish performance baseline
+./scripts/metrics/establish_performance_baseline.sh [BASELINE_DIR]
+
+# 3. Compare current performance against baseline (detects regressions)
+./scripts/metrics/compare_performance_baseline.sh [baseline_file]
+```
+
+The comparison script exits with code 1 if performance degrades by >20% (regression).
+
+**Note:** Baseline fixtures are stored in `tests/fixtures/baselines/` and contain WAV files organized by duration (short/medium/long).
+
 ## Version Filtering
 
 When analyzing real recordings, exclude performance-only versions that aren't suitable for accuracy analysis:
@@ -84,6 +103,24 @@ Recordings are automatically tagged with version metadata (`.version` file) when
 - **samples_current/**: Symlinks to current test WAV batches
 - WAV files should NOT be committed (use symlinks to local files)
 - Results written to `tests/results/` (gitignored)
+
+## Plugin Integration Tests
+
+VoxCore tests the plugin contract (how plugins are invoked), not plugin internals:
+
+```bash
+# Test plugin contract with mock plugin
+bash tests/integration/plugin_contract_test.sh
+
+# Mock plugin verifies:
+# - stdin/stdout protocol works
+# - Duration metadata passed correctly
+# - Arguments handled properly
+```
+
+**Note:** Plugin-specific tests (VoxCompose, future plugins) belong in their respective repos. VoxCore only tests the integration contract.
+
+See [PLUGIN_TESTING_STRATEGY.md](../PLUGIN_TESTING_STRATEGY.md) for full details.
 
 ## Notes
 

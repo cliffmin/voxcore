@@ -6,7 +6,13 @@ Analyzes recordings organized by version in ~/Documents/VoiceNotes/by_version/
 Usage:
     python compare_versions.py
     python compare_versions.py --versions 0.3.0 0.4.0 0.4.3
-    python compare_versions.py --metric accuracy
+    python compare_versions.py --metrics transcription_time accuracy
+    
+    # Include VoxCompose recordings (default: excluded)
+    python compare_versions.py --include-voxcompose
+    
+    # Only include specific VoxCompose version
+    python compare_versions.py --voxcompose-version 1.0.0
 """
 
 import argparse
@@ -17,8 +23,20 @@ from pathlib import Path
 from typing import Dict, List, Any
 
 
-def load_version_recordings(base_dir: Path, version: str) -> List[Dict[str, Any]]:
-    """Load all recording metadata for a specific version."""
+def load_version_recordings(
+    base_dir: Path, 
+    version: str, 
+    exclude_voxcompose: bool = True,
+    voxcompose_version: str = None
+) -> List[Dict[str, Any]]:
+    """Load all recording metadata for a specific version.
+    
+    Args:
+        base_dir: Base directory containing versioned recordings
+        version: VoxCore version to load
+        exclude_voxcompose: If True, exclude recordings made with VoxCompose enabled
+        voxcompose_version: If set, only include recordings with this VoxCompose version
+    """
     version_dir = base_dir / f"voxcore-{version}"
     
     if not version_dir.exists():
@@ -38,6 +56,17 @@ def load_version_recordings(base_dir: Path, version: str) -> List[Dict[str, Any]
                     if '=' in line:
                         key, value = line.strip().split('=', 1)
                         metadata[key] = value
+        
+        # Filter by VoxCompose version
+        voxcompose_ver = metadata.get('voxcompose', 'unknown')
+        
+        # Exclude VoxCompose recordings if requested (default: exclude)
+        if exclude_voxcompose and voxcompose_ver not in ('unknown', '', None):
+            continue
+        
+        # Filter by specific VoxCompose version if requested
+        if voxcompose_version is not None and voxcompose_ver != voxcompose_version:
+            continue
         
         # Load transcription metadata if available
         json_files = list(session_dir.glob("*.json"))
@@ -113,17 +142,42 @@ def calculate_stats(recordings: List[Dict[str, Any]], metric: str) -> Dict[str, 
     }
 
 
-def compare_versions(base_dir: Path, versions: List[str], metrics: List[str]):
-    """Compare performance metrics across versions."""
+def compare_versions(
+    base_dir: Path, 
+    versions: List[str], 
+    metrics: List[str],
+    exclude_voxcompose: bool = True,
+    voxcompose_version: str = None
+):
+    """Compare performance metrics across versions.
+    
+    Args:
+        base_dir: Base directory containing versioned recordings
+        versions: List of VoxCore versions to compare
+        metrics: List of metrics to compare
+        exclude_voxcompose: If True, exclude recordings made with VoxCompose
+        voxcompose_version: If set, only include recordings with this VoxCompose version
+    """
     
     print(f"VoxCore Version Comparison")
+    if exclude_voxcompose:
+        print("(VoxCompose recordings excluded)")
+    elif voxcompose_version:
+        print(f"(Only VoxCompose {voxcompose_version} recordings included)")
+    else:
+        print("(All recordings included)")
     print(f"=" * 80)
     print()
     
     # Load recordings for each version
     version_data = {}
     for version in versions:
-        recordings = load_version_recordings(base_dir, version)
+        recordings = load_version_recordings(
+            base_dir, 
+            version, 
+            exclude_voxcompose=exclude_voxcompose,
+            voxcompose_version=voxcompose_version
+        )
         version_data[version] = recordings
         print(f"v{version}: {len(recordings)} recordings")
     
@@ -217,6 +271,16 @@ def main():
         default=Path.home() / 'Documents' / 'VoiceNotes' / 'by_version',
         help='Base directory for versioned recordings'
     )
+    parser.add_argument(
+        '--include-voxcompose',
+        action='store_true',
+        help='Include recordings made with VoxCompose (default: exclude)'
+    )
+    parser.add_argument(
+        '--voxcompose-version',
+        type=str,
+        help='Only include recordings with this specific VoxCompose version'
+    )
     
     args = parser.parse_args()
     
@@ -232,10 +296,18 @@ def main():
         return 1
     
     if args.exclude_versions:
-        print(f"Excluding versions: {', '.join(args.exclude_versions)}")
+        print(f"Excluding VoxCore versions: {', '.join(args.exclude_versions)}")
         print()
     
-    compare_versions(args.base_dir, versions, args.metrics)
+    exclude_voxcompose = not args.include_voxcompose
+    
+    compare_versions(
+        args.base_dir, 
+        versions, 
+        args.metrics,
+        exclude_voxcompose=exclude_voxcompose,
+        voxcompose_version=args.voxcompose_version
+    )
     return 0
 
 
