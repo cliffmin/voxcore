@@ -1,6 +1,6 @@
 # Release Process
 
-For the complete release guide including Homebrew formula updates, see [RELEASE_GUIDE.md](../../RELEASE_GUIDE.md) in the repository root.
+For the complete release guide including Homebrew formula updates, see [RELEASE_GUIDE.md](RELEASE_GUIDE.md).
 
 ## Quick Reference
 
@@ -20,4 +20,4 @@ git commit -am "voxcore: update to v0.5.0"
 git push origin main
 ```
 
-For detailed instructions, troubleshooting, and the complete workflow, see [RELEASE_GUIDE.md](../../RELEASE_GUIDE.md).
+For detailed instructions, troubleshooting, and the complete workflow, see [RELEASE_GUIDE.md](RELEASE_GUIDE.md).

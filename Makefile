@@ -14,10 +14,11 @@ help:
 	@echo "  make transcribe /path/to/audio.wav  - Transcribe file and print output"
 	@echo ""
 	@echo "Testing:"
-	@echo "  make test         - Run all tests"
-	@echo "  make test-java    - Run Java unit tests"
-	@echo "  make test-audio   - Test audio device configuration"
-	@echo "  make test-smoke   - Run smoke tests"
+	@echo "  make test              - Run all tests"
+	@echo "  make test-java         - Run Java unit tests"
+	@echo "  make test-smoke        - Run smoke tests"
+	@echo "  make test-plugin-contract - Test plugin integration contract"
+	@echo "  make test-audio        - Test audio device configuration"
 	@echo ""
 	@echo "Setup:"
 	@echo "  make install      - Install dependencies and setup symlinks"
@@ -36,7 +37,7 @@ install:
 	@bash scripts/install.sh
 
 # Run all tests
-test: test-smoke test-java-all
+test: test-smoke test-java-all test-plugin-contract
 	@echo "All tests completed!"
 
 # Test audio device configuration
@@ -69,6 +70,11 @@ test-java-integration: build-java
 test-java-all: build-java
 	@echo "Running all Java tests (unit + integration)..."
 	@cd whisper-post-processor && gradle testAll --no-daemon
+
+# Test plugin integration contract
+test-plugin-contract:
+	@echo "Testing plugin contract..."
+	@bash tests/integration/plugin_contract_test.sh
 
 # Auto-select best audio device
 auto-audio:

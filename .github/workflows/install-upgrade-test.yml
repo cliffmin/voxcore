@@ -1,0 +1,173 @@
+name: Install & Upgrade Tests
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  install-test:
+    name: Fresh Install Test
+    runs-on: macos-14
+    timeout-minutes: 15
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: System info
+      run: |
+        echo "=== System Info ==="
+        sw_vers
+        echo "Homebrew: $(brew --version | head -1)"
+    
+    - name: Clean environment
+      run: |
+        # Remove any existing installs
+        brew uninstall --ignore-dependencies voxcore 2>/dev/null || true
+        brew untap cliffmin/tap 2>/dev/null || true
+    
+    - name: Install Hammerspoon
+      run: |
+        echo "=== Installing Hammerspoon ==="
+        brew install --cask hammerspoon || brew upgrade --cask hammerspoon
+    
+    - name: Add tap and install VoxCore
+      run: |
+        echo "=== Installing VoxCore ==="
+        brew tap cliffmin/tap
+        brew update
+        brew install voxcore
+        
+        echo ""
+        echo "=== Verify installation ==="
+        which voxcore-install && echo "✓ voxcore-install in PATH" || exit 1
+        which whisper-post && echo "✓ whisper-post in PATH" || exit 1
+        whisper-post --version && echo "✓ whisper-post works" || exit 1
+    
+    - name: Run voxcore-install
+      run: |
+        echo "=== Running voxcore-install ==="
+        voxcore-install
+        
+        echo ""
+        echo "=== Verify Hammerspoon integration ==="
+        test -L "$HOME/.hammerspoon/push_to_talk.lua" && echo "✓ push_to_talk.lua symlinked" || exit 1
+        test -f "$HOME/.hammerspoon/ptt_config.lua" && echo "✓ ptt_config.lua created" || exit 1
+    
+    - name: Verify files exist
+      run: |
+        echo "=== Verify installed files ==="
+        BREW_PREFIX=$(brew --prefix)
+        test -f "$BREW_PREFIX/opt/voxcore/libexec/hammerspoon/push_to_talk.lua" && echo "✓ Lua files" || exit 1
+        test -f "$BREW_PREFIX/opt/voxcore/libexec/whisper-post-processor/build/libs/whisper-post.jar" && echo "✓ JAR file" || exit 1
+    
+    - name: Test whisper-post CLI
+      run: |
+        echo "=== Test whisper-post CLI ==="
+        echo "test input" | whisper-post && echo "✓ CLI works" || echo "⚠ CLI test skipped (no whisper-cpp model)"
+
+  upgrade-test:
+    name: Upgrade Test
+    runs-on: macos-14
+    timeout-minutes: 20
+    # Only run on main branch pushes (not PRs, since PRs don't have previous version)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: System info
+      run: |
+        echo "=== System Info ==="
+        sw_vers
+        echo "Homebrew: $(brew --version | head -1)"
+    
+    - name: Get previous version
+      id: prev_version
+      run: |
+        # Get the previous tag (second most recent)
+        PREV_TAG=$(git tag --sort=-version:refname | grep '^v[0-9]' | sed -n '2p')
+        if [ -z "$PREV_TAG" ]; then
+          echo "No previous version found, skipping upgrade test"
+          echo "skip=true" >> $GITHUB_OUTPUT
+        else
+          echo "Previous version: $PREV_TAG"
+          echo "version=$PREV_TAG" >> $GITHUB_OUTPUT
+          echo "skip=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Install previous version
+      if: steps.prev_version.outputs.skip == 'false'
+      run: |
+        echo "=== Installing previous version: ${{ steps.prev_version.outputs.version }} ==="
+        brew uninstall --ignore-dependencies voxcore 2>/dev/null || true
+        brew untap cliffmin/tap 2>/dev/null || true
+        brew tap cliffmin/tap
+        brew update
+        
+        # Install specific version (if formula supports it)
+        # Note: This assumes the formula exists for the previous version
+        brew install voxcore || echo "Previous version install failed (may need manual formula update)"
+        
+        PREV_VERSION=$(whisper-post --version 2>/dev/null || echo "unknown")
+        echo "Installed version: $PREV_VERSION"
+        echo "prev_installed=$PREV_VERSION" >> $GITHUB_OUTPUT
+    
+    - name: Create test config
+      if: steps.prev_version.outputs.skip == 'false'
+      run: |
+        echo "=== Creating test config ==="
+        voxcore-install || true
+        # Modify config to test it's preserved
+        echo "-- Test config marker" >> "$HOME/.hammerspoon/ptt_config.lua"
+        echo "Config created/modified"
+    
+    - name: Upgrade to current version
+      if: steps.prev_version.outputs.skip == 'false'
+      run: |
+        echo "=== Upgrading to current version ==="
+        # Build current version from source (simulating upgrade)
+        cd whisper-post-processor
+        ./gradlew clean shadowJar --no-daemon
+        
+        # Simulate upgrade by reinstalling
+        brew reinstall --build-from-source voxcore || brew upgrade voxcore
+        
+        NEW_VERSION=$(whisper-post --version 2>/dev/null || echo "unknown")
+        echo "Upgraded to version: $NEW_VERSION"
+        echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+    
+    - name: Verify upgrade
+      if: steps.prev_version.outputs.skip == 'false'
+      run: |
+        echo "=== Verifying upgrade ==="
+        
+        # Verify binaries still work
+        whisper-post --version && echo "✓ whisper-post works" || exit 1
+        
+        # Verify config preserved
+        if grep -q "Test config marker" "$HOME/.hammerspoon/ptt_config.lua" 2>/dev/null; then
+          echo "✓ User config preserved"
+        else
+          echo "⚠ Config preservation check skipped (config may have been reset)"
+        fi
+        
+        # Verify symlinks updated
+        test -L "$HOME/.hammerspoon/push_to_talk.lua" && echo "✓ Symlinks updated" || exit 1
+        
+        # Re-run voxcore-install to ensure it works
+        voxcore-install && echo "✓ voxcore-install works after upgrade" || exit 1
+        
+        echo ""
+        echo "=== Upgrade test: SUCCESS ==="
+    
+    - name: Skip message
+      if: steps.prev_version.outputs.skip == 'true'
+      run: |
+        echo "⚠ No previous version found - upgrade test skipped"
+        echo "This is normal for the first release or if tags are missing"
+

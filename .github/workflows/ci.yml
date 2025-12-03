@@ -142,10 +142,10 @@ jobs:
           luac5.3 -p "$file" || echo "Syntax check failed for $file (non-blocking)"
         done
         
-    - name: Install shellcheck
+    - name: Install shellcheck and jq
       run: |
         sudo apt-get update
-        sudo apt-get install -y shellcheck
+        sudo apt-get install -y shellcheck jq
       
     - name: Shellcheck scripts
       run: |
@@ -192,6 +192,7 @@ jobs:
         echo "=== Checking for large files (>1MB) ==="
         large_files=$(find . -type f -size +1M -not -path "./.git/*" \
                       -not -path "./whisper-post-processor/build/*" \
+                      -not -path "./tests/fixtures/golden/**" \
                       -not -name "*.jar" | head -10)
         if [ -n "$large_files" ]; then
           echo "Large files found:"
@@ -207,12 +208,13 @@ jobs:
           --include="*.java" --include="*.lua" --include="*.sh" \
           --exclude-dir=.git --exclude-dir=build . | grep -v -E "(example|test|sample)"
 
-  # Release build (only on main branch)
+  # Release build (only on main branch pushes, not PRs)
   release:
     name: Release Build
     runs-on: macos-latest
     needs: [java-tests, validation]
     # Integration tests run locally via 'make test-java-integration'
+    # Only runs on pushes to main (not PRs) to avoid duplicate builds
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
@@ -280,6 +282,7 @@ jobs:
         echo "validation: ${{ needs.validation.result }}"
         echo ""
         echo "ℹ️  Integration tests run locally via 'make test-java-integration'"
+        echo "ℹ️  Install/upgrade tests run in separate workflow (.github/workflows/install-upgrade-test.yml)"
         echo ""
         
         # Fail on critical job failures

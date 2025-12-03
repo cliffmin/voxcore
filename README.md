@@ -345,7 +345,7 @@ It's open source - audit the code, verify the claims.
 - **[Contributing](CONTRIBUTING.md)** - Development guidelines
 - **[Architecture](docs/development/architecture.md)** - System design
 - **[Versioning](docs/versioning.md)** - Releases and version management
-- **[Release Guide](RELEASE_GUIDE.md)** - Complete release process for VoxCore and VoxCompose
+- **[Release Guide](docs/development/RELEASE_GUIDE.md)** - Complete release process for VoxCore and VoxCompose
 
 ## FAQ
 
