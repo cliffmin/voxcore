@@ -8,7 +8,7 @@
 - Plugin contract tests and mock plugin for verifying plugin integration
 - Performance baseline establishment and comparison scripts
 - VoxCompose version filtering support in `compare_versions.py` (exclude/include by version)
-- Plugin testing strategy documentation (PLUGIN_TESTING_STRATEGY.md)
+- Plugin testing strategy documentation (docs/development/PLUGIN_TESTING_STRATEGY.md)
 
 ### Changed
 - build: adopt Gradle Version Catalog for whisper-post-processor dependencies (internal; no user-visible changes)

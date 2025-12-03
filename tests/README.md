@@ -120,7 +120,7 @@ bash tests/integration/plugin_contract_test.sh
 
 **Note:** Plugin-specific tests (VoxCompose, future plugins) belong in their respective repos. VoxCore only tests the integration contract.
 
-See [PLUGIN_TESTING_STRATEGY.md](../PLUGIN_TESTING_STRATEGY.md) for full details.
+See [Plugin Testing Strategy](../docs/development/PLUGIN_TESTING_STRATEGY.md) for full details.
 
 ## Notes
 

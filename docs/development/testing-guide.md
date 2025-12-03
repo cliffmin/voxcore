@@ -338,8 +338,8 @@ baselines/
 
 ## Related Documentation
 
-- [Plugin Testing Strategy](../PLUGIN_TESTING_STRATEGY.md)
-- [CI/CD Review](../CI_CD_REVIEW.md)
+- [Plugin Testing Strategy](PLUGIN_TESTING_STRATEGY.md)
+- [CI/CD Review](../../internal/CI_CD_REVIEW.md)
 - [Versioning Guide](versioning.md)
 - [Architecture](architecture.md)
 
