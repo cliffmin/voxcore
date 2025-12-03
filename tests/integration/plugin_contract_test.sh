@@ -9,6 +9,7 @@ MOCK_PLUGIN="$SCRIPT_DIR/mock_refiner_plugin.sh"
 
 if [[ ! -f "$MOCK_PLUGIN" ]]; then
     echo "Error: Mock plugin not found: $MOCK_PLUGIN" >&2
+    ls -la "$SCRIPT_DIR" >&2 || true
     exit 1
 fi
 
@@ -42,11 +43,16 @@ fi
 # Test 3: Capabilities endpoint
 echo ""
 echo "Test 3: Capabilities negotiation"
-CAPS=$(bash "$MOCK_PLUGIN" --capabilities)
-if echo "$CAPS" | jq -e '.activation.long_form.min_duration' >/dev/null 2>&1; then
+CAPS=$(bash "$MOCK_PLUGIN" --capabilities 2>&1) || {
+    echo "❌ FAIL - Mock plugin failed to run: $CAPS" >&2
+    FAILED=1
+    CAPS=""
+}
+if [[ -n "$CAPS" ]] && echo "$CAPS" | jq -e '.activation.long_form.min_duration' >/dev/null 2>&1; then
     echo "✅ PASS - Capabilities endpoint returns valid JSON"
 else
-    echo "❌ FAIL - Invalid capabilities response: $CAPS"
+    echo "❌ FAIL - Invalid capabilities response: $CAPS" >&2
+    echo "jq available: $(command -v jq || echo 'not found')" >&2
     FAILED=1
 fi
 
