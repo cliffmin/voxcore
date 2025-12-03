@@ -7,8 +7,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MOCK_PLUGIN="$SCRIPT_DIR/mock_refiner_plugin.sh"
 
-if [[ ! -x "$MOCK_PLUGIN" ]]; then
-    echo "Error: Mock plugin not found or not executable: $MOCK_PLUGIN" >&2
+if [[ ! -f "$MOCK_PLUGIN" ]]; then
+    echo "Error: Mock plugin not found: $MOCK_PLUGIN" >&2
     exit 1
 fi
 
@@ -20,7 +20,7 @@ FAILED=0
 # Test 1: Basic stdin/stdout
 echo "Test 1: Basic stdin/stdout protocol"
 INPUT="test input"
-OUTPUT=$(echo "$INPUT" | "$MOCK_PLUGIN")
+OUTPUT=$(echo "$INPUT" | bash "$MOCK_PLUGIN")
 if echo "$OUTPUT" | grep -q "refined: $INPUT"; then
     echo "✅ PASS - Plugin receives stdin and returns stdout"
 else
@@ -31,7 +31,7 @@ fi
 # Test 2: Duration argument
 echo ""
 echo "Test 2: Duration metadata passing"
-OUTPUT=$(echo "test" | "$MOCK_PLUGIN" --duration 10)
+OUTPUT=$(echo "test" | bash "$MOCK_PLUGIN" --duration 10)
 if echo "$OUTPUT" | grep -q "duration: 10s"; then
     echo "✅ PASS - Duration argument passed correctly"
 else
@@ -42,7 +42,7 @@ fi
 # Test 3: Capabilities endpoint
 echo ""
 echo "Test 3: Capabilities negotiation"
-CAPS=$( "$MOCK_PLUGIN" --capabilities)
+CAPS=$(bash "$MOCK_PLUGIN" --capabilities)
 if echo "$CAPS" | jq -e '.activation.long_form.min_duration' >/dev/null 2>&1; then
     echo "✅ PASS - Capabilities endpoint returns valid JSON"
 else
@@ -53,7 +53,7 @@ fi
 # Test 4: Empty input handling
 echo ""
 echo "Test 4: Edge case - empty input"
-OUTPUT=$(echo "" | "$MOCK_PLUGIN")
+OUTPUT=$(echo "" | bash "$MOCK_PLUGIN")
 if [[ -n "$OUTPUT" ]]; then
     echo "✅ PASS - Empty input handled (got: '$OUTPUT')"
 else
@@ -65,7 +65,7 @@ echo ""
 echo "Test 5: Multi-line input handling"
 MULTILINE="line one
 line two"
-OUTPUT=$(echo "$MULTILINE" | "$MOCK_PLUGIN")
+OUTPUT=$(echo "$MULTILINE" | bash "$MOCK_PLUGIN")
 if echo "$OUTPUT" | grep -q "line one" && echo "$OUTPUT" | grep -q "line two"; then
     echo "✅ PASS - Multi-line input handled correctly"
 else

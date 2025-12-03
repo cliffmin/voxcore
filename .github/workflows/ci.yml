@@ -172,8 +172,6 @@ jobs:
     - name: Test plugin contract
       run: |
         echo "=== Testing Plugin Contract ==="
-        chmod +x tests/integration/mock_refiner_plugin.sh
-        chmod +x tests/integration/plugin_contract_test.sh
         bash tests/integration/plugin_contract_test.sh
     
     - name: Check documentation
