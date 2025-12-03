@@ -142,10 +142,10 @@ jobs:
           luac5.3 -p "$file" || echo "Syntax check failed for $file (non-blocking)"
         done
         
-    - name: Install shellcheck
+    - name: Install shellcheck and jq
       run: |
         sudo apt-get update
-        sudo apt-get install -y shellcheck
+        sudo apt-get install -y shellcheck jq
       
     - name: Shellcheck scripts
       run: |
