@@ -169,6 +169,11 @@ jobs:
         echo "=== Validating Makefile targets ==="
         make help
     
+    - name: Test plugin contract
+      run: |
+        echo "=== Testing Plugin Contract ==="
+        bash tests/integration/plugin_contract_test.sh
+    
     - name: Check documentation
       run: |
         echo "=== Required documentation ==="
