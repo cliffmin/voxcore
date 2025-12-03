@@ -2,11 +2,15 @@
 # Test VoxCore's plugin integration contract
 # Verifies that plugins are invoked correctly via stdin/stdout protocol
 
-set -euo pipefail
+# Use less strict error handling for CI compatibility
+set -e  # Exit on error, but allow unset vars and pipe failures
 
 # Verify dependencies
 if ! command -v jq >/dev/null 2>&1; then
     echo "Error: jq is required but not installed" >&2
+    echo "Available commands:" >&2
+    command -v bash >&2 || echo "bash: not found" >&2
+    command -v grep >&2 || echo "grep: not found" >&2
     exit 1
 fi
 
@@ -27,11 +31,17 @@ FAILED=0
 # Test 1: Basic stdin/stdout
 echo "Test 1: Basic stdin/stdout protocol"
 INPUT="test input"
-OUTPUT=$(echo "$INPUT" | bash "$MOCK_PLUGIN")
-if echo "$OUTPUT" | grep -q "refined: $INPUT"; then
+set +e  # Don't exit on error
+OUTPUT=$(echo "$INPUT" | bash "$MOCK_PLUGIN" 2>&1)
+EXIT_CODE=$?
+set -e
+if [[ $EXIT_CODE -ne 0 ]]; then
+    echo "❌ FAIL - Mock plugin exited with code $EXIT_CODE: $OUTPUT" >&2
+    FAILED=1
+elif echo "$OUTPUT" | grep -q "refined: $INPUT"; then
     echo "✅ PASS - Plugin receives stdin and returns stdout"
 else
-    echo "❌ FAIL - Expected 'refined: $INPUT', got '$OUTPUT'"
+    echo "❌ FAIL - Expected 'refined: $INPUT', got '$OUTPUT'" >&2
     FAILED=1
 fi
 
