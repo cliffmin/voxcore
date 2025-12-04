@@ -998,15 +998,21 @@ end
 
 -- Start mic indicator animation for recording
 local function startMicIndicator()
+  -- Reset EMA smoothing
+  levelEma = 0
+
   -- Show initial state
   showMicIndicator("recording", 0)
 
   -- Start animation timer to update with current audio levels
   if micUpdateTimer then micUpdateTimer:stop() end
   micUpdateTimer = hs.timer.doEvery(0.05, function()
-    -- Use smoothed levelEma for stable animation
-    local currentLevel = levelEma or 0
-    showMicIndicator("recording", currentLevel)
+    -- Smooth levelVal into levelEma using EMA (exponential moving average)
+    local alpha = 0.3  -- Smoothing factor (higher = more responsive)
+    levelEma = levelEma + alpha * ((levelVal or 0) - levelEma)
+
+    -- Update indicator with smoothed level
+    showMicIndicator("recording", levelEma)
   end)
 end
 
@@ -1871,7 +1877,6 @@ local function runWhisper(audioPath)
               recordArmed = true
               if armTimer then armTimer:stop(); armTimer=nil end
               if SOUND_ENABLED then playSound("Tink") end
-              updateIndicator("recording")
               log.d("Armed via first RMS sample")
             end
           end
@@ -1912,14 +1917,14 @@ local function runWhisper(audioPath)
   recordPeak = 0.0
   recording = true
   recordPeak = 0.0
-  -- UI: wave indicator + dot
-  if WAVE_METER_MODE ~= "off" then
-    showLevelIndicator()
-    if WAVE_METER_MODE == "monitor" then
-      startLevelMonitor()
-    end
+
+  -- Start level monitoring for RMS parsing (needed for mic indicator animation)
+  -- In "inline" mode, RMS levels are parsed from recording ffmpeg stderr
+  -- In "monitor" mode, separate ffmpeg process monitors audio
+  if WAVE_METER_MODE == "monitor" then
+    startLevelMonitor()
   end
-  updateIndicator("recording")
+
   if SOUND_ENABLED then playSound("Pop") end
   log.i("Recording started: " .. wavPath .. " via device " .. deviceSpec .. ", session=" .. tostring(sessionKind))
 end
