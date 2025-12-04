@@ -1879,8 +1879,14 @@ local function runWhisper(audioPath)
     if stdErr and #stdErr > 0 then
       -- Inline wave meter: parse RMS level from stderr in real-time
       if WAVE_METER_MODE == "inline" then
+        -- Debug: Print first few stderr lines to see what ffmpeg outputs
+        if #ffStderrBuf < 5 then
+          print("📝 FFmpeg stderr: " .. stdErr:sub(1, 100))
+        end
+
         local db = stdErr:match("RMS_level:%s*([%-%d%.]+)%s*dB")
         if db then
+          print("✅ Found RMS: " .. db .. " dB")
           local val = mapDbToLevel(tonumber(db))
           if val and val==val then
             levelVal = val
