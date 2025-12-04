@@ -928,7 +928,6 @@ local function showMicIndicator(state, level)
 
   if state == "recording" then
     -- Draw 3 pulsing rings based on audio level
-    local centerX, centerY = 25, 25
     local baseRadius = 8
     local ringCount = 3
 
@@ -942,8 +941,8 @@ local function showMicIndicator(state, level)
       local alpha = math.max(0.1, baseAlpha * (0.5 + level * 0.5))
 
       micCanvas:appendElements({
+        id = "ring" .. i,
         type = "circle",
-        center = { x = centerX, y = centerY },
         radius = radius,
         action = "stroke",
         strokeColor = { red = 1, green = 0.2, blue = 0.2, alpha = alpha },
@@ -953,8 +952,8 @@ local function showMicIndicator(state, level)
 
     -- Draw mic icon (center circle with brighter red)
     micCanvas:appendElements({
+      id = "mic",
       type = "circle",
-      center = { x = centerX, y = centerY },
       radius = baseRadius,
       action = "fill",
       fillColor = { red = 1, green = 0.1, blue = 0.1, alpha = 0.95 }
@@ -962,8 +961,8 @@ local function showMicIndicator(state, level)
 
     -- Add subtle white outline for visibility
     micCanvas:appendElements({
+      id = "mic_outline",
       type = "circle",
-      center = { x = centerX, y = centerY },
       radius = baseRadius,
       action = "stroke",
       strokeColor = { red = 1, green = 1, blue = 1, alpha = 0.3 },
@@ -972,14 +971,13 @@ local function showMicIndicator(state, level)
 
   elseif state == "processing" then
     -- Yellow pulsing mic (no rings) with slow pulse animation
-    local centerX, centerY = 25, 25
     local pulse = (math.sin(hs.timer.secondsSinceEpoch() * 4) + 1) / 2  -- 0 to 1
     local alpha = 0.5 + (pulse * 0.45)  -- 0.5 to 0.95
     local radius = 10 + (pulse * 1.5)  -- Slight size pulse
 
     micCanvas:appendElements({
+      id = "processing_mic",
       type = "circle",
-      center = { x = centerX, y = centerY },
       radius = radius,
       action = "fill",
       fillColor = { red = 1, green = 0.75, blue = 0, alpha = alpha }
@@ -987,8 +985,8 @@ local function showMicIndicator(state, level)
 
     -- White outline for processing state
     micCanvas:appendElements({
+      id = "processing_outline",
       type = "circle",
-      center = { x = centerX, y = centerY },
       radius = radius,
       action = "stroke",
       strokeColor = { red = 1, green = 1, blue = 1, alpha = 0.4 },
