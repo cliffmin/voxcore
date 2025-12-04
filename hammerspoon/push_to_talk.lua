@@ -997,34 +997,19 @@ local function showMicIndicator(state, level)
 end
 
 -- Start mic indicator animation for recording
+-- TODO: Make this responsive to actual voice levels in the future
 local function startMicIndicator()
-  -- Reset EMA smoothing
-  levelEma = 0
-  levelVal = 0
-
-  -- Debug: Check WAVE_METER_MODE
-  log.i(string.format("Starting mic indicator (WAVE_METER_MODE=%s)", WAVE_METER_MODE))
-
   -- Show initial state
   showMicIndicator("recording", 0)
 
-  -- Start animation timer to update with current audio levels
+  -- Start simple pulsing animation (breathing effect)
   if micUpdateTimer then micUpdateTimer:stop() end
   local frameCount = 0
   micUpdateTimer = hs.timer.doEvery(0.05, function()
-    -- Smooth levelVal into levelEma using EMA (exponential moving average)
-    local alpha = 0.3  -- Smoothing factor (higher = more responsive)
-    levelEma = levelEma + alpha * ((levelVal or 0) - levelEma)
-
-    -- Debug logging every 20 frames (~1 second) - use log.i() so it always shows
     frameCount = frameCount + 1
-    if frameCount % 20 == 0 then
-      print(string.format("🎤 Mic indicator: levelVal=%.3f, levelEma=%.3f, WAVE_MODE=%s",
-                          levelVal or 0, levelEma, WAVE_METER_MODE or "nil"))
-    end
-
-    -- Update indicator with smoothed level
-    showMicIndicator("recording", levelEma)
+    -- Simple sine wave pulse (0 to 0.8)
+    local pulse = (math.sin(frameCount * 0.1) + 1) / 2 * 0.8
+    showMicIndicator("recording", pulse)
   end)
 end
 
@@ -1311,10 +1296,8 @@ local function startRecording()
     "-ar", "16000",
     "-sample_fmt", "s16",
   }
-  if WAVE_METER_MODE == "inline" then
-    -- Use astats without metadata flag so it outputs to stderr in real-time
-    table.insert(args, "-af"); table.insert(args, "astats=reset=0.2:length=0.05")
-  end
+  -- No audio filters needed for simple pulsing animation
+  -- TODO: Add astats filter when implementing voice-responsive animation
   table.insert(args, "-vn")
   table.insert(args, wavPath)
 
@@ -1878,29 +1861,6 @@ local function runWhisper(audioPath)
   ffTask = hs.task.new(FFMPEG, onFFExit, function(task, stdOut, stdErr)
     if stdOut and #stdOut > 0 then table.insert(ffStdoutBuf, stdOut) end
     if stdErr and #stdErr > 0 then
-      -- Inline wave meter: parse RMS level from stderr in real-time
-      if WAVE_METER_MODE == "inline" then
-        -- Debug: Print first few stderr lines to see what ffmpeg outputs
-        if #ffStderrBuf < 5 then
-          print("📝 FFmpeg stderr: " .. stdErr:sub(1, 100))
-        end
-
-        local db = stdErr:match("RMS_level:%s*([%-%d%.]+)%s*dB")
-        if db then
-          print("✅ Found RMS: " .. db .. " dB")
-          local val = mapDbToLevel(tonumber(db))
-          if val and val==val then
-            levelVal = val
-            if val > recordPeak then recordPeak = val end
-            if (not recordArmed) then
-              recordArmed = true
-              if armTimer then armTimer:stop(); armTimer=nil end
-              if SOUND_ENABLED then playSound("Tink") end
-              log.d("Armed via first RMS sample")
-            end
-          end
-        end
-      end
       table.insert(ffStderrBuf, stdErr)
     end
     return true
@@ -1937,12 +1897,8 @@ local function runWhisper(audioPath)
   recording = true
   recordPeak = 0.0
 
-  -- Start level monitoring for RMS parsing (needed for mic indicator animation)
-  -- In "inline" mode, RMS levels are parsed from recording ffmpeg stderr
-  -- In "monitor" mode, separate ffmpeg process monitors audio
-  if WAVE_METER_MODE == "monitor" then
-    startLevelMonitor()
-  end
+  -- No level monitoring needed for simple pulsing animation
+  -- TODO: Re-enable when implementing voice-responsive animation
 
   if SOUND_ENABLED then playSound("Pop") end
   log.i("Recording started: " .. wavPath .. " via device " .. deviceSpec .. ", session=" .. tostring(sessionKind))
@@ -1966,8 +1922,7 @@ local function stopRecording()
     return
   end
   if ffTask then
-    -- Stop level monitor immediately (visual is handled by mic indicator)
-    stopLevelMonitor()
+    -- No level monitor to stop (using simple pulsing animation)
     if armTimer then armTimer:stop(); armTimer=nil end
     -- Try sending 'q' via stdin for graceful finalize
     local wrote = pcall(function()
