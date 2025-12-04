@@ -283,6 +283,10 @@ local levelT = 0.0      -- time for fallback animation
 local levelUseFallback = false
 local recordPeak = 0.0  -- max level seen during recording
 
+-- New mic indicator state (pulsing rings design)
+local micCanvas = nil
+local micUpdateTimer = nil
+
 -- Arming state (to avoid cutting off initial words): dot brightens when ready, optional beep
 local recordArmed = false
 local armTimer = nil
@@ -488,7 +492,7 @@ end
 local function finalizeFailure(kind, msg, opts)
   opts = opts or {}
   if opts.deleteWav and wavPath and hs.fs.attributes(wavPath) then pcall(function() os.remove(wavPath) end) end
-  updateIndicator("off")
+  stopMicIndicator()
   stopBlink()
   local payload = {
     wav = wavPath,
@@ -879,6 +883,147 @@ local function hideLevelIndicator()
   levelVal, levelEma, levelT = 0,0,0
 end
 
+-- New dynamic mic indicator with pulsing rings
+-- States: "recording", "processing", "hidden"
+-- Level: 0.0 to 1.0 (audio RMS level, only used in "recording" state)
+local function showMicIndicator(state, level)
+  level = level or 0.0
+
+  -- Hide indicator if state is "hidden"
+  if state == "hidden" then
+    if micUpdateTimer then
+      micUpdateTimer:stop()
+      micUpdateTimer = nil
+    end
+    if micCanvas then
+      pcall(function() micCanvas:delete() end)
+      micCanvas = nil
+    end
+    return
+  end
+
+  -- Create canvas if needed
+  if not micCanvas then
+    local scr = builtinScreen():frame()
+    local size = 50
+    local x = math.floor(scr.x + scr.w / 2 - size / 2)
+    local y = scr.y + 10
+
+    micCanvas = hs.canvas.new({x = x, y = y, w = size, h = size})
+    local lvl = (hs.canvas.windowLevels and hs.canvas.windowLevels.overlay) or
+                ((hs.drawing and hs.drawing.windowLevels and hs.drawing.windowLevels.modalPanel) or nil)
+    if lvl then pcall(function() micCanvas:level(lvl) end) end
+  end
+
+  -- Clear and redraw
+  micCanvas:replaceElements({})
+
+  if state == "recording" then
+    -- Draw 3 pulsing rings based on audio level
+    local centerX, centerY = 25, 25
+    local baseRadius = 8
+    local ringCount = 3
+
+    for i = 1, ringCount do
+      -- Outer rings scale more with audio level
+      local scaleFactor = 1 + (level * 0.6 * i)
+      local radius = baseRadius + (i * 5 * scaleFactor)
+
+      -- Rings fade out as they expand, but brighten with audio
+      local baseAlpha = 0.6 - (i * 0.15)
+      local alpha = math.max(0.1, baseAlpha * (0.5 + level * 0.5))
+
+      micCanvas:appendElements({
+        type = "circle",
+        center = { x = centerX, y = centerY },
+        radius = radius,
+        action = "stroke",
+        strokeColor = { red = 1, green = 0.2, blue = 0.2, alpha = alpha },
+        strokeWidth = 2
+      })
+    end
+
+    -- Draw mic icon (center circle with brighter red)
+    micCanvas:appendElements({
+      type = "circle",
+      center = { x = centerX, y = centerY },
+      radius = baseRadius,
+      action = "fill",
+      fillColor = { red = 1, green = 0.1, blue = 0.1, alpha = 0.95 }
+    })
+
+    -- Add subtle white outline for visibility
+    micCanvas:appendElements({
+      type = "circle",
+      center = { x = centerX, y = centerY },
+      radius = baseRadius,
+      action = "stroke",
+      strokeColor = { red = 1, green = 1, blue = 1, alpha = 0.3 },
+      strokeWidth = 1
+    })
+
+  elseif state == "processing" then
+    -- Yellow pulsing mic (no rings) with slow pulse animation
+    local centerX, centerY = 25, 25
+    local pulse = (math.sin(hs.timer.secondsSinceEpoch() * 4) + 1) / 2  -- 0 to 1
+    local alpha = 0.5 + (pulse * 0.45)  -- 0.5 to 0.95
+    local radius = 10 + (pulse * 1.5)  -- Slight size pulse
+
+    micCanvas:appendElements({
+      type = "circle",
+      center = { x = centerX, y = centerY },
+      radius = radius,
+      action = "fill",
+      fillColor = { red = 1, green = 0.75, blue = 0, alpha = alpha }
+    })
+
+    -- White outline for processing state
+    micCanvas:appendElements({
+      type = "circle",
+      center = { x = centerX, y = centerY },
+      radius = radius,
+      action = "stroke",
+      strokeColor = { red = 1, green = 1, blue = 1, alpha = 0.4 },
+      strokeWidth = 1.5
+    })
+  end
+
+  micCanvas:show()
+end
+
+-- Start mic indicator animation for recording
+local function startMicIndicator()
+  -- Show initial state
+  showMicIndicator("recording", 0)
+
+  -- Start animation timer to update with current audio levels
+  if micUpdateTimer then micUpdateTimer:stop() end
+  micUpdateTimer = hs.timer.doEvery(0.05, function()
+    -- Use smoothed levelEma for stable animation
+    local currentLevel = levelEma or 0
+    showMicIndicator("recording", currentLevel)
+  end)
+end
+
+-- Stop mic indicator and clean up
+local function stopMicIndicator()
+  if micUpdateTimer then
+    micUpdateTimer:stop()
+    micUpdateTimer = nil
+  end
+  showMicIndicator("hidden")
+end
+
+-- Show processing state with pulsing animation
+local function showMicProcessing()
+  if micUpdateTimer then micUpdateTimer:stop() end
+
+  -- Start processing animation timer
+  micUpdateTimer = hs.timer.doEvery(0.1, function()
+    showMicIndicator("processing", 0)
+  end)
+end
+
 local function startLevelMonitor()
   levelUseFallback = false
   levelVal, levelEma = 0,0
@@ -1160,15 +1305,16 @@ local function startRecording()
 
   ffStdoutBuf, ffStderrBuf = {}, {}
 
-  -- Arming: start with dim indicator; brighten and optional beep once ready
+  -- Start mic indicator with pulsing rings
+  startMicIndicator()
+
+  -- Arming: track armed state for beep (visual already handled by mic indicator)
   recordArmed = false
-  updateIndicator("recording_dim")
   if armTimer then armTimer:stop(); armTimer=nil end
   armTimer = hs.timer.doAfter((ARM_DELAY_MS or 200)/1000, function()
     if not recordArmed then
-      -- On fallback, brighten dot only (no beep), to avoid misleading cue
-      updateIndicator("recording")
-      log.d("Armed via fallback timer (no beep)")
+      recordArmed = true
+      log.d("Armed via fallback timer")
     end
   end)
 
@@ -1191,14 +1337,14 @@ local function onFFExit(code, stdout, stderr)
       else
         hs.alert.show("🎤 Recording error\n\nCheck Console for details", {textSize = 14}, 3)
       end
-      
-      updateIndicator("off")
+
+      stopMicIndicator()
       recording = false
       return
     end
-    
-    -- Switch to transcribing indicator
-    updateIndicator("transcribing")
+
+    -- Switch to processing indicator (yellow pulse)
+    showMicProcessing()
     recording = false
 
     -- Track early-condition reasons without aborting output
@@ -1552,7 +1698,7 @@ local function runWhisper(audioPath)
               log.i(string.format("PASTED %d chars", #finalText))
               doLogSuccess(finalText, extra)
             end
-            updateIndicator("off")
+            stopMicIndicator()
             stopBlink()
           end
 
@@ -1659,7 +1805,7 @@ local function runWhisper(audioPath)
               local ok = pcall(function() whisperTask:sendSignal(2) end)
               if not ok then pcall(function() whisperTask:terminate() end) end
             end
-            updateIndicator("off")
+            stopMicIndicator()
             stopBlink()
             if SOUND_ENABLED then playSound("Funk") end
           end)
@@ -1752,7 +1898,7 @@ local function runWhisper(audioPath)
     })
     
     -- Clean up UI state
-    updateIndicator("off")
+    stopMicIndicator()
     recording = false
     return
   end
@@ -1784,7 +1930,7 @@ local function stopRecording()
   local wasShiftToggle = isShiftToggle
   if isTestMode() then
     log.d("[TEST] Would stop ffmpeg (heldMs=" .. tostring(heldMs) .. ") and transcribe")
-    updateIndicator("off")
+    stopMicIndicator()
     stopBlink()
     if armTimer then armTimer:stop(); armTimer=nil end
     recording = false
@@ -1953,8 +2099,8 @@ f13Hotkey = hs.hotkey.bind(holdMods, holdKey,
     end
 
     -- Clean up any stuck UI state from accidental tap
-    if indicator then
-      updateIndicator("off")
+    if micCanvas then
+      stopMicIndicator()
       stopBlink()
     end
   end
