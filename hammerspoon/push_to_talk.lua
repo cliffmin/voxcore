@@ -910,21 +910,20 @@ local function showMicIndicator(state, level)
     return
   end
 
-  -- Create canvas if needed
-  if not micCanvas then
-    local scr = builtinScreen():frame()
-    local size = 50
-    local x = math.floor(scr.x + scr.w / 2 - size / 2)
-    local y = scr.y + 10
-
-    micCanvas = hs.canvas.new({x = x, y = y, w = size, h = size})
-    local lvl = (hs.canvas.windowLevels and hs.canvas.windowLevels.overlay) or
-                ((hs.drawing and hs.drawing.windowLevels and hs.drawing.windowLevels.modalPanel) or nil)
-    if lvl then pcall(function() micCanvas:level(lvl) end) end
+  -- Always recreate canvas (like old indicator code - avoids replaceElements issues)
+  if micCanvas then
+    pcall(function() micCanvas:delete() end)
   end
 
-  -- Clear and redraw
-  micCanvas:replaceElements({})
+  local scr = builtinScreen():frame()
+  local size = 50
+  local x = math.floor(scr.x + scr.w / 2 - size / 2)
+  local y = scr.y + 10
+
+  micCanvas = hs.canvas.new({x = x, y = y, w = size, h = size})
+  local lvl = (hs.canvas.windowLevels and hs.canvas.windowLevels.overlay) or
+              ((hs.drawing and hs.drawing.windowLevels and hs.drawing.windowLevels.modalPanel) or nil)
+  if lvl then pcall(function() micCanvas:level(lvl) end) end
 
   if state == "recording" then
     -- Draw 3 pulsing rings based on audio level
