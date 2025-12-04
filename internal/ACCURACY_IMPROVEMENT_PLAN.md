@@ -851,45 +851,184 @@ end
 
 ## Implementation Roadmap
 
-### Phase 1: Foundation (2-3 weeks)
-- [ ] Enhanced metadata capture (confidence, app context, audio quality)
-- [ ] Segment-level storage (JSONL format)
-- [ ] User feedback capture (clipboard monitoring + explicit command)
-- [ ] VoxCompose feedback parsing
+### Phase 1: Hardening & Bug Fixes (1-2 weeks)
 
-**Deliverable:** Rich dataset for analysis
+**Goal:** Fix wrong behavior if it exists, no new features. Ensure current system works as intended.
 
-### Phase 2: Vocabulary Generation (2-3 weeks)
-- [ ] VoxCompose vocabulary generator
-- [ ] VoxCore dynamic vocabulary loading
-- [ ] Integration testing
-- [ ] Accuracy baseline measurement
+#### 1.1 Code Audit & Bug Fixes
+- [ ] Audit existing Whisper integration for correctness
+- [ ] Fix any silent failures in transcription pipeline
+- [ ] Ensure WAV files are always saved (reliability promise)
+- [ ] Fix error handling in VoxCompose integration
+- [ ] Validate JSON output parsing from Whisper
 
-**Deliverable:** Bidirectional vocabulary sharing
+#### 1.2 Testing & Validation
+- [ ] Add unit tests for critical paths (transcription, file writing)
+- [ ] Integration tests for VoxCore → VoxCompose flow
+- [ ] Test edge cases (empty audio, very long recordings, special characters)
+- [ ] Verify tx_logs accuracy (timestamps, durations, model names)
 
-### Phase 3: Domain Adaptation (2 weeks)
-- [ ] App-specific vocabularies
-- [ ] Domain detection logic
-- [ ] VoxCompose domain learning
-- [ ] A/B testing framework
+#### 1.3 Configuration Hardening
+- [ ] Validate config file on load (catch misconfigurations early)
+- [ ] Add sensible defaults for all config options
+- [ ] Document all config options clearly
+- [ ] Add config migration for breaking changes
 
-**Deliverable:** Context-aware transcription
+#### 1.4 Error Recovery
+- [ ] Graceful degradation if VoxCompose unavailable
+- [ ] Retry logic for ffmpeg failures
+- [ ] Better error messages for user (actionable, not cryptic)
+- [ ] Log errors without crashing Hammerspoon
 
-### Phase 4: Quality Assurance (1 week)
-- [ ] `voxcore-stats` command
-- [ ] Confidence-based review UI
-- [ ] Experiment analysis tools
-- [ ] Documentation updates
+**Deliverable:** Stable, tested, reliable foundation. No regressions.
 
-**Deliverable:** Measurement and iteration tools
+---
 
-### Phase 5: Advanced Features (Future)
-- [ ] Context-aware capitalization
-- [ ] Multi-pass transcription
-- [ ] Audio quality warnings
-- [ ] Collaborative learning (opt-in)
+### Phase 2: Quick Wins & Feature Augmentation (2-3 weeks)
 
-**Deliverable:** Production-ready accuracy improvements
+**Goal:** Improve accuracy with minimal risk. Augment existing features without breaking changes.
+
+#### 2.1 Dynamic Vocabulary Loading (VoxCore)
+**Status:** Designed (see Q&A section below)
+
+- [ ] Implement `loadInitialPrompt()` in `whisper_wrapper.lua`
+- [ ] Read vocabulary from `~/.config/voxcompose/vocabulary.txt`
+- [ ] Graceful fallback if file doesn't exist (use config-based vocab)
+- [ ] Optional: Warn if vocabulary file is stale (>7 days old)
+- [ ] Config flag to enable/disable (`ENABLE_DYNAMIC_VOCAB`)
+- [ ] Performance validation (<1ms file read overhead)
+
+**Implementation notes:**
+- File read on every transcription (no caching - stays stateless)
+- ~5KB file, ~1ms read time (<0.2% overhead)
+- Truncate if vocabulary >5000 chars (Whisper token limit)
+
+#### 2.2 Vocabulary Generation (VoxCompose)
+- [ ] Create `VocabularyGenerator.java` class
+- [ ] Generate `vocabulary.txt` from learned corrections
+- [ ] Include technical terms, capitalizations, common phrases
+- [ ] Prioritize by frequency and recency
+- [ ] Limit to ~223 Whisper tokens (~1000 words)
+- [ ] Regenerate after every 10 corrections or daily (whichever first)
+
+#### 2.3 Enhanced Metadata Capture (VoxCore)
+- [ ] Add per-recording `.meta.json` files
+- [ ] Capture Whisper confidence scores (mean, min, max)
+- [ ] Capture app context (bundle ID, app name, detected domain)
+- [ ] Capture audio quality metrics (RMS, peak amplitude, clipping detection)
+- [ ] Track INITIAL_PROMPT source (config | voxcompose | none)
+- [ ] Store vocabulary file metadata (path, mtime, word count)
+
+**Metadata file structure:** (see detailed spec in plan)
+
+#### 2.4 Domain Detection (VoxCore)
+**Status:** Designed (see Q&A section below)
+
+- [ ] Implement `detectDomain()` using bundle ID pattern matching
+- [ ] Simple heuristics: code, chat, email, terminal, prose
+- [ ] NOT LLM-based (too slow)
+- [ ] Pass domain to VoxCompose via `--domain` flag
+- [ ] Log domain in tx_logs for analysis
+
+**Domains:**
+- `code`: VS Code, Cursor, Xcode, Android Studio
+- `chat`: Slack, Discord, Telegram, Messages
+- `email`: Mail, Gmail, Outlook, Spark
+- `terminal`: Terminal, iTerm
+- `prose`: Default fallback
+
+#### 2.5 Domain-Specific Vocabularies (VoxCompose)
+- [ ] Generate separate vocabulary files per domain
+  - `vocabulary-code.txt` - technical programming terms
+  - `vocabulary-chat.txt` - casual language
+  - `vocabulary-email.txt` - professional language
+  - `vocabulary-terminal.txt` - command-line terms
+  - `vocabulary-prose.txt` - general writing
+- [ ] VoxCore loads domain-specific file based on detected domain
+- [ ] Fallback to generic `vocabulary.txt` if domain file missing
+- [ ] Default domain vocabularies (hardcoded base sets)
+
+#### 2.6 Integration Testing
+- [ ] Test VoxCore → VoxCompose vocabulary flow end-to-end
+- [ ] Verify vocabulary updates propagate to next transcription
+- [ ] Test domain detection accuracy (sample 100 apps)
+- [ ] Measure accuracy improvement (baseline vs. with vocabulary)
+
+**Deliverable:** Bidirectional vocabulary sharing + domain awareness
+
+---
+
+### Phase 3: Advanced Features & New Behaviors (3-4 weeks)
+
+**Goal:** Big new capabilities that change user workflows.
+
+#### 3.1 Manual Correction Feature
+**Status:** Designed - see [FUTURE_MANUAL_CORRECTION_FEATURE.md](./FUTURE_MANUAL_CORRECTION_FEATURE.md)
+
+- [ ] Hotkey for explicit corrections (`Cmd+Alt+Ctrl+Shift+C`)
+- [ ] Capture corrected text from clipboard
+- [ ] Calculate detailed diff (word-level changes)
+- [ ] Save correction to `.meta.json`
+- [ ] VoxCompose learns from user corrections (high confidence)
+- [ ] Correction statistics UI
+
+**Note:** This is a major UX change. Requires user education and testing.
+
+#### 3.2 Passive Clipboard Monitoring (Optional)
+- [ ] Monitor clipboard for 60s after paste
+- [ ] Detect if user edited the pasted text
+- [ ] Calculate edit distance
+- [ ] Write to feedback file if changed
+- [ ] Lower confidence than explicit corrections
+
+**Risk:** Privacy concerns, clipboard conflicts. Make opt-in.
+
+#### 3.3 A/B Testing Framework
+- [ ] Experiment configuration in `ptt_config.lua`
+- [ ] Random variant assignment (hash-based, consistent)
+- [ ] Log experiment ID and variant in tx_logs
+- [ ] Analysis tool: `voxcore-stats --experiment {id}`
+- [ ] Statistical significance testing
+- [ ] Automatic rollout based on results
+
+**Use cases:**
+- Test vocabulary v1 vs v2
+- Test different Whisper models
+- Test preprocessing configurations
+
+#### 3.4 Accuracy Analytics
+- [ ] `voxcore-stats` command-line tool
+- [ ] Parse tx_logs and metadata files
+- [ ] Calculate accuracy metrics (correction rate, edit distance)
+- [ ] Domain breakdown (code vs chat vs email)
+- [ ] Trend analysis (improvement over time)
+- [ ] Correction pattern analysis (most common fixes)
+
+#### 3.5 Confidence-Based Review
+- [ ] Detect low-confidence transcriptions (<0.75 mean)
+- [ ] Show notification asking user to review
+- [ ] Optional: Show review UI with highlighted uncertain segments
+- [ ] User can mark as "correct" or provide correction
+- [ ] Feed back into learning system
+
+#### 3.6 Audio Quality Warnings
+- [ ] Analyze audio after recording
+- [ ] Warn if too quiet (peak amplitude <0.1)
+- [ ] Warn if clipping detected
+- [ ] Warn if mostly silence (>50% below threshold)
+- [ ] Help users improve audio quality
+
+**Deliverable:** Complete feedback loop, user-driven learning, quality tooling
+
+---
+
+### Future: Advanced Features (Not Scheduled)
+
+See separate documents:
+- [Manual Correction Feature](./FUTURE_MANUAL_CORRECTION_FEATURE.md) - Explicit user corrections via hotkey
+- Context-aware capitalization (domain-specific casing rules)
+- Multi-pass transcription (use multiple models for critical recordings)
+- Collaborative learning (opt-in community vocabulary sharing)
 
 ---
 
@@ -988,6 +1127,206 @@ end
 3. **Accuracy regression**
    - **Risk:** Bad vocabulary updates make things worse
    - **Mitigation:** A/B testing, rollback capability, user can disable
+
+---
+
+## Design Q&A - Clarifications from Planning Discussion
+
+### Q1: Dynamic Vocabulary Loading - Performance & Caching?
+
+**Question:** Should VoxCore read the vocabulary file on every transcription, or cache it? What about performance?
+
+**Answer:** **Read on every transcription** (no caching).
+
+**Reasoning:**
+- Small file size (~5KB max, ~200-500 words)
+- File I/O is fast: **~1ms** on modern SSDs
+- Keeps VoxCore truly stateless (no stale data)
+- VoxCompose can update file between transcriptions → next recording gets fresh vocab
+- Performance overhead: **<0.2%** (1ms out of ~500-1000ms total transcription time)
+
+**Implementation:**
+```lua
+local function loadInitialPrompt()
+  local vocabFile = os.getenv("HOME") .. "/.config/voxcompose/vocabulary.txt"
+  local f = io.open(vocabFile, "r")
+
+  if f then
+    local dynamicVocab = f:read("*all")
+    f:close()
+    return staticPrompt .. " " .. dynamicVocab
+  else
+    -- Fallback to config-based vocabulary
+    return staticPrompt .. " " .. CONFIG.WHISPER_INITIAL_PROMPT
+  end
+end
+
+-- Call on EVERY transcription (not cached)
+local initialPrompt = loadInitialPrompt()
+```
+
+**Configuration:**
+- Optional via `ENABLE_DYNAMIC_VOCAB` flag
+- Graceful fallback if file doesn't exist
+- No breaking changes for existing users
+
+---
+
+### Q2: User Feedback - Metadata Files vs Clipboard Monitoring?
+
+**Question:** Should we use clipboard monitoring or a better approach for feedback capture?
+
+**Answer:** **Use per-recording metadata files + multiple feedback methods**.
+
+**Better approach than clipboard-only:**
+
+Create `.meta.json` file for each recording:
+```
+~/Documents/VoiceNotes/2025-Dec-04_12.30.00_PM/
+├── 2025-Dec-04_12.30.00_PM.wav
+├── 2025-Dec-04_12.30.00_PM.json
+├── 2025-Dec-04_12.30.00_PM.txt
+└── 2025-Dec-04_12.30.00_PM.meta.json  ← NEW
+```
+
+**Metadata file structure:**
+```json
+{
+  "recording_id": "2025-Dec-04_12.30.00_PM",
+  "transcript": {
+    "original": "add error handling",
+    "corrected": "Add error handling to DB module",
+    "correction_method": "explicit_hotkey"
+  },
+  "context": {
+    "app_bundle_id": "com.apple.Notes",
+    "domain": "prose"
+  },
+  "quality": {
+    "whisper_confidence_mean": 0.89,
+    "audio_rms": 0.42
+  },
+  "user_feedback": {
+    "marked_correct": false,
+    "needs_review": false
+  }
+}
+```
+
+**Multiple feedback methods:**
+1. **Clipboard monitoring** (passive, automatic)
+2. **Explicit hotkey** (user-initiated: `Cmd+Alt+Ctrl+Shift+C`)
+3. **Manual metadata editing** (power users)
+4. **Review UI** (future - for low-confidence transcriptions)
+
+**Benefits:**
+- ✅ Future-proof - can add more metadata fields
+- ✅ Helps with other use cases (A/B testing, quality tracking)
+- ✅ Explicit user control
+- ✅ VoxCompose learns from metadata files
+
+**Note:** Manual correction feature moved to Phase 3 and detailed in [FUTURE_MANUAL_CORRECTION_FEATURE.md](./FUTURE_MANUAL_CORRECTION_FEATURE.md).
+
+---
+
+### Q3: Domain Detection - How is Domain Identified?
+
+**Question:** How is domain detected? Via LLM? How does VoxCore use domains?
+
+**Answer:** **Simple heuristics (bundle ID pattern matching), NOT LLM. Domains are used as an index to select vocabulary files.**
+
+**Domain detection logic:**
+```lua
+local function detectDomain()
+  local app = hs.application.frontmostApplication()
+  if not app then return "prose" end
+
+  local bundleId = app:bundleID() or ""
+
+  -- Simple pattern matching (fast, no LLM)
+  if bundleId:match("code") or bundleId:match("cursor") or
+     bundleId:match("xcode") then
+    return "code"
+
+  elseif bundleId:match("slack") or bundleId:match("discord") then
+    return "chat"
+
+  elseif bundleId:match("mail") or bundleId:match("gmail") then
+    return "email"
+
+  else
+    return "prose"  -- Default
+  end
+end
+```
+
+**How domains are used:**
+
+VoxCompose generates **separate vocabulary files per domain**:
+```
+~/.config/voxcompose/
+├── vocabulary-code.txt      # refactor, function, GitHub, API...
+├── vocabulary-chat.txt      # hey, lol, btw, thread...
+├── vocabulary-email.txt     # regarding, attached, sincerely...
+└── vocabulary-prose.txt     # however, moreover, furthermore...
+```
+
+VoxCore loads the appropriate file:
+```lua
+local domain = detectDomain()
+local vocabFile = string.format(
+  "%s/.config/voxcompose/vocabulary-%s.txt",
+  os.getenv("HOME"),
+  domain
+)
+```
+
+**Benefits:**
+- Different vocabularies for different contexts
+- Code: `refactor` more likely than `rephrase`
+- Chat: `lol` more likely than `laugh out loud`
+- Email: `regarding` more likely than `about`
+- Smaller, focused vocabularies = better Whisper hints
+
+**NOT LLM-based because:**
+- Too slow (adds latency to every transcription)
+- Unnecessary - bundle ID patterns work well
+- Keeps VoxCore simple and stateless
+
+---
+
+### Q4: Manual Correction Feature - Plugin or Core?
+
+**Question:** Should manual correction be a new plugin or part of VoxCore/VoxCompose?
+
+**Answer:** **VoxCore feature (hotkey + metadata capture) + VoxCompose integration (learning).**
+
+**Architecture:**
+- **VoxCore (stateless):**
+  - Handles correction hotkey (`Cmd+Alt+Ctrl+Shift+C`)
+  - Captures corrected text from clipboard
+  - Calculates diff (Levenshtein distance + word-level changes)
+  - Writes correction to `.meta.json` file
+  - Shows user feedback ("✓ Correction saved")
+
+- **VoxCompose (stateful):**
+  - Scans `.meta.json` files for corrections
+  - Learns from user corrections (higher confidence than LLM diffs)
+  - Updates UserProfile with learned patterns
+  - Regenerates vocabulary files with new terms
+
+**Why not a plugin?**
+- Hotkey handling requires Hammerspoon (VoxCore's domain)
+- Metadata file writing is already VoxCore's responsibility
+- VoxCompose already reads metadata files (existing pattern)
+- No new components needed
+
+**Benefits:**
+- Clean separation of concerns
+- Works even if VoxCompose not installed (corrections stored for future)
+- Reuses existing metadata infrastructure
+
+**Status:** Detailed design in [FUTURE_MANUAL_CORRECTION_FEATURE.md](./FUTURE_MANUAL_CORRECTION_FEATURE.md). Implementation in Phase 3.
 
 ---
 
