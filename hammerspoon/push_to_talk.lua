@@ -769,6 +769,9 @@ local function stopBlink()
   end
 end
 
+-- DEPRECATED: Old static dot indicator - replaced by dynamic mic indicator
+-- Kept for reference only; not used in current code
+--[[
 local function updateIndicator(state)
   local scr = builtinScreen():frame()
   local size = 16
@@ -819,6 +822,7 @@ local function updateIndicator(state)
     end)
   end
 end
+--]]
 
 -- Live audio/wave indicator helpers
 local function mapDbToLevel(db)
@@ -828,6 +832,9 @@ local function mapDbToLevel(db)
   return (db + 60) / 60 -- -60..0 -> 0..1
 end
 
+-- DEPRECATED: Old wave meter indicator - replaced by dynamic mic indicator with rings
+-- Kept for reference only; not used in current code
+--[[
 local function showLevelIndicator()
   -- Create a bar-wave indicator near top-center
   if levelIndicator then pcall(function() levelIndicator:delete() end) end
@@ -882,6 +889,7 @@ local function hideLevelIndicator()
   if levelIndicator then pcall(function() levelIndicator:delete() end); levelIndicator=nil end
   levelVal, levelEma, levelT = 0,0,0
 end
+--]]
 
 -- New dynamic mic indicator with pulsing rings
 -- States: "recording", "processing", "hidden"
@@ -1937,8 +1945,7 @@ local function stopRecording()
     return
   end
   if ffTask then
-    -- Stop level indicator/monitor immediately
-    hideLevelIndicator()
+    -- Stop level monitor immediately (visual is handled by mic indicator)
     stopLevelMonitor()
     if armTimer then armTimer:stop(); armTimer=nil end
     -- Try sending 'q' via stdin for graceful finalize
