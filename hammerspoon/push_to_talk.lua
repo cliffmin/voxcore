@@ -1016,10 +1016,11 @@ local function startMicIndicator()
     local alpha = 0.3  -- Smoothing factor (higher = more responsive)
     levelEma = levelEma + alpha * ((levelVal or 0) - levelEma)
 
-    -- Debug logging every 20 frames (~1 second)
+    -- Debug logging every 20 frames (~1 second) - use log.i() so it always shows
     frameCount = frameCount + 1
     if frameCount % 20 == 0 then
-      log.d(string.format("Mic: levelVal=%.3f, levelEma=%.3f", levelVal or 0, levelEma))
+      print(string.format("🎤 Mic indicator: levelVal=%.3f, levelEma=%.3f, WAVE_MODE=%s",
+                          levelVal or 0, levelEma, WAVE_METER_MODE or "nil"))
     end
 
     -- Update indicator with smoothed level
