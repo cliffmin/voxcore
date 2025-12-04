@@ -857,7 +857,118 @@ end
 
 **CRITICAL:** README promises "learns your speech patterns" but VoxCompose learning is NOT connected to VoxCore. This is BROKEN and must be fixed.
 
-#### 1.1 Fix Broken Vocabulary Integration ⚠️ **CRITICAL**
+**Implementation Order:**
+1. **Phase 1.2 (Config System)** - Do FIRST to avoid rework
+2. **Phase 1.1 (Vocabulary Fix)** - Depends on config foundation
+3. **Phase 1.3 (Code Audit)** - Quick fixes only
+4. **Phase 1.4 (Testing)** - Verify everything works
+5. **Phase 1.5 (Error Recovery)** - Polish and UX
+
+**Rationale:** Config must be correct before implementing vocabulary loading (file paths, env var expansion, ~ handling). If we implement vocabulary then change config, we'll redo work.
+
+---
+
+#### 1.2 Configuration System Improvements ⚠️ **DO FIRST**
+
+**Problem:** Hotkeys, storage paths, and env vars not fully configurable or tested. Vocabulary loading (Phase 1.1) needs this foundation.
+
+**Step-by-Step Breakdown:**
+
+**Step 1: Storage Directory Configuration**
+- [ ] Add `VOICE_NOTES_DIR` config to `ptt_config.lua.sample`
+- [ ] Default: `~/Documents/VoiceNotes`
+- [ ] Implement path expansion utility function in `push_to_talk.lua`:
+  - Expand `~` to user home directory
+  - Expand environment variables (`$HOME`, `$USER`, etc.)
+  - Resolve relative paths to absolute
+- [ ] Create directory if doesn't exist on startup
+- [ ] Validate path is writable (create test file then delete)
+- [ ] Log config value on startup for debugging
+- [ ] Update all hardcoded paths to use `VOICE_NOTES_DIR`
+
+**Files to modify:**
+- `/Users/cliffmin/code/voxcore/hammerspoon/ptt_config.lua.sample` - Add config
+- `/Users/cliffmin/code/voxcore/hammerspoon/push_to_talk.lua` - Implement expansion and validation
+
+**Step 2: TX Logs Directory Configuration**
+- [ ] Add `TX_LOGS_DIR` config to `ptt_config.lua.sample`
+- [ ] Default: `~/.local/state/macos-ptt-dictation/tx_logs`
+- [ ] Reuse path expansion utility from Step 1
+- [ ] Create directory if doesn't exist
+- [ ] Validate path is writable
+- [ ] Update all tx_logs writes to use `TX_LOGS_DIR`
+
+**Files to modify:**
+- `/Users/cliffmin/code/voxcore/hammerspoon/ptt_config.lua.sample` - Add config
+- `/Users/cliffmin/code/voxcore/hammerspoon/push_to_talk.lua` - Use config value
+
+**Step 3: Environment Variable Validation**
+- [ ] `OLLAMA_HOST` - VoxCompose LLM endpoint
+  - Validate URL format if set
+  - Test connectivity with simple HTTP check (optional)
+  - Provide clear error if invalid
+  - Document in README
+- [ ] `PTT_CONFIG_FILE` - custom config path
+  - Validate file exists if set
+  - Validate file is readable
+  - Provide clear error if invalid
+- [ ] `WHISPER_CPP_PATH` - custom Whisper binary
+  - Validate file exists if set
+  - Validate file is executable
+  - Test invocation with `--version` flag
+  - Provide clear error if invalid
+- [ ] `VOXCOMPOSE_BIN` - custom VoxCompose path
+  - Validate file exists if set
+  - Validate file is executable
+  - Test invocation with `--version` flag (if supported)
+  - Graceful handling if VoxCompose not installed
+
+**Files to modify:**
+- `/Users/cliffmin/code/voxcore/hammerspoon/push_to_talk.lua` - Add validation function
+- `/Users/cliffmin/code/voxcore/README.md` - Document env vars
+
+**Step 4: Hotkey Configuration Testing**
+- [ ] Document all supported hotkey combinations in config
+- [ ] Add validation function for hotkey config:
+  - Validate modifiers array is valid
+  - Validate key is valid
+  - Warn about common conflicts (e.g., system shortcuts)
+- [ ] Test all modifier combinations work:
+  - `{"cmd"}`, `{"alt"}`, `{"ctrl"}`, `{"shift"}`
+  - `{"cmd", "alt"}`, `{"cmd", "ctrl"}`, etc.
+  - Full combo: `{"cmd", "alt", "ctrl"}`, `{"cmd", "alt", "ctrl", "shift"}`
+- [ ] Show warning if hotkey binding fails
+- [ ] Document recommended hotkeys in README
+
+**Files to modify:**
+- `/Users/cliffmin/code/voxcore/hammerspoon/ptt_config.lua.sample` - Document hotkeys
+- `/Users/cliffmin/code/voxcore/hammerspoon/push_to_talk.lua` - Add validation
+- `/Users/cliffmin/code/voxcore/README.md` - Document hotkey options
+
+**Step 5: Config Validation & Error Messages**
+- [ ] Create `validateConfig()` function called on startup
+- [ ] Validate all config values:
+  - Check types (string, number, boolean, table)
+  - Check ranges (e.g., durations > 0)
+  - Check paths exist if required
+  - Check enum values (e.g., model names)
+- [ ] Provide actionable error messages:
+  - "Config error: VOICE_NOTES_DIR '%s' is not writable. Check permissions."
+  - "Config error: WHISPER_CPP_PATH '%s' not found. Install with: brew install whisper-cpp"
+  - "Config error: Invalid hotkey modifier '%s'. Supported: cmd, alt, ctrl, shift"
+- [ ] Log config validation results on startup
+- [ ] Warn about deprecated/unknown config keys
+- [ ] Show friendly notification if config is invalid (don't crash silently)
+
+**Files to modify:**
+- `/Users/cliffmin/code/voxcore/hammerspoon/push_to_talk.lua` - Validation function
+- `/Users/cliffmin/code/voxcore/hammerspoon/ptt_config.lua.sample` - Add validation examples
+
+**Deliverable:** Fully configurable, validated, and tested config system. Foundation ready for vocabulary loading.
+
+---
+
+#### 1.1 Fix Broken Vocabulary Integration ⚠️ **CRITICAL** (After 1.2)
 
 **Problem:** VoxCompose learns vocabulary (`technicalVocabulary` list exists) but doesn't export it. VoxCore can't use learned terms. The learning is isolated and doesn't improve future transcriptions.
 
@@ -898,43 +1009,9 @@ VoxCompose learns terms → exports to vocabulary.txt → VoxCore loads dynamica
 - This is BROKEN behavior, not a new feature
 - Simple fix: connect existing components
 
-#### 1.2 Configuration System Improvements
+---
 
-**Problem:** Hotkeys, storage paths, and env vars not fully configurable or tested.
-
-- [ ] **Hotkey configuration testing**
-  - Test all hotkey combinations work (Cmd, Alt, Ctrl, Shift)
-  - Validate hotkey config on load (catch conflicts early)
-  - Document hotkey options in config
-
-- [ ] **Storage directory configuration**
-  - Make `VOICE_NOTES_DIR` configurable in `ptt_config.lua`
-  - Default: `~/Documents/VoiceNotes`
-  - Create directory if doesn't exist
-  - Validate path is writable on startup
-  - Support `~` expansion and env vars
-
-- [ ] **TX logs directory configuration**
-  - Make `TX_LOGS_DIR` configurable
-  - Default: `~/.local/state/macos-ptt-dictation/tx_logs`
-  - Support custom paths via config
-
-- [ ] **Environment variable validation & testing**
-  - `OLLAMA_HOST` - VoxCompose LLM endpoint (validate URL)
-  - `PTT_CONFIG_FILE` - custom config path (validate exists)
-  - `WHISPER_CPP_PATH` - custom Whisper binary (validate executable)
-  - `VOXCOMPOSE_BIN` - custom VoxCompose path (validate executable)
-  - Test all env vars work correctly
-  - Document all env vars in README
-  - Provide good error messages if invalid
-
-- [ ] **Config validation & defaults**
-  - Validate config on load (catch errors early)
-  - Sensible defaults for all options
-  - Warn about deprecated/unknown keys
-  - Config migration for breaking changes
-
-####1.3 Code Audit & Bug Fixes
+#### 1.3 Code Audit & Bug Fixes
 
 - [ ] Audit existing Whisper integration for correctness
 - [ ] Fix any silent failures in transcription pipeline
@@ -943,6 +1020,8 @@ VoxCompose learns terms → exports to vocabulary.txt → VoxCore loads dynamica
 - [ ] Validate JSON output parsing from Whisper
 - [ ] Check for memory leaks (Lua timers/callbacks)
 - [ ] Verify symlink handling works correctly
+
+---
 
 #### 1.4 Testing Infrastructure
 
