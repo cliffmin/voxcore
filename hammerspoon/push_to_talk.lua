@@ -1000,16 +1000,27 @@ end
 local function startMicIndicator()
   -- Reset EMA smoothing
   levelEma = 0
+  levelVal = 0
+
+  -- Debug: Check WAVE_METER_MODE
+  log.i(string.format("Starting mic indicator (WAVE_METER_MODE=%s)", WAVE_METER_MODE))
 
   -- Show initial state
   showMicIndicator("recording", 0)
 
   -- Start animation timer to update with current audio levels
   if micUpdateTimer then micUpdateTimer:stop() end
+  local frameCount = 0
   micUpdateTimer = hs.timer.doEvery(0.05, function()
     -- Smooth levelVal into levelEma using EMA (exponential moving average)
     local alpha = 0.3  -- Smoothing factor (higher = more responsive)
     levelEma = levelEma + alpha * ((levelVal or 0) - levelEma)
+
+    -- Debug logging every 20 frames (~1 second)
+    frameCount = frameCount + 1
+    if frameCount % 20 == 0 then
+      log.d(string.format("Mic: levelVal=%.3f, levelEma=%.3f", levelVal or 0, levelEma))
+    end
 
     -- Update indicator with smoothed level
     showMicIndicator("recording", levelEma)
