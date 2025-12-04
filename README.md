@@ -8,6 +8,14 @@ Built for AI prompt workflows and cross-app dictation: fast local transcription,
 
 ---
 
+## See It In Action
+
+![VoxCore Demo](assets/demo.gif)
+
+*Hold ⌘+⌥+⌃+Space anywhere → speak → instant transcription at your cursor. Works in every app.*
+
+---
+
 ## Why VoxCore?
 
 ### ⚡ **Fast as Cloud (Or Faster)**
