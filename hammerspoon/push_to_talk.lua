@@ -1312,7 +1312,8 @@ local function startRecording()
     "-sample_fmt", "s16",
   }
   if WAVE_METER_MODE == "inline" then
-    table.insert(args, "-af"); table.insert(args, "astats=metadata=1:reset=0.2")
+    -- Use astats without metadata flag so it outputs to stderr in real-time
+    table.insert(args, "-af"); table.insert(args, "astats=reset=0.2:length=0.05")
   end
   table.insert(args, "-vn")
   table.insert(args, wavPath)
