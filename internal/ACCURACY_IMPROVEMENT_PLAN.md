@@ -851,36 +851,148 @@ end
 
 ## Implementation Roadmap
 
-### Phase 1: Hardening & Bug Fixes (1-2 weeks)
+### Phase 1: Fix Broken Behavior + Hardening (1-2 weeks)
 
 **Goal:** Fix wrong behavior if it exists, no new features. Ensure current system works as intended.
 
-#### 1.1 Code Audit & Bug Fixes
+**CRITICAL:** README promises "learns your speech patterns" but VoxCompose learning is NOT connected to VoxCore. This is BROKEN and must be fixed.
+
+#### 1.1 Fix Broken Vocabulary Integration ⚠️ **CRITICAL**
+
+**Problem:** VoxCompose learns vocabulary (`technicalVocabulary` list exists) but doesn't export it. VoxCore can't use learned terms. The learning is isolated and doesn't improve future transcriptions.
+
+**Current broken flow:**
+```
+VoxCompose learns terms → stores in UserProfile → ❌ NOT exported
+VoxCore transcribes → uses static INITIAL_PROMPT → ❌ never improves
+```
+
+**Fixed flow (Phase 1):**
+```
+VoxCompose learns terms → exports to vocabulary.txt → VoxCore loads dynamically → better transcriptions
+```
+
+- [ ] **VoxCompose: Export vocabulary command**
+  - Add `--export-vocabulary` CLI flag
+  - Write `UserProfile.technicalVocabulary` to `~/.config/voxcompose/vocabulary.txt`
+  - Format: Comma-separated terms (compatible with INITIAL_PROMPT)
+  - Auto-export on profile save (after learning)
+  - Limit to ~1000 words (Whisper token limit)
+
+- [ ] **VoxCore: Load vocabulary dynamically** (move from Phase 2)
+  - Implement `loadInitialPrompt()` in `whisper_wrapper.lua`
+  - Read from `~/.config/voxcompose/vocabulary.txt` if exists
+  - Append to static prompt: `"Um, uh. " + vocabulary`
+  - Graceful fallback if file missing
+  - Performance: ~1ms read (negligible overhead)
+
+- [ ] **Integration testing**
+  - Test: VoxCompose learns → exports → VoxCore loads → improves accuracy
+  - Verify learned terms actually used by Whisper
+  - Test fallback when VoxCompose not installed
+  - Measure accuracy improvement with learned vocabulary
+
+**Why Phase 1, not Phase 2:**
+- Infrastructure already exists (VoxCompose has `technicalVocabulary`)
+- README claims this works ("learns your speech patterns")
+- This is BROKEN behavior, not a new feature
+- Simple fix: connect existing components
+
+#### 1.2 Configuration System Improvements
+
+**Problem:** Hotkeys, storage paths, and env vars not fully configurable or tested.
+
+- [ ] **Hotkey configuration testing**
+  - Test all hotkey combinations work (Cmd, Alt, Ctrl, Shift)
+  - Validate hotkey config on load (catch conflicts early)
+  - Document hotkey options in config
+
+- [ ] **Storage directory configuration**
+  - Make `VOICE_NOTES_DIR` configurable in `ptt_config.lua`
+  - Default: `~/Documents/VoiceNotes`
+  - Create directory if doesn't exist
+  - Validate path is writable on startup
+  - Support `~` expansion and env vars
+
+- [ ] **TX logs directory configuration**
+  - Make `TX_LOGS_DIR` configurable
+  - Default: `~/.local/state/macos-ptt-dictation/tx_logs`
+  - Support custom paths via config
+
+- [ ] **Environment variable validation & testing**
+  - `OLLAMA_HOST` - VoxCompose LLM endpoint (validate URL)
+  - `PTT_CONFIG_FILE` - custom config path (validate exists)
+  - `WHISPER_CPP_PATH` - custom Whisper binary (validate executable)
+  - `VOXCOMPOSE_BIN` - custom VoxCompose path (validate executable)
+  - Test all env vars work correctly
+  - Document all env vars in README
+  - Provide good error messages if invalid
+
+- [ ] **Config validation & defaults**
+  - Validate config on load (catch errors early)
+  - Sensible defaults for all options
+  - Warn about deprecated/unknown keys
+  - Config migration for breaking changes
+
+####1.3 Code Audit & Bug Fixes
+
 - [ ] Audit existing Whisper integration for correctness
 - [ ] Fix any silent failures in transcription pipeline
 - [ ] Ensure WAV files are always saved (reliability promise)
 - [ ] Fix error handling in VoxCompose integration
 - [ ] Validate JSON output parsing from Whisper
+- [ ] Check for memory leaks (Lua timers/callbacks)
+- [ ] Verify symlink handling works correctly
 
-#### 1.2 Testing & Validation
-- [ ] Add unit tests for critical paths (transcription, file writing)
-- [ ] Integration tests for VoxCore → VoxCompose flow
-- [ ] Test edge cases (empty audio, very long recordings, special characters)
-- [ ] Verify tx_logs accuracy (timestamps, durations, model names)
+#### 1.4 Testing Infrastructure
 
-#### 1.3 Configuration Hardening
-- [ ] Validate config file on load (catch misconfigurations early)
-- [ ] Add sensible defaults for all config options
-- [ ] Document all config options clearly
-- [ ] Add config migration for breaking changes
+- [ ] **Unit tests** for critical paths:
+  - Audio file writing (WAV always saved)
+  - Config loading and validation
+  - Vocabulary file loading
+  - Error handling paths
+  - JSON parsing
 
-#### 1.4 Error Recovery
+- [ ] **Integration tests:**
+  - VoxCore → VoxCompose flow (with/without VoxCompose)
+  - Vocabulary export → load → transcription
+  - Config validation (valid/invalid configs)
+  - Hotkey bindings
+
+- [ ] **Edge case tests:**
+  - Empty audio recording
+  - Very long recordings (>5 min)
+  - Special characters in transcripts
+  - Missing/corrupted config files
+  - Disk full scenarios
+  - Concurrent recordings
+
+- [ ] **Verify tx_logs accuracy:**
+  - Timestamps match actual recording time
+  - Durations correct
+  - Model names logged correctly
+  - Config values logged
+  - Vocabulary source tracked
+
+#### 1.5 Error Recovery & UX
+
 - [ ] Graceful degradation if VoxCompose unavailable
-- [ ] Retry logic for ffmpeg failures
-- [ ] Better error messages for user (actionable, not cryptic)
+- [ ] Retry logic for ffmpeg failures (3 attempts with backoff)
+- [ ] Better error messages (actionable, user-friendly):
+  - "Microphone permission denied" → link to System Settings
+  - "Whisper model not found" → suggest installation command
+  - "Disk full" → show available space
+  - "Config invalid" → show which field and why
 - [ ] Log errors without crashing Hammerspoon
+- [ ] User-facing error notifications (not just console logs)
+- [ ] Error telemetry to tx_logs (for debugging)
 
-**Deliverable:** Stable, tested, reliable foundation. No regressions.
+**Deliverable:**
+- ✅ Broken vocabulary integration FIXED (learning now improves transcriptions)
+- ✅ Config system fully configurable and tested
+- ✅ All env vars validated and documented
+- ✅ Stable, tested, reliable foundation
+- ✅ No regressions
 
 ---
 
@@ -888,28 +1000,24 @@ end
 
 **Goal:** Improve accuracy with minimal risk. Augment existing features without breaking changes.
 
-#### 2.1 Dynamic Vocabulary Loading (VoxCore)
-**Status:** Designed (see Q&A section below)
+**Note:** Basic vocabulary loading/export is in Phase 1 (fixing broken behavior). Phase 2 enhances it with smarter generation and domain awareness.
 
-- [ ] Implement `loadInitialPrompt()` in `whisper_wrapper.lua`
-- [ ] Read vocabulary from `~/.config/voxcompose/vocabulary.txt`
-- [ ] Graceful fallback if file doesn't exist (use config-based vocab)
-- [ ] Optional: Warn if vocabulary file is stale (>7 days old)
-- [ ] Config flag to enable/disable (`ENABLE_DYNAMIC_VOCAB`)
-- [ ] Performance validation (<1ms file read overhead)
+#### 2.1 Enhanced Vocabulary Generation (VoxCompose)
 
-**Implementation notes:**
-- File read on every transcription (no caching - stays stateless)
-- ~5KB file, ~1ms read time (<0.2% overhead)
-- Truncate if vocabulary >5000 chars (Whisper token limit)
+**Prerequisite:** Phase 1 basic vocabulary export must be complete.
 
-#### 2.2 Vocabulary Generation (VoxCompose)
-- [ ] Create `VocabularyGenerator.java` class
-- [ ] Generate `vocabulary.txt` from learned corrections
-- [ ] Include technical terms, capitalizations, common phrases
-- [ ] Prioritize by frequency and recency
-- [ ] Limit to ~223 Whisper tokens (~1000 words)
+- [ ] Create `VocabularyGenerator.java` class (smarter than Phase 1)
+- [ ] Include learned corrections (word-level fixes)
+- [ ] Include capitalizations (GitHub, JSON, API)
+- [ ] Extract common phrases from feedback (2-5 word patterns)
+- [ ] Prioritize by frequency and recency (most common first)
+- [ ] Rank by relevance score (frequency × recency × confidence)
+- [ ] Limit to ~223 Whisper tokens (~1000 words max)
 - [ ] Regenerate after every 10 corrections or daily (whichever first)
+
+**Why Phase 2, not Phase 1:**
+- Phase 1 just exports existing `technicalVocabulary` list (simple fix)
+- Phase 2 adds intelligence (phrase extraction, ranking, prioritization)
 
 #### 2.3 Enhanced Metadata Capture (VoxCore)
 - [ ] Add per-recording `.meta.json` files
