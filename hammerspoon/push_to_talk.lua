@@ -85,6 +85,69 @@ local function repoRoot()
   return dir and dir:match("^(.*)/hammerspoon$") or nil
 end
 
+-- Path expansion utility: expands ~ and environment variables
+local function expandPath(path)
+  if not path or path == "" then return path end
+
+  -- Expand ~ to user home directory
+  local HOME = os.getenv("HOME") or ""
+  path = path:gsub("^~", HOME)
+
+  -- Expand environment variables ($VAR or ${VAR})
+  path = path:gsub("%$(%w+)", function(var)
+    return os.getenv(var) or ("$" .. var)
+  end)
+  path = path:gsub("%${([^}]+)}", function(var)
+    return os.getenv(var) or ("${" .. var .. "}")
+  end)
+
+  return path
+end
+
+-- Validate and create directory if needed
+local function ensureDirectory(path, name)
+  if not path or path == "" then
+    log.w(string.format("Config: %s is not set", name))
+    return false
+  end
+
+  local expanded = expandPath(path)
+
+  -- Check if directory exists
+  local attrs = hs.fs.attributes(expanded)
+  if not attrs then
+    -- Try to create it
+    log.i(string.format("Creating %s: %s", name, expanded))
+    local ok, err = hs.execute(string.format("mkdir -p %q", expanded))
+    if not ok then
+      log.e(string.format("Failed to create %s: %s - %s", name, expanded, err or "unknown error"))
+      return false
+    end
+    -- Verify it was created
+    attrs = hs.fs.attributes(expanded)
+  end
+
+  if attrs and attrs.mode == "directory" then
+    -- Test writability by creating a temporary file
+    local testFile = expanded .. "/.voxcore_write_test"
+    local f = io.open(testFile, "w")
+    if f then
+      f:write("test")
+      f:close()
+      os.remove(testFile)
+      log.i(string.format("Config: %s = %s (writable)", name, expanded))
+      return expanded
+    else
+      log.e(string.format("Config: %s = %s (NOT writable)", name, expanded))
+      hs.alert.show(string.format("⚠️ %s not writable: %s", name, expanded))
+      return false
+    end
+  else
+    log.e(string.format("Config: %s = %s (not a directory)", name, expanded))
+    return false
+  end
+end
+
 -- Global test mode (shared with your other modules)
 local function isTestMode()
   return hs.settings.get("fn_test_mode") == true
@@ -115,7 +178,17 @@ end
 
 -- Config
 local HOME = os.getenv("HOME") or ""
-local NOTES_DIR = (cfg.NOTES_DIR and tostring(cfg.NOTES_DIR)) or (HOME .. "/Documents/VoiceNotes")
+
+-- Storage directories with validation
+local NOTES_DIR_RAW = (cfg.NOTES_DIR and tostring(cfg.NOTES_DIR)) or (HOME .. "/Documents/VoiceNotes")
+local NOTES_DIR = ensureDirectory(NOTES_DIR_RAW, "NOTES_DIR")
+if not NOTES_DIR then
+  -- Fatal error - can't proceed without storage directory
+  hs.alert.show("⚠️ Failed to initialize VoxCore: NOTES_DIR not writable")
+  log.e("FATAL: Cannot initialize NOTES_DIR, VoxCore will not function")
+  NOTES_DIR = HOME .. "/Documents/VoiceNotes"  -- Fallback for error messages
+end
+
 local FFMPEG = "/opt/homebrew/bin/ffmpeg"         -- absolute path for reliability
 
 -- Auto-detect fastest whisper implementation
@@ -150,8 +223,13 @@ local WAVE_METER_MODE = cfg.WAVE_METER_MODE or "inline"
 local SOUND_ENABLED = (cfg.SOUND_ENABLED == true)
 
 -- Logging configuration (defaults; can be overridden via ptt_config)
-local LOG_DIR = (cfg.LOG_DIR and tostring(cfg.LOG_DIR)) or (NOTES_DIR .. "/tx_logs")
-local LOG_ENABLED = (cfg.LOG_ENABLED ~= false)
+local LOG_DIR_RAW = (cfg.LOG_DIR and tostring(cfg.LOG_DIR)) or (NOTES_DIR .. "/tx_logs")
+local LOG_DIR = ensureDirectory(LOG_DIR_RAW, "LOG_DIR (tx_logs)")
+if not LOG_DIR then
+  log.w("Transaction logging disabled: LOG_DIR not writable")
+  LOG_DIR = NOTES_DIR .. "/tx_logs"  -- Fallback for error messages
+end
+local LOG_ENABLED = (cfg.LOG_ENABLED ~= false) and (LOG_DIR ~= false)
 
 -- Model configuration from ptt_config (with fallback)
 local MODEL = cfg.WHISPER_MODEL or "base.en"         -- configurable model (default: base.en for compatibility)

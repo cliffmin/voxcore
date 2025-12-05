@@ -47,8 +47,21 @@ KEYS = {
   PREPROCESS_KEEP_RAW = false,
   CANONICALIZE_NORMALIZED_TO_WAV = true,
 
-  -- Output directory (default)
+  -- Storage directories (support ~ and environment variables like $HOME, $USER)
+  -- VoxCore will create these directories if they don't exist and validate they're writable
+  -- NOTES_DIR: Where voice recordings (WAV) and transcriptions (TXT) are saved
   NOTES_DIR = (os.getenv("HOME") or "") .. "/Documents/VoiceNotes",
+  -- Examples:
+  --   NOTES_DIR = "~/Documents/VoiceNotes"          -- Tilde expansion
+  --   NOTES_DIR = "$HOME/Dropbox/VoiceNotes"        -- Environment variable
+  --   NOTES_DIR = "/Volumes/External/VoiceNotes"    -- Absolute path
+
+  -- LOG_DIR: Where transaction logs (tx_logs) are saved (performance metrics)
+  -- Default: NOTES_DIR/tx_logs (often symlinked to ~/.local/state/macos-ptt-dictation/tx_logs)
+  -- LOG_DIR = nil,  -- Uncomment to customize
+  -- Examples:
+  --   LOG_DIR = "~/.local/state/voxcore/tx_logs"
+  --   LOG_DIR = "$HOME/.cache/voxcore/logs"
 
   -- Device index (use Cmd+Alt+Ctrl+I to list devices; built-in mic is often :1)
   AUDIO_DEVICE_INDEX = 1,

@@ -60,7 +60,7 @@ jar {
     }
 }
 
-// Shadow JAR for fat JAR with all dependencies
+// Shadow JAR for fat JAR with all dependencies (whisper-post)
 shadowJar {
     archiveBaseName = 'whisper-post'
     archiveClassifier = ''
@@ -68,6 +68,19 @@ shadowJar {
     mergeServiceFiles()
     manifest {
         attributes 'Main-Class': 'com.cliffmin.whisper.WhisperPostProcessorCLI'
+    }
+}
+
+// VoxCore CLI fat JAR
+task voxcoreJar(type: com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    archiveBaseName = 'voxcore'
+    archiveClassifier = ''
+    archiveVersion = ''
+    from sourceSets.main.output
+    configurations = [project.configurations.runtimeClasspath]
+    mergeServiceFiles()
+    manifest {
+        attributes 'Main-Class': 'com.cliffmin.voxcore.VoxCoreCLI'
     }
 }
 
@@ -150,10 +163,47 @@ java -jar "\$SCRIPT_DIR/whisper-post.jar" "\$@"
     }
 }
 
-// Build everything
-task buildAll(dependsOn: [buildExecutable, createWrapper]) {
+// Task to build VoxCore CLI executable
+task buildVoxCore(type: Copy, dependsOn: voxcoreJar) {
+    from voxcoreJar
+    into 'dist'
+    rename { 'voxcore.jar' }
     doLast {
-        println "Build complete! The processor is ready at: dist/whisper-post"
+        println "VoxCore JAR created: dist/voxcore.jar"
+        println "Run with: java -jar dist/voxcore.jar"
+    }
+}
+
+// Task to create VoxCore wrapper script
+task createVoxCoreWrapper(dependsOn: voxcoreJar) {
+    doLast {
+        def wrapperScript = file('dist/voxcore')
+        wrapperScript.parentFile.mkdirs()
+        wrapperScript.text = """#!/bin/bash
+# VoxCore CLI
+SCRIPT_DIR="\$( cd "\$( dirname "\${BASH_SOURCE[0]}" )" && pwd )"
+java -jar "\$SCRIPT_DIR/voxcore.jar" "\$@"
+"""
+        wrapperScript.setExecutable(true)
+        println "VoxCore wrapper script created: dist/voxcore"
+    }
+}
+
+// Build everything
+task buildAll(dependsOn: [buildExecutable, createWrapper, buildVoxCore, createVoxCoreWrapper]) {
+    doLast {
+        println ""
+        println "================================================"
+        println "Build complete!"
+        println "================================================"
+        println "Whisper Post-Processor: dist/whisper-post"
+        println "VoxCore CLI:            dist/voxcore"
+        println ""
+        println "Test VoxCore:"
+        println "  dist/voxcore config validate"
+        println "  dist/voxcore config show"
+        println "  dist/voxcore transcribe <audio.wav>"
+        println "================================================"
     }
 }
 
