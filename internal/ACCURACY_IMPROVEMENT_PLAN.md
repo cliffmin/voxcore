@@ -851,90 +851,178 @@ end
 
 ## Implementation Roadmap
 
-### Phase 1: Fix Broken Behavior + Hardening (1-2 weeks)
+### Phase 1.0: Java CLI Implementation ✅ **COMPLETE** (v0.6.0)
+
+**Goal:** Migrate core transcription logic from Lua to Java, providing standalone CLI and foundation for future improvements.
+
+**Status:** ✅ Complete as of 2025-12-04
+
+**What was built:**
+- [x] **Config System** - PathExpander, DirectoryValidator, VoxCoreConfig
+  - Path expansion (~/path, $HOME, ${VAR})
+  - Directory validation and creation
+  - JSON config loading with defaults
+  - 26 unit tests passing
+- [x] **CLI Framework** - VoxCoreCLI with subcommands
+  - `voxcore transcribe <audio.wav>` - Full transcription with post-processing
+  - `voxcore config validate` - Config validation
+  - `voxcore config show` - Display effective config
+- [x] **Transcription Engine** - WhisperInvoker, TranscriptionService
+  - Whisper-cpp binary detection
+  - Model path resolution (handles .en suffix)
+  - Vocabulary loading (reads from VoxCompose-generated file)
+  - Post-processing pipeline integration (DisfluencyProcessor, etc.)
+- [x] **Build System** - Gradle tasks for fat JARs and wrapper scripts
+  - `./gradlew buildAll` creates dist/voxcore.jar + wrapper script
+
+**Vocabulary Loading Implementation:**
+```java
+// TranscriptionService.java - Already implemented!
+private String loadInitialPrompt() {
+    if (!config.isEnableDynamicVocab()) {
+        return getStaticPrompt();
+    }
+
+    Path vocabFile = config.getVocabularyPath();
+    if (vocabFile != null && Files.exists(vocabFile)) {
+        String dynamicVocab = Files.readString(vocabFile).trim();
+        return getStaticPrompt() + " " + dynamicVocab;
+    }
+    return getStaticPrompt();
+}
+```
+
+**What's NOT yet integrated:**
+- ❌ Hammerspoon wrapper (still calls Lua business logic)
+- ❌ VoxCompose vocabulary export command
+- ❌ Lua business logic removal
+
+**Impact:**
+- Foundation ready for Hammerspoon integration
+- Config system complete (Phase 1.2 requirements met in Java)
+- Vocabulary loading ready (Phase 1.1 half-done - just needs VoxCompose export)
+- Stateless architecture maintained
+
+---
+
+### Phase 1.1: Hammerspoon Integration & Lua Removal (Next: v0.7.0)
+
+**Goal:** Replace Lua business logic with Java CLI calls, complete vocabulary integration.
+
+**Status:** Ready to start (Java CLI complete)
+
+**Implementation Order:**
+1. **VoxCompose vocabulary export** (complete Phase 1.1 vocabulary fix)
+2. **Hammerspoon thin wrapper** (call Java CLI instead of Lua)
+3. **Remove Lua business logic** (keep only hotkeys/recording/paste)
+4. **Integration testing** (end-to-end with real audio)
+
+#### 1.1.1 VoxCompose Vocabulary Export ⚠️ **CRITICAL**
+
+**Problem:** VoxCompose learns vocabulary (technicalVocabulary list exists) but doesn't export it. VoxCore vocabulary loading exists but has no file to read.
+
+**Current broken state:**
+```
+VoxCompose learns terms → stores in UserProfile → ❌ NOT exported
+VoxCore ready to load → no vocabulary file exists → uses static prompt only
+```
+
+**Fixed flow:**
+```
+VoxCompose learns → exports vocabulary.txt → VoxCore loads → better transcriptions
+```
+
+**Tasks:**
+- [ ] Add `--export-vocabulary` CLI flag to VoxCompose
+- [ ] Write `UserProfile.technicalVocabulary` to `~/.config/voxcompose/vocabulary.txt`
+- [ ] Format: Comma-separated terms (Whisper INITIAL_PROMPT compatible)
+- [ ] Auto-export on profile save (after learning)
+- [ ] Limit to ~1000 words (Whisper token limit)
+
+**Files to modify:**
+- VoxCompose CLI - add export command
+- UserProfile.java - add export method
+
+#### 1.1.2 Hammerspoon Thin Wrapper
+
+**Goal:** Update Hammerspoon to call Java CLI instead of Lua business logic.
+
+**Current (Lua business logic):**
+```lua
+-- push_to_talk.lua does everything:
+-- 1. Record audio
+-- 2. Call Whisper
+-- 3. Post-process
+-- 4. Paste
+```
+
+**New (thin wrapper):**
+```lua
+-- push_to_talk.lua becomes thin:
+-- 1. Record audio (ffmpeg)
+-- 2. Call: voxcore transcribe audio.wav
+-- 3. Paste result
+```
+
+**Tasks:**
+- [ ] Update `push_to_talk.lua` to call `voxcore transcribe`
+- [ ] Pass config via --config flag or environment
+- [ ] Handle stdout (transcription) and stderr (logs)
+- [ ] Keep recording, hotkey binding, paste logic in Lua
+- [ ] Remove Lua transcription/whisper/config code (~80% reduction)
+
+**Target:** ~200 lines of Lua (vs. ~2000 currently)
+
+#### 1.1.3 Integration Testing
+
+- [ ] Test end-to-end: hotkey → record → transcribe → paste
+- [ ] Verify vocabulary loading works (if vocabulary.txt exists)
+- [ ] Test without VoxCompose (graceful degradation)
+- [ ] Test config validation (invalid paths, missing whisper, etc.)
+- [ ] Measure performance (should be similar to Lua version)
+
+**Deliverable:** Complete Java migration, vocabulary integration working
+
+---
+
+### Phase 1.2: Configuration System ~~Improvements~~ **Validation** (Adjusted)
+
+**Note:** Core config system now complete in Java (Phase 1.0). This phase focuses on validation and Lua wrapper config.
+
+**Status:** Config loading/validation complete in Java. Lua wrapper config simplified.
+
+**Java config (already done):**
+- ✅ Path expansion (PathExpander.java)
+- ✅ Directory validation (DirectoryValidator.java)
+- ✅ JSON loading with defaults (VoxCoreConfig.java)
+- ✅ Environment variable support
+- ✅ Config validation with error messages
+
+**Remaining tasks (lower priority):**
+- [ ] Lua wrapper hotkey validation (simpler now that business logic is gone)
+- [ ] Document Java CLI config options in README
+- [ ] Migration guide for Lua config → JSON config
+
+**Original Phase 1.2 scope mostly complete via Java implementation.**
+
+---
+
+### Phase 1: Fix Broken Behavior + Hardening (Adjusted scope)
 
 **Goal:** Fix wrong behavior if it exists, no new features. Ensure current system works as intended.
 
-**CRITICAL:** README promises "learns your speech patterns" but VoxCompose learning is NOT connected to VoxCore. This is BROKEN and must be fixed.
+**CRITICAL:** README promises "learns your speech patterns" but VoxCompose learning is NOT connected to VoxCore. This is BROKEN and must be fixed in Phase 1.1.
 
-#### 1.1 Fix Broken Vocabulary Integration ⚠️ **CRITICAL**
+**Implementation Order:**
+1. **Phase 1.0 (Java CLI)** - ✅ COMPLETE
+2. **Phase 1.1 (Hammerspoon Integration)** - Vocabulary export + thin wrapper
+3. **Phase 1.3 (Code Audit)** - Quick fixes only
+4. **Phase 1.4 (Testing)** - Verify everything works
+5. **Phase 1.5 (Error Recovery)** - Polish and UX
 
-**Problem:** VoxCompose learns vocabulary (`technicalVocabulary` list exists) but doesn't export it. VoxCore can't use learned terms. The learning is isolated and doesn't improve future transcriptions.
+**Rationale:** Java foundation now complete. Focus shifts to integration and vocabulary export.
 
-**Current broken flow:**
-```
-VoxCompose learns terms → stores in UserProfile → ❌ NOT exported
-VoxCore transcribes → uses static INITIAL_PROMPT → ❌ never improves
-```
-
-**Fixed flow (Phase 1):**
-```
-VoxCompose learns terms → exports to vocabulary.txt → VoxCore loads dynamically → better transcriptions
-```
-
-- [ ] **VoxCompose: Export vocabulary command**
-  - Add `--export-vocabulary` CLI flag
-  - Write `UserProfile.technicalVocabulary` to `~/.config/voxcompose/vocabulary.txt`
-  - Format: Comma-separated terms (compatible with INITIAL_PROMPT)
-  - Auto-export on profile save (after learning)
-  - Limit to ~1000 words (Whisper token limit)
-
-- [ ] **VoxCore: Load vocabulary dynamically** (move from Phase 2)
-  - Implement `loadInitialPrompt()` in `whisper_wrapper.lua`
-  - Read from `~/.config/voxcompose/vocabulary.txt` if exists
-  - Append to static prompt: `"Um, uh. " + vocabulary`
-  - Graceful fallback if file missing
-  - Performance: ~1ms read (negligible overhead)
-
-- [ ] **Integration testing**
-  - Test: VoxCompose learns → exports → VoxCore loads → improves accuracy
-  - Verify learned terms actually used by Whisper
-  - Test fallback when VoxCompose not installed
-  - Measure accuracy improvement with learned vocabulary
-
-**Why Phase 1, not Phase 2:**
-- Infrastructure already exists (VoxCompose has `technicalVocabulary`)
-- README claims this works ("learns your speech patterns")
-- This is BROKEN behavior, not a new feature
-- Simple fix: connect existing components
-
-#### 1.2 Configuration System Improvements
-
-**Problem:** Hotkeys, storage paths, and env vars not fully configurable or tested.
-
-- [ ] **Hotkey configuration testing**
-  - Test all hotkey combinations work (Cmd, Alt, Ctrl, Shift)
-  - Validate hotkey config on load (catch conflicts early)
-  - Document hotkey options in config
-
-- [ ] **Storage directory configuration**
-  - Make `VOICE_NOTES_DIR` configurable in `ptt_config.lua`
-  - Default: `~/Documents/VoiceNotes`
-  - Create directory if doesn't exist
-  - Validate path is writable on startup
-  - Support `~` expansion and env vars
-
-- [ ] **TX logs directory configuration**
-  - Make `TX_LOGS_DIR` configurable
-  - Default: `~/.local/state/macos-ptt-dictation/tx_logs`
-  - Support custom paths via config
-
-- [ ] **Environment variable validation & testing**
-  - `OLLAMA_HOST` - VoxCompose LLM endpoint (validate URL)
-  - `PTT_CONFIG_FILE` - custom config path (validate exists)
-  - `WHISPER_CPP_PATH` - custom Whisper binary (validate executable)
-  - `VOXCOMPOSE_BIN` - custom VoxCompose path (validate executable)
-  - Test all env vars work correctly
-  - Document all env vars in README
-  - Provide good error messages if invalid
-
-- [ ] **Config validation & defaults**
-  - Validate config on load (catch errors early)
-  - Sensible defaults for all options
-  - Warn about deprecated/unknown keys
-  - Config migration for breaking changes
-
-####1.3 Code Audit & Bug Fixes
+#### 1.3 Code Audit & Bug Fixes (Mostly handled by Java migration)
 
 - [ ] Audit existing Whisper integration for correctness
 - [ ] Fix any silent failures in transcription pipeline
@@ -943,6 +1031,8 @@ VoxCompose learns terms → exports to vocabulary.txt → VoxCore loads dynamica
 - [ ] Validate JSON output parsing from Whisper
 - [ ] Check for memory leaks (Lua timers/callbacks)
 - [ ] Verify symlink handling works correctly
+
+---
 
 #### 1.4 Testing Infrastructure
 
