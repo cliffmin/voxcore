@@ -100,21 +100,35 @@ public class TranscriptionService {
 
     /**
      * Apply post-processing to transcribed text.
-     * Calls whisper-post processor.
+     * Uses existing pipeline processors.
      *
      * @param text Raw transcription
      * @return Post-processed text
      */
     private String applyPostProcessing(String text) {
         try {
-            // Use existing WhisperPostProcessorCLI
-            // For now, call it in-process
-            // TODO: Refactor to use pipeline directly
-            return text; // Placeholder - will integrate with existing post-processor
+            // Use existing processing pipeline with default processors
+            com.cliffmin.whisper.pipeline.ProcessingPipeline pipeline = createDefaultPipeline();
+            return pipeline.process(text);
         } catch (Exception e) {
             log.warn("Post-processing failed: {}", e.getMessage());
             return text;
         }
+    }
+
+    /**
+     * Create default processing pipeline with standard processors.
+     */
+    private com.cliffmin.whisper.pipeline.ProcessingPipeline createDefaultPipeline() {
+        var pipeline = new com.cliffmin.whisper.pipeline.ProcessingPipeline();
+
+        // Add standard processors (existing logic from WhisperPostProcessorCLI)
+        pipeline.addProcessor(new com.cliffmin.whisper.processors.DisfluencyProcessor());
+        pipeline.addProcessor(new com.cliffmin.whisper.processors.SentenceBoundaryProcessor());
+        pipeline.addProcessor(new com.cliffmin.whisper.processors.CapitalizationProcessor());
+        pipeline.addProcessor(new com.cliffmin.whisper.processors.PunctuationNormalizer());
+
+        return pipeline;
     }
 
     /**

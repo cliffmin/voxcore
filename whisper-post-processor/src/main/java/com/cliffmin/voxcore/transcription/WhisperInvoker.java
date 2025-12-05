@@ -110,7 +110,7 @@ public class WhisperInvoker {
         command.add(audioFile.toAbsolutePath().toString());
         command.add("--language");
         command.add("en");
-        command.add("--output-json");
+        command.add("--no-timestamps"); // Just the text, no timestamps
 
         if (initialPrompt != null && !initialPrompt.isEmpty()) {
             command.add("--prompt");
@@ -121,18 +121,18 @@ public class WhisperInvoker {
     }
 
     /**
-     * Parse Whisper JSON output.
+     * Parse Whisper output (plain text).
+     * whisper-cpp outputs transcription to stdout (metadata goes to stderr).
      */
     private TranscriptionService.WhisperResult parseWhisperOutput(String output) throws IOException {
-        try {
-            JsonObject json = JsonParser.parseString(output).getAsJsonObject();
-            String text = json.has("text") ? json.get("text").getAsString() : "";
-            return new TranscriptionService.WhisperResult(text.trim(), json);
-        } catch (Exception e) {
-            // Fallback: treat as plain text
-            log.warn("Failed to parse Whisper JSON, using plain text");
-            return new TranscriptionService.WhisperResult(output.trim(), new JsonObject());
+        // stdout contains just the transcription text
+        String text = output.trim();
+
+        if (text.isEmpty()) {
+            log.warn("No transcription text found in Whisper output");
         }
+
+        return new TranscriptionService.WhisperResult(text, new JsonObject());
     }
 
     /**
@@ -168,9 +168,12 @@ public class WhisperInvoker {
      * Get model file path.
      */
     private String getModelPath(String modelName) {
+        // Strip .en suffix if present (Homebrew models don't have language variants)
+        String normalizedName = modelName.replace(".en", "");
+
         // Standard Homebrew path
-        String homebrewModels = "/opt/homebrew/share/whisper-cpp/models";
-        Path modelPath = Paths.get(homebrewModels, "ggml-" + modelName + ".bin");
+        String homebrewModels = "/opt/homebrew/share/whisper-cpp";
+        Path modelPath = Paths.get(homebrewModels, "ggml-" + normalizedName + ".bin");
 
         if (Files.exists(modelPath)) {
             return modelPath.toString();
