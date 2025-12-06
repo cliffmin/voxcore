@@ -18,6 +18,65 @@
 - Deprecated Python punctuation script (scripts/utilities/punctuate.py) and documentation references; Java PunctuationProcessor is the supported path.
 - ContextProcessor has been removed from VoxCore (daemon streaming pipeline), aligning with a stateless core. Adaptive/contextual casing moves to VoxCompose. No behavior change to the default CLI path.
 
+## [0.6.0] - TBD (Phase 1.0: Java CLI Implementation)
+### Highlights
+- **🎯 Major architecture upgrade**: Core business logic migrated from Lua to Java
+- **Standalone CLI**: New `voxcore` command with transcription and config validation
+- **Improved transcription output**: Fixed Whisper output parsing (previously truncated)
+- **Vocabulary support**: Dynamic vocabulary loading from VoxCompose-generated files
+- **Better testability**: 26 unit tests for config system (PathExpander, DirectoryValidator)
+
+### Added
+- **VoxCore CLI** (`voxcore` command-line interface)
+  - `voxcore transcribe <audio.wav>` - Transcribe audio files with post-processing
+  - `voxcore config validate` - Validate configuration files
+  - `voxcore config show` - Display effective configuration
+  - `--no-post-process` flag to skip post-processing pipeline
+- **Java Config System**
+  - PathExpander: Tilde (~) and environment variable expansion ($HOME, ${VAR})
+  - DirectoryValidator: Automatic directory creation and writability checks
+  - VoxCoreConfig: JSON config loading from multiple locations
+  - Config priority: ~/.config/voxcore/config.json → ~/.voxcore.json → system-wide
+- **Transcription Engine**
+  - WhisperInvoker: whisper-cpp binary detection and invocation
+  - TranscriptionService: Orchestrates Whisper + post-processing
+  - Vocabulary hints: Loads from ~/.config/voxcompose/vocabulary.txt
+  - Model path resolution (handles .en suffix, Homebrew paths)
+- **Build System**
+  - Gradle Shadow plugin for fat JAR packaging
+  - `./gradlew buildAll` creates dist/voxcore.jar + wrapper script
+  - Separate executable: dist/voxcore
+
+### Fixed
+- **Whisper output parsing**: Previously returned only "." due to incorrect --output-txt flag usage
+- **Model path resolution**: Now correctly finds Homebrew-installed models (strips .en suffix)
+- **Whisper invocation**: Uses --no-timestamps for cleaner plain text output
+- **Metadata handling**: Properly separates transcription (stdout) from metadata (stderr)
+
+### Changed
+- Post-processing pipeline now integrated into Java CLI (previously Lua-only)
+- Config system moved from Lua to Java (backward compatible with existing configs)
+- Hammerspoon remains as thin macOS glue layer (~200 lines) for hotkeys, recording, paste
+
+### Architecture Notes
+- **Hammerspoon role**: Handles macOS-specific features (hotkeys, audio recording, paste)
+- **Java CLI role**: Business logic (config, transcription, post-processing)
+- **Integration**: Hammerspoon will call `voxcore transcribe` (Phase 1.1)
+- **Goal**: Testable, maintainable, stateless architecture
+
+### Testing
+- 26 unit tests passing (PathExpanderTest: 10, DirectoryValidatorTest: 16)
+- End-to-end transcription verified with real audio files
+- CI/CD pipeline validates all changes before merge
+
+### Breaking Changes
+- None (backward compatible - Hammerspoon integration unchanged for now)
+
+### Next Phase: 1.1 (Hammerspoon Integration)
+- Update Hammerspoon to call Java CLI
+- VoxCompose vocabulary export command
+- Remove ~80% of Lua business logic
+
 ## [0.5.0] - 2025-11-26
 ### Highlights
 - **Improved transcription quality**: Fixed incorrect sentence boundaries (no more "the. Project. Vox. Core")
