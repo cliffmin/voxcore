@@ -8,7 +8,7 @@ micrometer = "1.11.5"
 junitJupiter = "6.0.1"
 junitPlatform = "6.0.1"
 assertj = "3.27.4"
-mockito = "5.11.0"
+mockito = "5.20.0"
 
 [libraries]
 picocli = { module = "info.picocli:picocli", version.ref = "picocli" }
