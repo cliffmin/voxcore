@@ -14,6 +14,9 @@
 - build: adopt Gradle Version Catalog for whisper-post-processor dependencies (internal; no user-visible changes)
 - `compare_versions.py`: Now excludes VoxCompose recordings by default for clean VoxCore metrics (use `--include-voxcompose` to include)
 
+### Fixed
+- Hammerspoon push-to-talk visual indicator: Replaced broken frame modification animation with smooth ripple effect (expanding rings that fade out)
+
 ### Removed
 - Deprecated Python punctuation script (scripts/utilities/punctuate.py) and documentation references; Java PunctuationProcessor is the supported path.
 - ContextProcessor has been removed from VoxCore (daemon streaming pipeline), aligning with a stateless core. Adaptive/contextual casing moves to VoxCompose. No behavior change to the default CLI path.
