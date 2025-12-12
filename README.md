@@ -265,6 +265,48 @@ It's open source - audit the code, verify the claims.
 
 **See also:** [VoxCompose Integration Guide](https://github.com/cliffmin/voxcompose/blob/main/docs/voxcore-integration.md) for setup instructions.
 
+#### Vocabulary Learning (VoxCompose Only)
+
+**Note:** This feature is **completely optional** and only activates when VoxCompose is installed. VoxCore works perfectly standalone without any vocabulary file.
+
+If you have VoxCompose installed, accuracy improves automatically through vocabulary sharing:
+
+1. **VoxCompose learns** - As you correct transcriptions, VoxCompose learns your technical terms, proper nouns, and speech patterns
+2. **Automatic export** - VoxCompose exports learned vocabulary to `~/.config/voxcompose/vocabulary.txt`
+3. **VoxCore detects** - VoxCore automatically detects and reads this file (no configuration needed)
+4. **Better accuracy** - Whisper transcribes technical terms more accurately with vocabulary hints
+
+**Example improvement (VoxCompose users only):**
+- Without vocabulary: "vox core" → "box core" or "vox court"
+- With vocabulary: "vox core" → "VoxCore" ✓
+
+**If vocabulary file is missing** (VoxCore standalone users): No problem! VoxCore gracefully falls back to default behavior.
+
+<details>
+<summary>Advanced: Manual vocabulary export & configuration</summary>
+
+**Export vocabulary manually:**
+```bash
+voxcompose --export-vocabulary
+```
+
+**Customize vocabulary file location** (optional):
+Edit `~/.config/voxcore/config.json`:
+```json
+{
+  "vocabulary_file": "~/custom/path/vocabulary.txt",
+  "enable_dynamic_vocab": true
+}
+```
+
+**Disable vocabulary** (even if file exists):
+```json
+{
+  "enable_dynamic_vocab": false
+}
+```
+</details>
+
 ### Future: Community Extensions
 
 Inspired by VS Code's extension marketplace, VoxCore is designed to support community-built plugins:
