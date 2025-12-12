@@ -60,3 +60,6 @@ Documents/VoiceNotes/
 # Generated test reports
 whisper-post-processor/jacoco/
 whisper-post-processor/tests/
+
+# Golden test fixtures (personal audio)
+tests/fixtures/golden-features/
