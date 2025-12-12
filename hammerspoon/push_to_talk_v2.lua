@@ -250,10 +250,7 @@ local function parseErrorFromStderr(stderrPath)
   return "ERR_UNKNOWN", lastLine, nil
 end
 
-local function transcribeWithVoxCore(audioPath, retryCount)
-  retryCount = retryCount or 0
-  local maxRetries = 1  -- Retry once on failure
-
+local function transcribeWithVoxCore(audioPath)
   -- VoxCore CLI automatically uses vocabulary from config file
   -- Capture stderr to file for error parsing and logging
   local errorLogPath = NOTES_DIR .. "/tx_logs/voxcore_errors.log"
@@ -264,10 +261,6 @@ local function transcribeWithVoxCore(audioPath, retryCount)
   -- Redirect stderr to log file
   local cmd = string.format("%s transcribe %q 2>> %q", VOXCORE_CLI, audioPath, errorLogPath)
 
-  if retryCount > 0 then
-    log.i(string.format("Retry attempt %d", retryCount))
-  end
-
   log.i(string.format("Transcribing: %s", audioPath))
 
   local output, status = hs.execute(cmd)
@@ -276,59 +269,31 @@ local function transcribeWithVoxCore(audioPath, retryCount)
     -- Parse structured error from stderr log
     local errorCode, errorMsg, errorDetails = parseErrorFromStderr(errorLogPath)
 
-    log.e(string.format("[%s] %s (attempt %d/%d)", errorCode, errorMsg, retryCount + 1, maxRetries + 1))
+    log.e(string.format("[%s] %s", errorCode, errorMsg))
     if errorDetails then
       log.e(string.format("Details: %s", errorDetails))
     end
 
     -- Log failure to transaction log with structured error code
-    logTranscriptionFailure(audioPath, errorCode .. ": " .. errorMsg, retryCount + 1)
-
-    -- Retry if we haven't exceeded max retries
-    if retryCount < maxRetries then
-      log.i(string.format("Retrying in 500ms..."))
-      hs.timer.doAfter(0.5, function()
-        local transcript, err = transcribeWithVoxCore(audioPath, retryCount + 1)
-        if transcript then
-          pasteText(transcript)
-        else
-          log.e(string.format("All retry attempts failed. Audio saved: %s", audioPath))
-          hs.alert.show("❌ Transcription failed (retries exhausted)")
-        end
-      end)
-      return nil, "Retrying..."
-    end
+    -- This enables pattern analysis: check ~/Documents/VoiceNotes/tx_logs/tx-*.jsonl
+    logTranscriptionFailure(audioPath, errorCode .. ": " .. errorMsg, 1)
 
     log.e(string.format("Audio file saved: %s", audioPath))
-    return nil, errorMsg
+    return nil, errorCode .. ": " .. errorMsg
   end
 
   -- Extract transcript (CLI outputs to stdout, trim whitespace)
   local transcript = output:match("^%s*(.-)%s*$")
   if not transcript or transcript == "" then
+    local errorCode = "ERR_EMPTY_TRANSCRIPT"
     local errorMsg = "Empty transcript"
-    log.e(string.format("Empty transcript (attempt %d/%d)", retryCount + 1, maxRetries + 1))
+    log.e(string.format("[%s] %s", errorCode, errorMsg))
 
     -- Log failure to transaction log
-    logTranscriptionFailure(audioPath, errorMsg, retryCount + 1)
-
-    -- Retry if we haven't exceeded max retries
-    if retryCount < maxRetries then
-      log.i(string.format("Retrying in 500ms..."))
-      hs.timer.doAfter(0.5, function()
-        local transcript, err = transcribeWithVoxCore(audioPath, retryCount + 1)
-        if transcript then
-          pasteText(transcript)
-        else
-          log.e(string.format("All retry attempts failed. Audio saved: %s", audioPath))
-          hs.alert.show("❌ Transcription failed (retries exhausted)")
-        end
-      end)
-      return nil, "Retrying..."
-    end
+    logTranscriptionFailure(audioPath, errorCode .. ": " .. errorMsg, 1)
 
     log.e(string.format("Audio file saved: %s", audioPath))
-    return nil, errorMsg
+    return nil, errorCode .. ": " .. errorMsg
   end
 
   return transcript
