@@ -1,6 +1,8 @@
 package com.cliffmin.voxcore.transcription;
 
 import com.cliffmin.voxcore.config.VoxCoreConfig;
+import com.cliffmin.voxcore.exception.ErrorCode;
+import com.cliffmin.voxcore.exception.VoxCoreException;
 import com.cliffmin.whisper.WhisperPostProcessorCLI;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -37,11 +39,14 @@ public class TranscriptionService {
      * @param audioFile Path to WAV file
      * @param postProcess Whether to apply post-processing
      * @return Transcribed text
-     * @throws IOException if transcription fails
+     * @throws VoxCoreException if transcription fails
      */
-    public String transcribe(Path audioFile, boolean postProcess) throws IOException {
+    public String transcribe(Path audioFile, boolean postProcess) throws VoxCoreException {
         if (!Files.exists(audioFile)) {
-            throw new IOException("Audio file not found: " + audioFile);
+            throw new VoxCoreException(
+                ErrorCode.ERR_AUDIO_NOT_FOUND,
+                "Audio file not found: " + audioFile
+            );
         }
 
         log.info("Transcribing: {}", audioFile);

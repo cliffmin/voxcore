@@ -1,6 +1,8 @@
 package com.cliffmin.voxcore.transcription;
 
 import com.cliffmin.voxcore.config.VoxCoreConfig;
+import com.cliffmin.voxcore.exception.ErrorCode;
+import com.cliffmin.voxcore.exception.VoxCoreException;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.slf4j.Logger;
@@ -37,9 +39,9 @@ public class WhisperInvoker {
      * @param audioFile Path to audio file
      * @param initialPrompt Initial prompt with vocabulary hints
      * @return Whisper result with text and metadata
-     * @throws IOException if transcription fails
+     * @throws VoxCoreException if transcription fails
      */
-    public TranscriptionService.WhisperResult transcribe(Path audioFile, String initialPrompt) throws IOException {
+    public TranscriptionService.WhisperResult transcribe(Path audioFile, String initialPrompt) throws VoxCoreException {
         List<String> command = buildWhisperCommand(audioFile, initialPrompt);
 
         log.info("Invoking Whisper: {}", String.join(" ", command));
@@ -47,7 +49,16 @@ public class WhisperInvoker {
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.redirectErrorStream(false);
 
-        Process process = pb.start();
+        Process process;
+        try {
+            process = pb.start();
+        } catch (IOException e) {
+            throw new VoxCoreException(
+                ErrorCode.ERR_WHISPER_FAILED,
+                "Failed to start Whisper process",
+                e
+            );
+        }
 
         // Read output
         StringBuilder stdout = new StringBuilder();
@@ -85,7 +96,11 @@ public class WhisperInvoker {
             stderrReader.join();
 
             if (exitCode != 0) {
-                throw new IOException("Whisper failed with exit code " + exitCode + ": " + stderr);
+                throw new VoxCoreException(
+                    ErrorCode.ERR_WHISPER_FAILED,
+                    "Whisper failed with exit code " + exitCode,
+                    stderr.toString().trim()
+                );
             }
 
             // Parse output
@@ -93,7 +108,11 @@ public class WhisperInvoker {
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IOException("Whisper process interrupted", e);
+            throw new VoxCoreException(
+                ErrorCode.ERR_WHISPER_FAILED,
+                "Whisper process interrupted",
+                e
+            );
         }
     }
 
@@ -124,12 +143,15 @@ public class WhisperInvoker {
      * Parse Whisper output (plain text).
      * whisper-cpp outputs transcription to stdout (metadata goes to stderr).
      */
-    private TranscriptionService.WhisperResult parseWhisperOutput(String output) throws IOException {
+    private TranscriptionService.WhisperResult parseWhisperOutput(String output) throws VoxCoreException {
         // stdout contains just the transcription text
         String text = output.trim();
 
         if (text.isEmpty()) {
-            log.warn("No transcription text found in Whisper output");
+            throw new VoxCoreException(
+                ErrorCode.ERR_EMPTY_TRANSCRIPT,
+                "Whisper returned empty transcript (possible silence or very short audio)"
+            );
         }
 
         return new TranscriptionService.WhisperResult(text, new JsonObject());
@@ -161,7 +183,12 @@ public class WhisperInvoker {
             }
         }
 
-        throw new RuntimeException("Whisper binary not found! Install with: brew install whisper-cpp");
+        VoxCoreException error = new VoxCoreException(
+            ErrorCode.ERR_WHISPER_NOT_FOUND,
+            "Whisper binary not found. Install with: brew install whisper-cpp",
+            "Searched paths: " + String.join(", ", candidates)
+        );
+        throw new RuntimeException(error);
     }
 
     /**

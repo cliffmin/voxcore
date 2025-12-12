@@ -1,6 +1,8 @@
 package com.cliffmin.voxcore;
 
 import com.cliffmin.voxcore.config.VoxCoreConfig;
+import com.cliffmin.voxcore.exception.ErrorCode;
+import com.cliffmin.voxcore.exception.VoxCoreException;
 import com.cliffmin.voxcore.transcription.TranscriptionService;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -82,36 +84,66 @@ public class VoxCoreCLI implements Callable<Integer> {
         private boolean debug;
 
         @Override
-        public Integer call() throws Exception {
-            // Load config
-            VoxCoreConfig config = (configFile != null)
-                ? VoxCoreConfig.load(configFile)
-                : VoxCoreConfig.loadDefault();
+        public Integer call() {
+            try {
+                // Load config
+                VoxCoreConfig config = (configFile != null)
+                    ? VoxCoreConfig.load(configFile)
+                    : VoxCoreConfig.loadDefault();
 
-            // Validate config
-            if (!config.validate()) {
-                System.err.println("Config validation failed:");
-                for (String error : config.getValidationErrors()) {
-                    System.err.println("  - " + error);
+                // Validate config
+                if (!config.validate()) {
+                    VoxCoreException error = new VoxCoreException(
+                        ErrorCode.ERR_CONFIG_INVALID,
+                        "Configuration validation failed",
+                        String.join("; ", config.getValidationErrors())
+                    );
+                    outputError(error);
+                    return 1;
                 }
+
+                // Override model if specified
+                if (model != null) {
+                    // TODO: Set model in config
+                }
+
+                // Create transcription service
+                TranscriptionService service = new TranscriptionService(config);
+
+                // Transcribe
+                String result = service.transcribe(audioFile, !noPostProcess);
+
+                // Output to stdout
+                System.out.println(result);
+
+                return 0;
+
+            } catch (VoxCoreException e) {
+                outputError(e);
+                return 1;
+            } catch (Exception e) {
+                // Wrap unexpected exceptions
+                VoxCoreException error = new VoxCoreException(
+                    ErrorCode.ERR_UNKNOWN,
+                    "Unexpected error: " + e.getMessage(),
+                    e
+                );
+                outputError(error);
                 return 1;
             }
+        }
 
-            // Override model if specified
-            if (model != null) {
-                // TODO: Set model in config
+        /**
+         * Output structured error to stderr (JSON format for Hammerspoon parsing).
+         */
+        private void outputError(VoxCoreException error) {
+            if (debug) {
+                // Human-readable format for debugging
+                System.err.println(error.toFormattedString());
+            } else {
+                // JSON format for Hammerspoon parsing
+                System.err.println(error.toJson().toString());
             }
-
-            // Create transcription service
-            TranscriptionService service = new TranscriptionService(config);
-
-            // Transcribe
-            String result = service.transcribe(audioFile, !noPostProcess);
-
-            // Output to stdout
-            System.out.println(result);
-
-            return 0;
         }
     }
 

@@ -26,6 +26,32 @@ INITIAL_PROMPT = "..."  -- Domain-specific vocabulary to improve accuracy
 ```
 Add technical terms, product names, or jargon you use frequently.
 
+### Vocabulary Integration (VoxCompose Plugin Only)
+
+**This setting is only relevant if you have VoxCompose installed.** VoxCore works perfectly standalone without any vocabulary file.
+
+If VoxCompose is installed, VoxCore can automatically load vocabulary hints to improve accuracy on technical terms and proper nouns.
+
+**JSON Configuration** (`~/.config/voxcore/config.json`):
+```json
+{
+  "vocabulary_file": "~/.config/voxcompose/vocabulary.txt",
+  "enable_dynamic_vocab": true
+}
+```
+
+**Settings:**
+- `vocabulary_file` - Path to vocabulary file (supports `~` and `$HOME` expansion)
+- `enable_dynamic_vocab` - Enable/disable vocabulary loading (default: `true`)
+
+**How it works (VoxCompose users only):**
+1. VoxCompose learns technical terms as you correct transcriptions
+2. Export vocabulary: `voxcompose --export-vocabulary`
+3. VoxCore automatically detects and reads vocabulary file
+4. Whisper uses vocabulary hints for better accuracy (e.g., "GitHub", "VoxCore", "API")
+
+**If you don't have VoxCompose:** VoxCore gracefully handles missing vocabulary files—no errors, no configuration needed.
+
 ## Text Processing
 
 ### Formatting Thresholds
