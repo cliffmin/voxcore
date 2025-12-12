@@ -21,7 +21,7 @@
 - Deprecated Python punctuation script (scripts/utilities/punctuate.py) and documentation references; Java PunctuationProcessor is the supported path.
 - ContextProcessor has been removed from VoxCore (daemon streaming pipeline), aligning with a stateless core. Adaptive/contextual casing moves to VoxCompose. No behavior change to the default CLI path.
 
-## [0.6.0] - TBD (Phase 1.0: Java CLI Implementation)
+## [0.6.0] - 2025-12-11 (Phase 1: Java CLI + Vocabulary Integration)
 ### Highlights
 - **🎯 Major architecture upgrade**: Core business logic migrated from Lua to Java
 - **Standalone CLI**: New `voxcore` command with transcription and config validation
