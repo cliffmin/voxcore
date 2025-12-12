@@ -1,0 +1,181 @@
+name: Benchmark Regression Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:  # Manual trigger
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight
+
+jobs:
+  baseline-benchmark:
+    name: Baseline Regression Test
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true  # Pull LFS files if using Git LFS for audio
+
+      - name: Install whisper-cpp
+        run: |
+          brew install whisper-cpp
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build voxcore CLI
+        run: |
+          cd whisper-post-processor
+          ./gradlew clean voxcoreJar
+
+      - name: Create voxcore CLI wrapper
+        run: |
+          mkdir -p /tmp
+          cat > /tmp/voxcore <<'EOF'
+          #!/usr/bin/env bash
+          exec java -jar $GITHUB_WORKSPACE/whisper-post-processor/build/libs/voxcore.jar "$@"
+          EOF
+          chmod +x /tmp/voxcore
+
+      - name: Run baseline benchmark
+        id: benchmark
+        run: |
+          # Note: Using public golden dataset only (private datasets are .gitignored)
+          # For full benchmarks, run locally with personal test data
+          if [ -d "tests/fixtures/golden-public" ]; then
+            VOXCORE_CLI=/tmp/voxcore GOLDEN_DIR=tests/fixtures/golden-public ./scripts/utilities/benchmark_cli.sh > benchmark-results.txt 2>&1
+          else
+            echo "No public golden dataset found. Skipping benchmark."
+            echo "To enable CI benchmarks, create tests/fixtures/golden-public/ with non-personal test audio."
+            exit 0
+          fi
+
+          # Extract metrics
+          AVG_ACCURACY=$(grep "Avg accuracy:" benchmark-results.txt | awk '{print $3}' | tr -d '%')
+          AVG_TIME=$(grep "Avg time:" benchmark-results.txt | awk '{print $3}' | tr -d 'ms')
+
+          echo "avg_accuracy=$AVG_ACCURACY" >> $GITHUB_OUTPUT
+          echo "avg_time=$AVG_TIME" >> $GITHUB_OUTPUT
+
+          # Display results
+          cat benchmark-results.txt
+
+      - name: Check regression thresholds
+        if: steps.benchmark.outputs.avg_accuracy != ''
+        run: |
+          AVG_ACCURACY=${{ steps.benchmark.outputs.avg_accuracy }}
+          AVG_TIME=${{ steps.benchmark.outputs.avg_time }}
+
+          # Baseline thresholds (from docs/TESTING.md)
+          MIN_ACCURACY=38  # Must not drop below 38%
+          MAX_TIME=1200     # Must not exceed 1200ms
+
+          echo "=== Regression Check ==="
+          echo "Accuracy: ${AVG_ACCURACY}% (threshold: ≥${MIN_ACCURACY}%)"
+          echo "Speed: ${AVG_TIME}ms (threshold: ≤${MAX_TIME}ms)"
+
+          FAILED=0
+
+          if [ "$AVG_ACCURACY" -lt "$MIN_ACCURACY" ]; then
+            echo "❌ FAIL: Accuracy ${AVG_ACCURACY}% below threshold ${MIN_ACCURACY}%"
+            FAILED=1
+          else
+            echo "✅ PASS: Accuracy within threshold"
+          fi
+
+          if [ "$AVG_TIME" -gt "$MAX_TIME" ]; then
+            echo "❌ FAIL: Speed ${AVG_TIME}ms exceeds threshold ${MAX_TIME}ms"
+            FAILED=1
+          else
+            echo "✅ PASS: Speed within threshold"
+          fi
+
+          if [ "$FAILED" -eq 1 ]; then
+            echo ""
+            echo "Regression detected! Performance has dropped below acceptable thresholds."
+            echo "See docs/TESTING.md for baseline expectations."
+            exit 1
+          fi
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark-results.txt
+          retention-days: 90
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request' && steps.benchmark.outputs.avg_accuracy != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const accuracy = '${{ steps.benchmark.outputs.avg_accuracy }}';
+            const time = '${{ steps.benchmark.outputs.avg_time }}';
+            const comment = `## 📊 Benchmark Results
+
+            **Baseline Performance:**
+            - Accuracy: ${accuracy}% (threshold: ≥38%)
+            - Speed: ${time}ms (threshold: ≤1200ms)
+
+            ${accuracy >= 38 && time <= 1200 ? '✅ All regression checks passed!' : '❌ Performance regression detected'}
+
+            <details>
+            <summary>View full benchmark output</summary>
+
+            Download the \`benchmark-results\` artifact for detailed results.
+            </details>`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              body: comment
+            });
+
+  # Feature-specific benchmarks (when datasets exist)
+  feature-benchmarks:
+    name: Feature-Specific Regression Tests
+    runs-on: macos-latest
+    if: false  # Disabled until feature datasets are created
+
+    strategy:
+      matrix:
+        feature: [filler-words, word-separation, vocabulary]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install whisper-cpp
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build voxcore CLI
+        run: |
+          cd whisper-post-processor
+          ./gradlew clean voxcoreJar
+
+      - name: Run ${{ matrix.feature }} benchmark
+        run: |
+          # Run feature-specific benchmark if dataset exists
+          if [ -d "tests/fixtures/golden-features/${{ matrix.feature }}" ]; then
+            VOXCORE_CLI=/tmp/voxcore \
+            GOLDEN_DIR=tests/fixtures/golden-features/${{ matrix.feature }} \
+            ./scripts/utilities/benchmark_cli.sh
+          else
+            echo "No dataset for ${{ matrix.feature }}, skipping"
+          fi
