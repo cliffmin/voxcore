@@ -165,14 +165,16 @@ end
 
 local function transcribeWithVoxCore(audioPath)
   -- VoxCore CLI automatically uses vocabulary from config file
-  -- Redirect stderr to /dev/null to ignore Java logging
-  local cmd = string.format("%s transcribe %q 2>/dev/null", VOXCORE_CLI, audioPath)
+  -- Capture stderr to error log file for debugging
+  local errorLogPath = NOTES_DIR .. "/tx_logs/voxcore_errors.log"
+  local cmd = string.format("%s transcribe %q 2>> %q", VOXCORE_CLI, audioPath, errorLogPath)
   log.i(string.format("Executing: %s", cmd))
 
   local output, status = hs.execute(cmd)
 
   if not status then
-    log.e(string.format("VoxCore CLI failed. Output: %s", output or "nil"))
+    log.e(string.format("VoxCore CLI failed. Check %s for details", errorLogPath))
+    log.e(string.format("Audio file saved: %s", audioPath))
     return nil, "CLI execution failed"
   end
 
@@ -180,6 +182,7 @@ local function transcribeWithVoxCore(audioPath)
   local transcript = output:match("^%s*(.-)%s*$")
   if not transcript or transcript == "" then
     log.e(string.format("Empty transcript. Raw output: %s", output or "nil"))
+    log.e(string.format("Audio file saved: %s", audioPath))
     return nil, "Empty transcript"
   end
 
