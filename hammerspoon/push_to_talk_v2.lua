@@ -163,27 +163,172 @@ local function humanTimestamp()
   return os.date("%Y-%m-%d_%H-%M-%S")
 end
 
-local function transcribeWithVoxCore(audioPath)
+local function rotateLogIfNeeded(logPath, maxSizeMB)
+  maxSizeMB = maxSizeMB or 10  -- Default: 10MB max size
+  local maxBytes = maxSizeMB * 1024 * 1024
+
+  local attrs = hs.fs.attributes(logPath)
+  if attrs and attrs.size > maxBytes then
+    -- Rotate: log.txt → log.txt.1, log.txt.1 → log.txt.2, etc.
+    local rotatedPath = logPath .. "." .. os.date("%Y%m%d-%H%M%S")
+    hs.execute(string.format("mv %q %q", logPath, rotatedPath))
+    log.i(string.format("Rotated log: %s → %s", logPath, rotatedPath))
+
+    -- Keep only last 5 rotated logs
+    local logDir = logPath:match("(.+)/[^/]+$")
+    local logBasename = logPath:match(".+/([^/]+)$")
+    local rotatedLogs = {}
+
+    for file in hs.fs.dir(logDir) do
+      if file:match("^" .. logBasename:gsub("%.", "%%.") .. "%.") then
+        table.insert(rotatedLogs, logDir .. "/" .. file)
+      end
+    end
+
+    table.sort(rotatedLogs)  -- Sort by name (chronological)
+
+    -- Remove oldest logs if more than 5
+    while #rotatedLogs > 5 do
+      local oldestLog = table.remove(rotatedLogs, 1)
+      hs.execute(string.format("rm %q", oldestLog))
+      log.i(string.format("Removed old log: %s", oldestLog))
+    end
+  end
+end
+
+local function logTranscriptionFailure(audioPath, error, attempt)
+  -- Log failed transcription to transaction log
+  local logDir = NOTES_DIR .. "/tx_logs"
+  ensureDir(logDir)
+
+  local txLogPath = string.format("%s/tx-%s.jsonl", logDir, os.date("%Y-%m-%d"))
+  local txLog = {
+    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+    audio_path = audioPath,
+    error = error,
+    attempt = attempt,
+    status = "failed"
+  }
+
+  local json = require("hs.json")
+  local f = io.open(txLogPath, "a")
+  if f then
+    f:write(json.encode(txLog) .. "\n")
+    f:close()
+  end
+end
+
+local function parseErrorFromStderr(stderrPath)
+  -- Read last line from stderr file (JSON error is output last)
+  local f = io.open(stderrPath, "r")
+  if not f then
+    return "ERR_UNKNOWN", "Could not read error log", nil
+  end
+
+  local lastLine = nil
+  for line in f:lines() do
+    -- Keep track of last non-empty line
+    if line and line ~= "" then
+      lastLine = line
+    end
+  end
+  f:close()
+
+  if not lastLine then
+    return "ERR_UNKNOWN", "No error details available", nil
+  end
+
+  -- Try to parse as JSON
+  local json = require("hs.json")
+  local ok, errorData = pcall(json.decode, lastLine)
+
+  if ok and errorData and errorData.error then
+    return errorData.error, errorData.message, errorData.details
+  end
+
+  -- Fallback: use last line as error message
+  return "ERR_UNKNOWN", lastLine, nil
+end
+
+local function transcribeWithVoxCore(audioPath, retryCount)
+  retryCount = retryCount or 0
+  local maxRetries = 1  -- Retry once on failure
+
   -- VoxCore CLI automatically uses vocabulary from config file
-  -- Capture stderr to error log file for debugging
+  -- Capture stderr to file for error parsing and logging
   local errorLogPath = NOTES_DIR .. "/tx_logs/voxcore_errors.log"
+
+  -- Rotate error log if it's too large
+  rotateLogIfNeeded(errorLogPath, 10)  -- 10MB max
+
+  -- Redirect stderr to log file
   local cmd = string.format("%s transcribe %q 2>> %q", VOXCORE_CLI, audioPath, errorLogPath)
-  log.i(string.format("Executing: %s", cmd))
+
+  if retryCount > 0 then
+    log.i(string.format("Retry attempt %d", retryCount))
+  end
+
+  log.i(string.format("Transcribing: %s", audioPath))
 
   local output, status = hs.execute(cmd)
 
   if not status then
-    log.e(string.format("VoxCore CLI failed. Check %s for details", errorLogPath))
+    -- Parse structured error from stderr log
+    local errorCode, errorMsg, errorDetails = parseErrorFromStderr(errorLogPath)
+
+    log.e(string.format("[%s] %s (attempt %d/%d)", errorCode, errorMsg, retryCount + 1, maxRetries + 1))
+    if errorDetails then
+      log.e(string.format("Details: %s", errorDetails))
+    end
+
+    -- Log failure to transaction log with structured error code
+    logTranscriptionFailure(audioPath, errorCode .. ": " .. errorMsg, retryCount + 1)
+
+    -- Retry if we haven't exceeded max retries
+    if retryCount < maxRetries then
+      log.i(string.format("Retrying in 500ms..."))
+      hs.timer.doAfter(0.5, function()
+        local transcript, err = transcribeWithVoxCore(audioPath, retryCount + 1)
+        if transcript then
+          pasteText(transcript)
+        else
+          log.e(string.format("All retry attempts failed. Audio saved: %s", audioPath))
+          hs.alert.show("❌ Transcription failed (retries exhausted)")
+        end
+      end)
+      return nil, "Retrying..."
+    end
+
     log.e(string.format("Audio file saved: %s", audioPath))
-    return nil, "CLI execution failed"
+    return nil, errorMsg
   end
 
   -- Extract transcript (CLI outputs to stdout, trim whitespace)
   local transcript = output:match("^%s*(.-)%s*$")
   if not transcript or transcript == "" then
-    log.e(string.format("Empty transcript. Raw output: %s", output or "nil"))
+    local errorMsg = "Empty transcript"
+    log.e(string.format("Empty transcript (attempt %d/%d)", retryCount + 1, maxRetries + 1))
+
+    -- Log failure to transaction log
+    logTranscriptionFailure(audioPath, errorMsg, retryCount + 1)
+
+    -- Retry if we haven't exceeded max retries
+    if retryCount < maxRetries then
+      log.i(string.format("Retrying in 500ms..."))
+      hs.timer.doAfter(0.5, function()
+        local transcript, err = transcribeWithVoxCore(audioPath, retryCount + 1)
+        if transcript then
+          pasteText(transcript)
+        else
+          log.e(string.format("All retry attempts failed. Audio saved: %s", audioPath))
+          hs.alert.show("❌ Transcription failed (retries exhausted)")
+        end
+      end)
+      return nil, "Retrying..."
+    end
+
     log.e(string.format("Audio file saved: %s", audioPath))
-    return nil, "Empty transcript"
+    return nil, errorMsg
   end
 
   return transcript
