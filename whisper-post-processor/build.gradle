@@ -207,6 +207,70 @@ task buildAll(dependsOn: [buildExecutable, createWrapper, buildVoxCore, createVo
     }
 }
 
+// Fixture size enforcement (10MB hard limit)
+task checkFixtureSize {
+    description = 'Verify test fixtures do not exceed size limit'
+    group = 'verification'
+
+    doLast {
+        def fixturesDir = file('../tests/fixtures')
+        if (!fixturesDir.exists()) {
+            println "No fixtures directory found - skipping check"
+            return
+        }
+
+        // Only check committed files (not local artifacts)
+        def gitLsFiles = "git ls-files tests/fixtures".execute(null, file('..'))
+        gitLsFiles.waitFor()
+
+        if (gitLsFiles.exitValue() != 0) {
+            println "Not a git repository or git not available - checking all files"
+            // Fallback to checking all files if not in git
+            def audioFiles = fileTree(fixturesDir).matching {
+                include '**/*.wav', '**/*.mp3', '**/*.m4a'
+            }
+
+            def totalSize = 0
+            audioFiles.each { file ->
+                totalSize += file.length()
+            }
+
+            def sizeMB = totalSize / (1024 * 1024)
+            println "Test fixtures size: ${String.format('%.2f', sizeMB)} MB (all files)"
+            return
+        }
+
+        def committedFiles = gitLsFiles.text.split('\n').findAll {
+            it.endsWith('.wav') || it.endsWith('.mp3') || it.endsWith('.m4a')
+        }
+
+        def totalSize = 0
+        committedFiles.each { relativePath ->
+            def file = file("../${relativePath}")
+            if (file.exists()) {
+                totalSize += file.length()
+            }
+        }
+
+        def sizeMB = totalSize / (1024 * 1024)
+        def limitMB = 10
+
+        println "Committed test fixtures: ${committedFiles.size()} files, ${String.format('%.2f', sizeMB)} MB"
+
+        if (sizeMB > limitMB) {
+            throw new GradleException(
+                "Test fixtures exceed ${limitMB}MB limit (current: ${String.format('%.2f', sizeMB)}MB). " +
+                "Remove unnecessary fixtures or regenerate synthetically."
+            )
+        }
+
+        println "✓ Fixtures within ${limitMB}MB limit"
+    }
+}
+
+// Run fixture check before tests
+test.dependsOn checkFixtureSize
+
 // JaCoCo test coverage
 jacocoTestReport {
     reports {

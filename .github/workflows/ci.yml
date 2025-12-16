@@ -44,7 +44,25 @@ jobs:
         else
           echo "code_changed=true" >> $GITHUB_OUTPUT
         fi
-    
+
+    - name: Check test fixture size limit
+      run: |
+        echo "=== Checking test fixture size ==="
+        SIZE=$(find tests/fixtures -type f \( -name "*.wav" -o -name "*.mp3" -o -name "*.m4a" \) -exec du -b {} + 2>/dev/null | awk '{sum+=$1} END {print sum}' || echo "0")
+        SIZE_MB=$(echo "scale=2; $SIZE / 1048576" | bc)
+        LIMIT_MB=10
+
+        echo "Test fixtures size: ${SIZE_MB} MB"
+
+        if (( $(echo "$SIZE_MB > $LIMIT_MB" | bc -l) )); then
+          echo "❌ Test fixtures exceed ${LIMIT_MB}MB limit (current: ${SIZE_MB}MB)"
+          echo "Remove unnecessary fixtures or regenerate synthetically."
+          echo "See tests/fixtures/README.md for guidance."
+          exit 1
+        fi
+
+        echo "✓ Fixtures within ${LIMIT_MB}MB limit"
+
     - name: Set up Java
       if: steps.docs_check.outputs.code_changed == 'true'
       uses: actions/setup-java@v5
