@@ -71,6 +71,8 @@ local AUDIO_DEVICE_INDEX = cfg.AUDIO_DEVICE_INDEX or 0
 local SOUND_ENABLED = (cfg.SOUND_ENABLED ~= false)
 local VOXCORE_CLI = cfg.VOXCORE_CLI or "/opt/homebrew/bin/voxcore"
 local VOCABULARY_FILE = expandPath(cfg.VOCABULARY_FILE or "~/.config/voxcompose/vocabulary.txt")
+local LOG_DIR = ensureDir(NOTES_DIR .. "/tx_logs")
+local LOG_ENABLED = (cfg.LOG_ENABLED ~= false)
 
 ------------------
 -- STATE
@@ -163,138 +165,90 @@ local function humanTimestamp()
   return os.date("%Y-%m-%d_%H-%M-%S")
 end
 
-local function rotateLogIfNeeded(logPath, maxSizeMB)
-  maxSizeMB = maxSizeMB or 10  -- Default: 10MB max size
-  local maxBytes = maxSizeMB * 1024 * 1024
-
-  local attrs = hs.fs.attributes(logPath)
-  if attrs and attrs.size > maxBytes then
-    -- Rotate: log.txt → log.txt.1, log.txt.1 → log.txt.2, etc.
-    local rotatedPath = logPath .. "." .. os.date("%Y%m%d-%H%M%S")
-    hs.execute(string.format("mv %q %q", logPath, rotatedPath))
-    log.i(string.format("Rotated log: %s → %s", logPath, rotatedPath))
-
-    -- Keep only last 5 rotated logs
-    local logDir = logPath:match("(.+)/[^/]+$")
-    local logBasename = logPath:match(".+/([^/]+)$")
-    local rotatedLogs = {}
-
-    for file in hs.fs.dir(logDir) do
-      if file:match("^" .. logBasename:gsub("%.", "%%.") .. "%.") then
-        table.insert(rotatedLogs, logDir .. "/" .. file)
-      end
-    end
-
-    table.sort(rotatedLogs)  -- Sort by name (chronological)
-
-    -- Remove oldest logs if more than 5
-    while #rotatedLogs > 5 do
-      local oldestLog = table.remove(rotatedLogs, 1)
-      hs.execute(string.format("rm %q", oldestLog))
-      log.i(string.format("Removed old log: %s", oldestLog))
-    end
-  end
+local function isoNow()
+  return os.date("!%Y-%m-%dT%H:%M:%SZ")
 end
 
-local function logTranscriptionFailure(audioPath, error, attempt)
-  -- Log failed transcription to transaction log
-  local logDir = NOTES_DIR .. "/tx_logs"
-  ensureDir(logDir)
-
-  local txLogPath = string.format("%s/tx-%s.jsonl", logDir, os.date("%Y-%m-%d"))
-  local txLog = {
-    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-    audio_path = audioPath,
-    error = error,
-    attempt = attempt,
-    status = "failed"
-  }
-
-  local json = require("hs.json")
-  local f = io.open(txLogPath, "a")
-  if f then
-    f:write(json.encode(txLog) .. "\n")
-    f:close()
-  end
+local function nowMs()
+  return hs.timer.absoluteTime() / 1000000
 end
 
-local function parseErrorFromStderr(stderrPath)
-  -- Read last line from stderr file (JSON error is output last)
-  local f = io.open(stderrPath, "r")
-  if not f then
-    return "ERR_UNKNOWN", "Could not read error log", nil
-  end
-
-  local lastLine = nil
-  for line in f:lines() do
-    -- Keep track of last non-empty line
-    if line and line ~= "" then
-      lastLine = line
-    end
-  end
+-- Transaction logging (JSONL format)
+local function appendJSONL(path, obj)
+  local f = io.open(path, "a")
+  if not f then return false end
+  f:write(hs.json.encode(obj) .. "\n")
   f:close()
+  return true
+end
 
-  if not lastLine then
-    return "ERR_UNKNOWN", "No error details available", nil
+local function logEvent(kind, data)
+  if not LOG_ENABLED then return end
+  ensureDir(LOG_DIR)
+  local daily = string.format("%s/tx-%s.jsonl", LOG_DIR, os.date("%Y-%m-%d"))
+  local payload = {
+    ts = isoNow(),
+    kind = kind,
+    app = "voxcore",
+    version = "v0.6.0",  -- TODO: Get from CLI or config
+  }
+  if data then
+    for k, v in pairs(data) do payload[k] = v end
   end
-
-  -- Try to parse as JSON
-  local json = require("hs.json")
-  local ok, errorData = pcall(json.decode, lastLine)
-
-  if ok and errorData and errorData.error then
-    return errorData.error, errorData.message, errorData.details
-  end
-
-  -- Fallback: use last line as error message
-  return "ERR_UNKNOWN", lastLine, nil
+  appendJSONL(daily, payload)
 end
 
 local function transcribeWithVoxCore(audioPath)
   -- VoxCore CLI automatically uses vocabulary from config file
-  -- Capture stderr to file for error parsing and logging
-  local errorLogPath = NOTES_DIR .. "/tx_logs/voxcore_errors.log"
-
-  -- Rotate error log if it's too large
-  rotateLogIfNeeded(errorLogPath, 10)  -- 10MB max
-
-  -- Redirect stderr to log file
+  -- Capture stderr to error log file for debugging
+  local errorLogPath = LOG_DIR .. "/voxcore_errors.log"
   local cmd = string.format("%s transcribe %q 2>> %q", VOXCORE_CLI, audioPath, errorLogPath)
+  log.i(string.format("Executing: %s", cmd))
 
-  log.i(string.format("Transcribing: %s", audioPath))
-
+  local txStart = nowMs()
   local output, status = hs.execute(cmd)
+  local txMs = math.floor(nowMs() - txStart)
+
+  -- Get file size for logging
+  local wavBytes = 0
+  local wavAttrs = hs.fs.attributes(audioPath)
+  if wavAttrs then wavBytes = wavAttrs.size or 0 end
 
   if not status then
-    -- Parse structured error from stderr log
-    local errorCode, errorMsg, errorDetails = parseErrorFromStderr(errorLogPath)
-
-    log.e(string.format("[%s] %s", errorCode, errorMsg))
-    if errorDetails then
-      log.e(string.format("Details: %s", errorDetails))
-    end
-
-    -- Log failure to transaction log with structured error code
-    -- This enables pattern analysis: check ~/Documents/VoiceNotes/tx_logs/tx-*.jsonl
-    logTranscriptionFailure(audioPath, errorCode .. ": " .. errorMsg, 1)
-
+    log.e(string.format("VoxCore CLI failed. Check %s for details", errorLogPath))
     log.e(string.format("Audio file saved: %s", audioPath))
-    return nil, errorCode .. ": " .. errorMsg
+    logEvent("error", {
+      wav = audioPath,
+      wav_bytes = wavBytes,
+      tx_ms = txMs,
+      error = "CLI execution failed",
+    })
+    return nil, "CLI execution failed"
   end
 
   -- Extract transcript (CLI outputs to stdout, trim whitespace)
   local transcript = output:match("^%s*(.-)%s*$")
   if not transcript or transcript == "" then
-    local errorCode = "ERR_EMPTY_TRANSCRIPT"
-    local errorMsg = "Empty transcript"
-    log.e(string.format("[%s] %s", errorCode, errorMsg))
-
-    -- Log failure to transaction log
-    logTranscriptionFailure(audioPath, errorCode .. ": " .. errorMsg, 1)
-
+    log.e(string.format("Empty transcript. Raw output: %s", output or "nil"))
     log.e(string.format("Audio file saved: %s", audioPath))
-    return nil, errorCode .. ": " .. errorMsg
+    logEvent("error", {
+      wav = audioPath,
+      wav_bytes = wavBytes,
+      tx_ms = txMs,
+      error = "Empty transcript",
+      raw_output = output or "nil",
+    })
+    return nil, "Empty transcript"
   end
+
+  -- Log success
+  logEvent("success", {
+    wav = audioPath,
+    wav_bytes = wavBytes,
+    tx_ms = txMs,
+    transcript_chars = #transcript,
+    transcript = transcript,
+  })
 
   return transcript
 end
@@ -325,15 +279,26 @@ local function startRecording()
     "-vn", wavPath
   }
 
+  local recordStart = nowMs()
   local onFFExit = function(code, stdout, stderr)
     hideMicIndicator()
     recording = false
+    local recordMs = math.floor(nowMs() - recordStart)
 
     if tonumber(code) ~= 0 and tonumber(code) ~= 255 then
       log.e("Recording failed: " .. tostring(stderr))
       hs.alert.show("🎤 Recording error")
+      logEvent("recording_error", {
+        wav = wavPath,
+        code = tonumber(code),
+        stderr = tostring(stderr),
+        record_ms = recordMs,
+      })
       return
     end
+
+    -- Get audio duration (approximate from recording time)
+    local durationSec = recordMs / 1000.0
 
     -- Show processing indicator
     showMicIndicator({red = 1, green = 0.8, blue = 0, alpha = 0.9})
@@ -348,7 +313,7 @@ local function startRecording()
       return
     end
 
-    log.i(string.format("Transcribed: %d chars", #transcript))
+    log.i(string.format("Transcribed: %d chars in %.1fs", #transcript, durationSec))
 
     -- Paste result
     pasteText(transcript)
