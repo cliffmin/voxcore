@@ -16,6 +16,7 @@
 
 ### Fixed
 - Hammerspoon push-to-talk visual indicator: Replaced broken frame modification animation with smooth ripple effect (expanding rings that fade out)
+- Audio device detection: Now resolves microphone by name instead of index, preventing iPhone Continuity from hijacking recordings when connected (macOS 15+ issue)
 
 ### Removed
 - Deprecated Python punctuation script (scripts/utilities/punctuate.py) and documentation references; Java PunctuationProcessor is the supported path.

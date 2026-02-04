@@ -358,21 +358,27 @@ A: Yes. Edit `~/.hammerspoon/ptt_config.lua`.
 
 ## Roadmap
 
-**Current (v0.5.0):**
+**Current (v0.6.0):**
 - [x] Fast offline transcription (whisper-cpp)
 - [x] Universal paste (works everywhere)
 - [x] 100% private (never uploads)
 - [x] WAV backup (always saved)
-- [x] Smart post-processing
-- [x] Custom dictionaries
-- [x] Version tracking
-- [x] Plugin architecture (VoxCompose)
+- [x] Smart post-processing (Java pipeline)
+- [x] Custom dictionaries and vocabulary
+- [x] Version tracking and performance analysis
+- [x] Plugin architecture (VoxCompose integration)
+- [x] Standalone CLI (`voxcore transcribe`)
 
-**Planned:**
+**Next (v0.7.0):**
+- [ ] Robust audio device detection (name-based, handles macOS Continuity)
+- [ ] Streaming transcription (real-time feedback)
+- [ ] Enhanced vocabulary learning from corrections
+
+**Future:**
 - [ ] Multi-mode plugins (journal, email, meeting modes)
 - [ ] Quick-switch keybinds for different contexts
-- [ ] Enhanced privacy tools (audio encryption)
 - [ ] Multi-language optimization
+- [ ] Linux support (currently macOS only)
 - [ ] Plugin marketplace
 
 ## License
