@@ -67,12 +67,65 @@ end
 ------------------
 
 local NOTES_DIR = ensureDir(expandPath(cfg.NOTES_DIR or "~/Documents/VoiceNotes"))
-local AUDIO_DEVICE_INDEX = cfg.AUDIO_DEVICE_INDEX or 0
+local AUDIO_DEVICE_INDEX = cfg.AUDIO_DEVICE_INDEX  -- nil means auto-detect
+local AUDIO_DEVICE_NAME = cfg.AUDIO_DEVICE_NAME or "MacBook Pro Microphone"  -- Preferred device by name
 local SOUND_ENABLED = (cfg.SOUND_ENABLED ~= false)
 local VOXCORE_CLI = cfg.VOXCORE_CLI or "/opt/homebrew/bin/voxcore"
 local VOCABULARY_FILE = expandPath(cfg.VOCABULARY_FILE or "~/.config/voxcompose/vocabulary.txt")
 local LOG_DIR = ensureDir(NOTES_DIR .. "/tx_logs")
 local LOG_ENABLED = (cfg.LOG_ENABLED ~= false)
+
+------------------
+-- DEVICE DETECTION
+------------------
+
+-- Find audio device index by name pattern (handles iPhone Continuity shifts)
+local function findAudioDeviceByName(pattern)
+  local cmd = '/opt/homebrew/bin/ffmpeg -f avfoundation -list_devices true -i "" 2>&1'
+  local output = hs.execute(cmd) or ""
+  
+  local inAudioSection = false
+  for line in output:gmatch("[^\r\n]+") do
+    if line:match("AVFoundation audio devices:") then
+      inAudioSection = true
+    elseif inAudioSection then
+      local index, name = line:match("%[(%d+)%]%s*(.+)")
+      if index and name and name:match(pattern) then
+        log.i(string.format("Found audio device '%s' at index %s", name, index))
+        return tonumber(index), name
+      end
+    end
+  end
+  return nil, nil
+end
+
+-- Resolve the audio device to use (by name first, then fallback to index)
+local function resolveAudioDevice()
+  -- If explicit index is set and no name preference, use index directly
+  if AUDIO_DEVICE_INDEX and not cfg.AUDIO_DEVICE_NAME then
+    return AUDIO_DEVICE_INDEX
+  end
+  
+  -- Try to find by name pattern
+  local index, name = findAudioDeviceByName(AUDIO_DEVICE_NAME)
+  if index then
+    return index
+  end
+  
+  -- Fallback: try common built-in mic patterns
+  local fallbackPatterns = {"MacBook Pro Microphone", "MacBook Air Microphone", "Built%-in Microphone"}
+  for _, pattern in ipairs(fallbackPatterns) do
+    index, name = findAudioDeviceByName(pattern)
+    if index then
+      log.w(string.format("Preferred device '%s' not found, using fallback '%s'", AUDIO_DEVICE_NAME, name))
+      return index
+    end
+  end
+  
+  -- Last resort: use configured index or 0
+  log.w("No matching audio device found, using index " .. tostring(AUDIO_DEVICE_INDEX or 0))
+  return AUDIO_DEVICE_INDEX or 0
+end
 
 ------------------
 -- STATE
@@ -268,7 +321,9 @@ local function startRecording()
 
   wavPath = string.format("%s/%s.wav", sessionDir, baseName)
 
-  local deviceSpec = ":" .. tostring(AUDIO_DEVICE_INDEX)
+  -- Resolve device by name (handles iPhone Continuity appearing/shifting indices)
+  local deviceIndex = resolveAudioDevice()
+  local deviceSpec = ":" .. tostring(deviceIndex)
   local ffmpegArgs = {
     "-hide_banner", "-loglevel", "error",
     "-nostats", "-y",
