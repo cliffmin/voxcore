@@ -26,7 +26,7 @@ jobs:
     timeout-minutes: 10
     
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0  # Need full history for changed files check
     
@@ -72,7 +72,7 @@ jobs:
         
     - name: Setup Gradle
       if: steps.docs_check.outputs.code_changed == 'true'
-      uses: gradle/actions/setup-gradle@v4
+      uses: gradle/actions/setup-gradle@v5
       with:
         gradle-version: ${{ env.GRADLE_VERSION }}
         
@@ -123,7 +123,7 @@ jobs:
     
     - name: Upload coverage to Codecov
       if: always()
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
         files: ./whisper-post-processor/build/reports/jacoco/test/jacocoTestReport.xml
         token: ${{ secrets.CODECOV_TOKEN }}
@@ -145,7 +145,7 @@ jobs:
     timeout-minutes: 5
     
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     
     - name: Install Lua (Ubuntu)
       run: |
@@ -237,7 +237,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     
     - name: Set up Java
       uses: actions/setup-java@v5
