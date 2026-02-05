@@ -4,7 +4,7 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
       day: "monday"
     labels:
       - "ci/cd"
@@ -12,12 +12,18 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    
+    open-pull-requests-limit: 3
+    # Group all action updates together
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
   # Gradle dependencies
   - package-ecosystem: "gradle"
     directory: "/whisper-post-processor"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
       day: "monday"
     labels:
       - "java"
@@ -25,7 +31,15 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
+    # Group patch and minor updates together
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     
   # Python dependencies (optional)
   - package-ecosystem: "pip"

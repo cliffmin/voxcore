@@ -30,7 +30,7 @@ Common issues and solutions for VoxCore.
 
 ### Whisper Model Not Found
 
-**Symptoms:** Transcription fails with "whisper not found" or "model not found".
+**Symptoms:** Transcription fails with "failed to open 'base.en'" or "model not found".
 
 **Solutions:**
 1. **Install whisper-cpp:**
@@ -38,16 +38,34 @@ Common issues and solutions for VoxCore.
    brew install whisper-cpp
    ```
 
-2. **Verify Installation:**
+2. **Download Model Files:**
    ```bash
-   which whisper-cpp
-   # Should show: /opt/homebrew/bin/whisper-cpp (or similar)
+   # Download base.en model (required)
+   ./scripts/setup/download_whisper_models.sh base
+   
+   # Optional: Download medium.en for longer recordings
+   ./scripts/setup/download_whisper_models.sh medium
    ```
 
-3. **Check Model Path:**
-   - Models are downloaded automatically on first use
-   - Default location: `~/.cache/whisper/`
-   - If missing, models will be downloaded automatically
+3. **Verify Installation:**
+   ```bash
+   # Check binary
+   which whisper-cli
+   # Should show: /opt/homebrew/bin/whisper-cli
+   
+   # Check model file
+   ls -lh /opt/homebrew/share/whisper-cpp/ggml-base.bin
+   # Should show the model file (~150 MB)
+   ```
+
+4. **Manual Download (if script fails):**
+   ```bash
+   mkdir -p /opt/homebrew/share/whisper-cpp
+   cd /opt/homebrew/share/whisper-cpp
+   curl -L -o ggml-base.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
+   ```
+
+See [Whisper Models Setup](whisper-models.md) for complete instructions.
 
 ### Java Post-Processor Not Found
 
