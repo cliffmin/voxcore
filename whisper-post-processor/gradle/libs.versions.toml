@@ -1,13 +1,13 @@
 [versions]
-picocli = "4.7.5"
+picocli = "4.7.7"
 gson = "2.13.2"
-commonsLang3 = "3.18.0"
-slf4j = "2.0.9"
-undertow = "2.3.10.Final"
-micrometer = "1.11.5"
-junitJupiter = "6.0.1"
+commonsLang3 = "3.20.0"
+slf4j = "2.0.17"
+undertow = "2.3.22.Final"
+micrometer = "1.16.2"
+junitJupiter = "6.0.2"
 junitPlatform = "6.0.2"
-assertj = "3.27.6"
+assertj = "3.27.7"
 mockito = "5.21.0"
 
 [libraries]
