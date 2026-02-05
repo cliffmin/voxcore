@@ -4,7 +4,6 @@ import com.cliffmin.voxcore.config.VoxCoreConfig;
 import com.cliffmin.voxcore.exception.ErrorCode;
 import com.cliffmin.voxcore.exception.VoxCoreException;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -206,7 +205,19 @@ public class WhisperInvoker {
             return modelPath.toString();
         }
 
-        // Fallback: assume model name is full path
-        return modelName;
+        // Check if it's already a full path
+        Path fullPath = Paths.get(modelName);
+        if (Files.exists(fullPath)) {
+            return modelName;
+        }
+
+        // Model not found - provide helpful error
+        String errorMsg = String.format(
+            "Whisper model '%s' not found at %s\n" +
+            "Download with: ./scripts/setup/download_whisper_models.sh %s\n" +
+            "Or manually: curl -L -o %s https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-%s.en.bin",
+            modelName, modelPath, normalizedName, modelPath, normalizedName
+        );
+        throw new RuntimeException(errorMsg);
     }
 }

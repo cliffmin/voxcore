@@ -53,6 +53,17 @@ brew install whisper-cpp     # Fast transcription (recommended)
 brew install openjdk         # Java runtime for post-processor
 ```
 
+**Important:** After installing `whisper-cpp`, you must download model files separately:
+```bash
+# Download base.en model (required)
+./scripts/setup/download_whisper_models.sh base
+
+# Optional: Download medium.en for longer recordings
+./scripts/setup/download_whisper_models.sh medium
+```
+
+See [Whisper Models Setup](whisper-models.md) for details.
+
 ## Dependency Isolation
 
 ### Why pipx?
