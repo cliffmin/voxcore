@@ -1,3 +1,15 @@
+# Dependabot Configuration
+#
+# Strategy: Monthly updates with grouping to balance security with maintainability.
+#
+# - Monthly cadence: Reduces PR noise while staying current on security patches
+# - Grouped updates: Batches patch/minor updates to minimize review overhead
+# - Auto-merge: Paired with .github/workflows/dependabot-auto-merge.yml
+#   to automatically merge passing updates
+# - PR limits: Caps open PRs to prevent backlog accumulation
+#
+# For major version bumps, Dependabot creates individual PRs for manual review.
+
 version: 2
 updates:
   # GitHub Actions

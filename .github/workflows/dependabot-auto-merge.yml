@@ -1,3 +1,17 @@
+# Dependabot Auto-Merge Workflow
+#
+# Strategy: Automate low-risk dependency updates to reduce maintenance overhead
+# while maintaining quality gates.
+#
+# How it works:
+# 1. Dependabot creates PR (monthly, grouped by type)
+# 2. CI runs all tests and checks
+# 3. If CI passes, this workflow auto-approves and merges
+# 4. If CI fails, PR remains open for manual review
+#
+# Security: Only patch/minor updates are grouped and auto-merged.
+# Major version bumps require manual review per dependabot.yml config.
+
 name: Dependabot Auto-Merge
 
 on:
