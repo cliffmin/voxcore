@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-02-06
+
+### Added
+- **Dynamic model selection**: Automatically uses `base.en` for short recordings (<21s) and `medium.en` for longer recordings. Configurable threshold, model names, and on/off toggle via `ptt_config.lua`.
+- **VoxCompose vocabulary integration**: Learned vocabulary is automatically exported from VoxCompose and fed to Whisper as prompt hints, improving transcription accuracy for technical terms and proper nouns.
+- **Debug mode**: New `DEBUG_MODE` config option passes `--debug` to VoxCore CLI for verbose output when troubleshooting.
+- Model name logged in transaction JSONL for per-recording performance analysis.
+
+### Changed
+- Config sample (`ptt_config.lua.sample`) cleaned up: removed deprecated v1 options, added new model selection and debug settings, clearer documentation.
+
+### Fixed
+- Transaction log version now correctly reports `v0.7.0` (was hardcoded to `v0.6.0`).
+
+### Performance
+- Short recordings (<21s) use `base.en` model (~500ms transcription) instead of always defaulting to a single model. Longer recordings automatically upgrade to `medium.en` for better accuracy.
+
 ## [0.6.1] - 2026-02-06
 
 ### Added
