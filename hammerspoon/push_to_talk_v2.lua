@@ -1,4 +1,4 @@
--- ~/.hammerspoon/push_to_talk.lua (V2 - Thin Wrapper)
+-- ~/.hammerspoon/push_to_talk_v2.lua (Thin Wrapper)
 -- Press Cmd+Alt+Ctrl+Space to record; release to transcribe and paste
 -- Dependencies: voxcore CLI (brew install voxcore), ffmpeg (brew install ffmpeg)
 
@@ -71,9 +71,19 @@ local AUDIO_DEVICE_INDEX = cfg.AUDIO_DEVICE_INDEX  -- nil means auto-detect
 local AUDIO_DEVICE_NAME = cfg.AUDIO_DEVICE_NAME or "MacBook Pro Microphone"  -- Preferred device by name
 local SOUND_ENABLED = (cfg.SOUND_ENABLED ~= false)
 local VOXCORE_CLI = cfg.VOXCORE_CLI or "/opt/homebrew/bin/voxcore"
+local VOXCOMPOSE_CLI = cfg.VOXCOMPOSE_CLI or "/opt/homebrew/bin/voxcompose"
 local VOCABULARY_FILE = expandPath(cfg.VOCABULARY_FILE or "~/.config/voxcompose/vocabulary.txt")
 local LOG_DIR = ensureDir(NOTES_DIR .. "/tx_logs")
 local LOG_ENABLED = (cfg.LOG_ENABLED ~= false)
+
+-- Model selection: automatically pick model based on recording duration
+local DYNAMIC_MODEL = (cfg.DYNAMIC_MODEL ~= false)  -- default: true
+local MODEL_THRESHOLD_SEC = cfg.MODEL_THRESHOLD_SEC or 21
+local SHORT_MODEL = cfg.SHORT_MODEL or "base.en"
+local LONG_MODEL = cfg.LONG_MODEL or "medium.en"
+
+-- Debug mode: passes --debug to VoxCore CLI for verbose output
+local DEBUG_MODE = (cfg.DEBUG_MODE == true)  -- default: false
 
 ------------------
 -- DEVICE DETECTION
@@ -125,6 +135,23 @@ local function resolveAudioDevice()
   -- Last resort: use configured index or 0
   log.w("No matching audio device found, using index " .. tostring(AUDIO_DEVICE_INDEX or 0))
   return AUDIO_DEVICE_INDEX or 0
+end
+
+------------------
+-- VOCABULARY
+------------------
+
+-- Refresh VoxCompose vocabulary (non-blocking background task)
+-- Exports learned vocabulary to vocabulary.txt for Whisper prompt hints
+local function refreshVocabulary()
+  if not hs.fs.attributes(VOXCOMPOSE_CLI) then return end
+  hs.task.new(VOXCOMPOSE_CLI, function(code, stdout, stderr)
+    if tonumber(code) == 0 then
+      log.i("Vocabulary refreshed from VoxCompose")
+    else
+      log.d("Vocabulary refresh skipped (no learned profile yet)")
+    end
+  end, {"--export-vocabulary"}):start()
 end
 
 ------------------
@@ -243,7 +270,7 @@ local function logEvent(kind, data)
     ts = isoNow(),
     kind = kind,
     app = "voxcore",
-    version = "v0.6.0",  -- TODO: Get from CLI or config
+    version = "v0.7.0",
   }
   if data then
     for k, v in pairs(data) do payload[k] = v end
@@ -251,11 +278,18 @@ local function logEvent(kind, data)
   appendJSONL(daily, payload)
 end
 
-local function transcribeWithVoxCore(audioPath)
-  -- VoxCore CLI automatically uses vocabulary from config file
+local function transcribeWithVoxCore(audioPath, model)
+  -- VoxCore CLI loads vocabulary from config file (~/.config/voxcompose/vocabulary.txt)
   -- Capture stderr to error log file for debugging
   local errorLogPath = LOG_DIR .. "/voxcore_errors.log"
-  local cmd = string.format("%s transcribe %q 2>> %q", VOXCORE_CLI, audioPath, errorLogPath)
+  local cmd = string.format("%s transcribe %q", VOXCORE_CLI, audioPath)
+  if model then
+    cmd = cmd .. string.format(" --model %s", model)
+  end
+  if DEBUG_MODE then
+    cmd = cmd .. " --debug"
+  end
+  cmd = cmd .. string.format(" 2>> %q", errorLogPath)
   log.i(string.format("Executing: %s", cmd))
 
   local txStart = nowMs()
@@ -299,6 +333,7 @@ local function transcribeWithVoxCore(audioPath)
     wav = audioPath,
     wav_bytes = wavBytes,
     tx_ms = txMs,
+    model = model,
     transcript_chars = #transcript,
     transcript = transcript,
   })
@@ -355,11 +390,22 @@ local function startRecording()
     -- Get audio duration (approximate from recording time)
     local durationSec = recordMs / 1000.0
 
+    -- Select model based on duration (base.en is faster, medium.en is more accurate)
+    local model = nil
+    if DYNAMIC_MODEL then
+      if durationSec < MODEL_THRESHOLD_SEC then
+        model = SHORT_MODEL
+      else
+        model = LONG_MODEL
+      end
+      log.i(string.format("Audio %.1fs -> model: %s (threshold: %ds)", durationSec, model, MODEL_THRESHOLD_SEC))
+    end
+
     -- Show processing indicator
     showMicIndicator({red = 1, green = 0.8, blue = 0, alpha = 0.9})
 
     -- Transcribe
-    local transcript, err = transcribeWithVoxCore(wavPath)
+    local transcript, err = transcribeWithVoxCore(wavPath, model)
     hideMicIndicator()
 
     if not transcript then
@@ -368,10 +414,13 @@ local function startRecording()
       return
     end
 
-    log.i(string.format("Transcribed: %d chars in %.1fs", #transcript, durationSec))
+    log.i(string.format("Transcribed: %d chars in %.1fs (model: %s)", #transcript, durationSec, model or "default"))
 
     -- Paste result
     pasteText(transcript)
+
+    -- Refresh vocabulary in background for next transcription
+    refreshVocabulary()
   end
 
   recordTask = hs.task.new("/opt/homebrew/bin/ffmpeg", onFFExit, ffmpegArgs)
@@ -418,5 +467,8 @@ local function setupHotkeys()
 end
 
 setupHotkeys()
+
+-- Initial vocabulary refresh on load
+refreshVocabulary()
 
 return M

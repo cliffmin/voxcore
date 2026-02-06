@@ -2,89 +2,61 @@
 -- Safe defaults for public users. Copy to ~/.hammerspoon/ptt_config.lua and edit.
 
 return {
-  -- Prompt bias (safe, generic)
-  INITIAL_PROMPT = table.concat({
-    "Software and product operations; macOS automation; ",
-    "CLI; transcription; dictation; clipboard paste; symlink; complexity metrics; retest and commit."
-  }),
+  -- ==================
+  -- Audio Device
+  -- ==================
 
-  -- Reflow thresholds (seconds)
-  GAP_NEWLINE_SEC = 1.75,
-  GAP_DOUBLE_NEWLINE_SEC = 2.50,
+  -- Preferred microphone (resolved by name to handle device index shifts)
+  -- Use Cmd+Alt+Ctrl+I to list available devices
+  AUDIO_DEVICE_NAME = "MacBook Pro Microphone",
 
-  -- Disfluencies (whole-word removal at boundaries)
-  DISFLUENCIES = { "uh", "um", "uhh", "uhm" },
+  -- Fallback device index (only used if name match fails)
+  -- AUDIO_DEVICE_INDEX = 1,
 
-  -- Output modes per session type
-SHIFT_TOGGLE_ENABLED = true,
-OUTPUT = {
-  HOLD = { mode = "paste",  format = "txt" },
-  TOGGLE = { mode = "editor", format = "md" },
-},
--- Double-tap F13 to toggle (in addition to Shift+F13)
-DOUBLE_TAP_TOGGLE = true,
-DOUBLE_TAP_WINDOW_MS = 300,
+  -- ==================
+  -- Model Selection
+  -- ==================
 
-  -- Key bindings (configurable)
-  -- Use Hammerspoon key strings (e.g., "f13", "f18", "space", "I")
-KEYS = {
-    HOLD = { mods = {"cmd","alt","ctrl"}, key = "space" },            -- Hyper+Space (default)
-    TOGGLE = { mods = {"cmd","alt","ctrl","shift"}, key = "space" },  -- Shift+Hyper+Space
-    INFO = { mods = {"cmd","alt","ctrl"}, key = "I" },
-    REFINER_TEST = { mods = {"cmd","alt","ctrl"}, key = "R" },
-    DIAGNOSTICS = { mods = {"cmd","alt","ctrl"}, key = "D" },
+  -- Automatically select Whisper model based on recording duration
+  -- base.en: faster (~500ms), good for short clips
+  -- medium.en: more accurate (~2s), better for longer recordings
+  DYNAMIC_MODEL = true,
+  MODEL_THRESHOLD_SEC = 21,      -- Switch model at this duration
+  SHORT_MODEL = "base.en",       -- Model for clips < threshold
+  LONG_MODEL = "medium.en",      -- Model for clips >= threshold
+
+  -- ==================
+  -- Paths
+  -- ==================
+
+  -- VoxCore CLI binary (installed via Homebrew)
+  VOXCORE_CLI = "/opt/homebrew/bin/voxcore",
+
+  -- VoxCompose CLI binary (optional, for vocabulary integration)
+  -- Install: brew install voxcompose
+  VOXCOMPOSE_CLI = "/opt/homebrew/bin/voxcompose",
+
+  -- Where voice recordings (WAV) and transcriptions are saved
+  -- Supports ~, $HOME, ${VAR} expansion
+  NOTES_DIR = "~/Documents/VoiceNotes",
+
+  -- Transaction log directory (default: NOTES_DIR/tx_logs)
+  -- LOG_DIR = "~/.local/state/voxcore/tx_logs",
+
+  -- ==================
+  -- Key Bindings
+  -- ==================
+
+  -- Use Hammerspoon key strings (e.g., "f13", "f18", "space")
+  KEYS = {
+    HOLD = { mods = {"cmd", "alt", "ctrl"}, key = "space" },
   },
 
-  -- LLM refiner (VoxCompose) is disabled by default for public users
-  LLM_REFINER = {
-    ENABLED = false,
-    CMD = { "/usr/bin/java", "-jar", (os.getenv("HOME") or "") .. "/code/voxcompose/build/libs/voxcompose-0.1.0-all.jar" },
-    ARGS = { "--model", "llama3.1", "--timeout-ms", "8000" },
-    TIMEOUT_MS = 9000,
-  },
-
-  -- Audio retention/canonicalization
-  PREPROCESS_KEEP_RAW = false,
-  CANONICALIZE_NORMALIZED_TO_WAV = true,
-
-  -- Storage directories (support ~ and environment variables like $HOME, $USER)
-  -- VoxCore will create these directories if they don't exist and validate they're writable
-  -- NOTES_DIR: Where voice recordings (WAV) and transcriptions (TXT) are saved
-  NOTES_DIR = (os.getenv("HOME") or "") .. "/Documents/VoiceNotes",
-  -- Examples:
-  --   NOTES_DIR = "~/Documents/VoiceNotes"          -- Tilde expansion
-  --   NOTES_DIR = "$HOME/Dropbox/VoiceNotes"        -- Environment variable
-  --   NOTES_DIR = "/Volumes/External/VoiceNotes"    -- Absolute path
-
-  -- LOG_DIR: Where transaction logs (tx_logs) are saved (performance metrics)
-  -- Default: NOTES_DIR/tx_logs (often symlinked to ~/.local/state/macos-ptt-dictation/tx_logs)
-  -- LOG_DIR = nil,  -- Uncomment to customize
-  -- Examples:
-  --   LOG_DIR = "~/.local/state/voxcore/tx_logs"
-  --   LOG_DIR = "$HOME/.cache/voxcore/logs"
-
-  -- Device index (use Cmd+Alt+Ctrl+I to list devices; built-in mic is often :1)
-  AUDIO_DEVICE_INDEX = 1,
-
-  -- Post-processing toggles
-  DISFLUENCY_BEGIN_STRIP = true,
-  BEGIN_DISFLUENCIES = { "so", "um", "uh", "like", "you know", "okay", "yeah", "well" },
-  AUTO_CAPITALIZE_SENTENCES = true,
-  DEDUPE_IMMEDIATE_REPEATS = true,
-  DROP_LOWCONF_SEGMENTS = true,
-  LOWCONF_NO_SPEECH_PROB = 0.5,
-  LOWCONF_AVG_LOGPROB = -1.0,
-  DICTIONARY_REPLACE = {
-    ["github"] = "GitHub",
-    ["lincoln"] = "symlink",
-    ["retaster"] = "retest",
-  },
-
+  -- ==================
   -- UX
-  SOUND_ENABLED = false,
-  ARM_DELAY_MS = 700,
+  -- ==================
 
-  -- Logging (off by default for privacy)
-  LOG_ENABLED = false,
-  LOG_DIR = nil,
+  SOUND_ENABLED = false,
+  LOG_ENABLED = false,           -- Transaction logging (off by default for privacy)
+  DEBUG_MODE = false,            -- Pass --debug to VoxCore CLI for verbose output
 }
