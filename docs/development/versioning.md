@@ -94,7 +94,7 @@ This script:
 
 ### Automatic Version Recording
 
-Version metadata is automatically recorded for new sessions. The `record_version.sh` script is called by `push_to_talk.lua` after each recording.
+Version metadata is automatically recorded for new sessions. The `record_version.sh` script is called by `push_to_talk_v2.lua` after each recording.
 
 No action needed - it just works!
 
