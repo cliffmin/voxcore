@@ -96,22 +96,23 @@ See [Whisper Models Setup](whisper-models.md) for complete instructions.
 **Symptoms:** Recording from wrong device (e.g., iPhone Continuity mic instead of Mac mic).
 
 **Solutions:**
-1. **List Available Devices:**
-   - Press `Cmd+Alt+Ctrl+I` (or your configured INFO key)
-   - Or run:
-     ```bash
-     /opt/homebrew/bin/ffmpeg -f avfoundation -list_devices true -i '' 2>&1 | sed -n 's/^\[AVFoundation.*\] //p'
-     ```
+1. **Check Device Name:**
+   VoxCore resolves the mic by name (default: `"MacBook Pro Microphone"`). List available devices:
+   ```bash
+   /opt/homebrew/bin/ffmpeg -f avfoundation -list_devices true -i '' 2>&1 | grep "audio devices" -A 20
+   ```
 
 2. **Update Config:**
-   - Edit `~/.hammerspoon/ptt_config.lua`
-   - Set `AUDIO_DEVICE_INDEX` to your Mac's built-in mic (often index 1 or 2)
-   - Reload Hammerspoon: Menu → Reload Config
+   Edit `~/.hammerspoon/ptt_config.lua` and set the device name:
+   ```lua
+   AUDIO_DEVICE_NAME = "MacBook Pro Microphone"  -- or your device name
+   ```
+   Reload Hammerspoon: Menu -> Reload Config (or Cmd+Opt+Ctrl+R)
 
-3. **Auto-Select (Recommended):**
-   ```bash
-   make auto-audio
-   # This automatically finds and sets your Mac's built-in mic
+3. **Fallback to Index:**
+   If name matching doesn't work, set an explicit index:
+   ```lua
+   AUDIO_DEVICE_INDEX = 1
    ```
 
 ### No Audio Captured

@@ -1,38 +1,74 @@
-# Configuration Guide
+# Configuration
 
-Configuration is done via `~/.hammerspoon/ptt_config.lua` (a sample is installed by `scripts/setup/install.sh`).
+Configuration lives at `~/.hammerspoon/ptt_config.lua`. A sample is created by `voxcore-install` or `./scripts/setup/install.sh`.
 
-XDG fallback
-- Also supported: `~/.config/voxcore/ptt_config.lua` or `$XDG_CONFIG_HOME/voxcore/ptt_config.lua`
+Fallback locations: `~/.config/voxcore/ptt_config.lua` or `$XDG_CONFIG_HOME/voxcore/ptt_config.lua`.
 
-## Core Settings
+## Audio Device
 
-### Audio Device
+VoxCore resolves the microphone **by name** (not index), which prevents iPhone Continuity from hijacking recordings when connected.
+
 ```lua
-AUDIO_DEVICE_INDEX = 1  -- Set to your microphone index (1 = MacBook Pro Microphone)
+-- Default: MacBook Pro Microphone
+AUDIO_DEVICE_NAME = "MacBook Pro Microphone"
+
+-- Override with explicit index (only if name matching fails)
+-- AUDIO_DEVICE_INDEX = 1
 ```
-Use `Cmd+Alt+Ctrl+I` to list available devices.
 
-Notes:
-- macOS may expose your iPhone as an input ("iPhone … Microphone") via Continuity. If recordings switch to iPhone unexpectedly, set AUDIO_DEVICE_INDEX to your Mac’s built‑in mic (see device list), or run `make auto-audio` to auto‑select and update `~/.hammerspoon/ptt_config.lua`.
-- Device list (CLI):
-  ```bash
-  /opt/homebrew/bin/ffmpeg -f avfoundation -list_devices true -i '' 2>&1 | sed -n 's/^\[AVFoundation.*\] //p'
-  ```
+List available devices:
+```bash
+/opt/homebrew/bin/ffmpeg -f avfoundation -list_devices true -i '' 2>&1 | grep "audio devices" -A 20
+```
 
-### Transcription Model
+## Model Selection
+
+VoxCore automatically picks the Whisper model based on recording duration. Short clips use a faster model; longer recordings use a more accurate one.
+
 ```lua
-INITIAL_PROMPT = "..."  -- Domain-specific vocabulary to improve accuracy
+DYNAMIC_MODEL = true           -- Enable automatic model selection (default: true)
+MODEL_THRESHOLD_SEC = 21       -- Duration threshold in seconds
+SHORT_MODEL = "base.en"        -- Model for clips < threshold (~500ms)
+LONG_MODEL = "medium.en"       -- Model for clips >= threshold (~2s, more accurate)
 ```
-Add technical terms, product names, or jargon you use frequently.
 
-### Vocabulary Integration (VoxCompose Plugin Only)
+To use a single model for everything, set `DYNAMIC_MODEL = false`. The CLI defaults to `base.en`.
 
-**This setting is only relevant if you have VoxCompose installed.** VoxCore works perfectly standalone without any vocabulary file.
+## Key Bindings
 
-If VoxCompose is installed, VoxCore can automatically load vocabulary hints to improve accuracy on technical terms and proper nouns.
+```lua
+KEYS = {
+  HOLD = { mods = {"cmd", "alt", "ctrl"}, key = "space" },
+}
+```
 
-**JSON Configuration** (`~/.config/voxcore/config.json`):
+Hold the key to record, release to transcribe and paste. Keys use Hammerspoon identifiers (e.g., `"f13"`, `"f18"`, `"space"`).
+
+## Paths
+
+```lua
+VOXCORE_CLI = "/opt/homebrew/bin/voxcore"       -- VoxCore binary (Homebrew default)
+VOXCOMPOSE_CLI = "/opt/homebrew/bin/voxcompose"  -- VoxCompose binary (optional)
+NOTES_DIR = "~/Documents/VoiceNotes"             -- Recording storage
+-- LOG_DIR = "~/.local/state/voxcore/tx_logs"    -- Custom log dir (default: NOTES_DIR/tx_logs)
+```
+
+Paths support `~`, `$HOME`, and `${VAR}` expansion.
+
+## UX
+
+```lua
+SOUND_ENABLED = false    -- Play sound cues on record start/stop
+LOG_ENABLED = false      -- Transaction logging (JSONL, off by default for privacy)
+DEBUG_MODE = false       -- Pass --debug to VoxCore CLI for verbose output
+```
+
+## VoxCompose Vocabulary (Optional)
+
+If VoxCompose is installed, vocabulary is automatically refreshed on Hammerspoon load and after each transcription. No configuration needed -- it reads from `~/.config/voxcompose/vocabulary.txt`.
+
+To customize the vocabulary file path in VoxCore's Java config (`~/.config/voxcore/config.json`):
+
 ```json
 {
   "vocabulary_file": "~/.config/voxcompose/vocabulary.txt",
@@ -40,155 +76,20 @@ If VoxCompose is installed, VoxCore can automatically load vocabulary hints to i
 }
 ```
 
-**Settings:**
-- `vocabulary_file` - Path to vocabulary file (supports `~` and `$HOME` expansion)
-- `enable_dynamic_vocab` - Enable/disable vocabulary loading (default: `true`)
-
-**How it works (VoxCompose users only):**
-1. VoxCompose learns technical terms as you correct transcriptions
-2. Export vocabulary: `voxcompose --export-vocabulary`
-3. VoxCore automatically detects and reads vocabulary file
-4. Whisper uses vocabulary hints for better accuracy (e.g., "GitHub", "VoxCore", "API")
-
-**If you don't have VoxCompose:** VoxCore gracefully handles missing vocabulary files—no errors, no configuration needed.
-
-## Text Processing
-
-### Formatting Thresholds
-```lua
-GAP_NEWLINE_SEC = 1.75         -- Insert newline for pauses >= this
-GAP_DOUBLE_NEWLINE_SEC = 2.50  -- Insert paragraph break for longer pauses
-```
-
-### Cleanup Options
-```lua
-DISFLUENCIES = {"uh", "um", "uhh", "uhm"}  -- Remove these filler words
-DISFLUENCY_BEGIN_STRIP = true               -- Strip common starters
-BEGIN_DISFLUENCIES = {"so", "um", "uh", "like", "you know", "okay", "yeah", "well"}
-
-AUTO_CAPITALIZE_SENTENCES = true  -- Capitalize after punctuation
-DEDUPE_IMMEDIATE_REPEATS = true   -- Remove duplicate words
-DROP_LOWCONF_SEGMENTS = true      -- Filter low-confidence segments
-```
-
-### Custom Replacements
-```lua
-DICTIONARY_REPLACE = {
-  ["github"] = "GitHub",
-  ["json"] = "JSON",
-  -- Add your common corrections here
-}
-```
-
-## User Experience
-
-### Audio Feedback
-```lua
-SOUND_ENABLED = true     -- Play sound cues
-ARM_DELAY_MS = 700       -- Delay before recording starts
-WAVE_METER_MODE = "off"  -- Visual feedback ("off", "inline", "monitor")
-```
-
-### Recording Modes
-```lua
-SHIFT_TOGGLE_ENABLED = true  -- Enable Shift+F13 for toggle recording
-
-OUTPUT = {
-  HOLD = { mode = "paste", format = "txt" },    -- hold behavior (key configurable)
-  TOGGLE = { mode = "editor", format = "md" }   -- toggle behavior (key configurable)
-}
-```
-
-### Key Bindings
-```lua
--- Change the hotkeys (defaults shown)
-KEYS = {
-  HOLD = { mods = {"cmd","alt","ctrl"}, key = "space" },            -- default: Hyper+Space
-  TOGGLE = { mods = {"cmd","alt","ctrl","shift"}, key = "space" },  -- default: Shift+Hyper+Space
-  INFO = { mods = {"cmd","alt","ctrl"}, key = "I" },
-  REFINER_TEST = { mods = {"cmd","alt","ctrl"}, key = "R" },
-  DIAGNOSTICS = { mods = {"cmd","alt","ctrl"}, key = "D" },
-}
-```
-
-Notes:
-- Keys use Hammerspoon identifiers (e.g., "f13", "f18", "space", "I").
-- Choose a spare key that doesn’t interfere with typing. External keyboards often have F13–F19; foot pedals also work well.
-
-## Advanced Settings
-
-### Performance
-```lua
-TIMEOUT_MS = 120000           -- Transcription timeout (2 minutes)
-PREPROCESS_MIN_SEC = 12       -- Normalize audio for clips >= this duration
-```
-
-### Storage
-```lua
-NOTES_DIR = "~/Documents/VoiceNotes"  -- Where recordings are saved
-PREPROCESS_KEEP_RAW = false           -- Keep original audio after normalization
-CANONICALIZE_NORMALIZED_TO_WAV = true -- Use single canonical filename
-```
-
-### Logging
-```lua
-LOG_ENABLED = true  -- Enable JSONL logging for analytics
-LOG_DIR = nil       -- Custom log directory (default: NOTES_DIR/tx_logs)
-```
-
-### LLM Refinement (Optional)
-```lua
-LLM_REFINER = {
-  ENABLED = false,  -- Enable AI refinement for long-form recordings
-  CMD = { "/usr/bin/java", "-jar", "path/to/voxcompose.jar" },
-  TIMEOUT_MS = 9000
-}
-```
-
-## Testing Features
-
-### Test Mode
-```lua
-TEST_FIXTURE_EXPORT = {
-  ENABLED = true,  -- Export test fixtures when in test mode (Fn+T)
-  MODE = "auto"    -- Categorize by duration automatically
-}
-```
-
-## Example Configuration
+## Example Config
 
 ```lua
 -- ~/.hammerspoon/ptt_config.lua
 return {
-  -- Use MacBook microphone
-  AUDIO_DEVICE_INDEX = 1,
-  
-  -- Improve accuracy for technical terms
-  INITIAL_PROMPT = "software development, API, GitHub, JavaScript, Python",
-  
-  -- Clean up transcripts
-  AUTO_CAPITALIZE_SENTENCES = true,
-  DEDUPE_IMMEDIATE_REPEATS = true,
-  
-  -- Custom corrections
-  DICTIONARY_REPLACE = {
-    ["github"] = "GitHub",
-    ["api"] = "API",
-    ["javascript"] = "JavaScript"
+  AUDIO_DEVICE_NAME = "MacBook Pro Microphone",
+  DYNAMIC_MODEL = true,
+  KEYS = {
+    HOLD = { mods = {"cmd", "alt", "ctrl"}, key = "space" },
   },
-  
-  -- Enable all features
-  SOUND_ENABLED = true,
-  SHIFT_TOGGLE_ENABLED = true,
-  LOG_ENABLED = true
+  SOUND_ENABLED = false,
+  LOG_ENABLED = true,
+  DEBUG_MODE = false,
 }
 ```
 
-## Troubleshooting
-
-- **Wrong microphone**: Update `AUDIO_DEVICE_INDEX` after checking with `Cmd+Alt+Ctrl+I`
-- **Poor accuracy**: Add domain terms to `INITIAL_PROMPT`
-- **Formatting issues**: Adjust `GAP_NEWLINE_SEC` thresholds
-- **Missing words**: Check `DISFLUENCIES` isn't removing wanted words
-
-See [Troubleshooting](troubleshooting.md) for more help.
+See `hammerspoon/ptt_config.lua.sample` for the full list of options.
