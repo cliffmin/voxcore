@@ -27,12 +27,14 @@ internal/
 internal/docs/
 docs-internal/
 
-# IDE
+# IDE and AI tools
 .idea/
 *.iml
 *.ipr
 *.iws
 .vscode/
+.cursor/
+.claude/
 *.swp
 *.swo
 .history/
