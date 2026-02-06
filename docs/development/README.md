@@ -5,16 +5,14 @@ Documentation for VoxCore developers and contributors.
 ## Architecture & Design
 
 - **[Architecture](architecture.md)** - System design, plugin model, and design principles
-- **[PTT Daemon](ptt-daemon.md)** - Push-to-talk daemon implementation details
 - **[Dependency Policy](dependency-policy.md)** - Guidelines for adding dependencies
 
 ## Development Workflow
 
 - **[Local Testing](local-testing.md)** - Test changes locally (`make dev-install`)
 - **[Transcribe File](transcribe-file.md)** - Transcribe a local audio file and paste (`make paste-file`)
-- **[Testing](testing.md)** - Running tests and writing new tests
+- **[Testing](testing.md)** - Testing strategy, test suites, and CI/CD
 - **[Release Process](release.md)** - How to create releases
-- **[Release Procedures](release-process.md)** - Detailed release procedures
 - **[Versioning](versioning.md)** - Version management and recording organization
 
 ## Contributing

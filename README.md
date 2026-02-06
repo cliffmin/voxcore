@@ -318,6 +318,29 @@ Inspired by VS Code's extension marketplace, VoxCore is designed to support comm
 
 **Coming soon:** Plugin API and extension marketplace. Stay tuned.
 
+## Ecosystem
+
+VoxCore is the hub of a multi-repo project for local voice-to-text on macOS.
+
+```mermaid
+graph LR
+    VoxCore["VoxCore<br/><i>Core transcription engine</i>"]
+    VoxCompose["VoxCompose<br/><i>ML transcript refinement</i>"]
+    Tap["homebrew-tap<br/><i>Homebrew distribution</i>"]
+    
+    VoxCore -->|"plugin interface"| VoxCompose
+    Tap -->|"installs"| VoxCore
+    Tap -->|"installs"| VoxCompose
+```
+
+| Repository | Purpose | Status |
+|------------|---------|--------|
+| **[VoxCore](https://github.com/cliffmin/voxcore)** | Core push-to-talk transcription engine | v0.6.0 |
+| **[VoxCompose](https://github.com/cliffmin/voxcompose)** | Optional ML-based transcript refinement via local LLMs | v1.0.0 |
+| **[homebrew-tap](https://github.com/cliffmin/homebrew-tap)** | Homebrew formulae for easy installation | Active |
+
+**Architecture:** VoxCore handles recording, transcription (whisper-cpp), and post-processing (Java pipeline). VoxCompose is an optional plugin that adds self-learning corrections and LLM refinement via local Ollama. They communicate through a stdin/stdout plugin protocol, keeping concerns cleanly separated.
+
 ## Documentation
 
 - **[Setup Guide](docs/setup/)** - Installation and configuration
@@ -328,7 +351,7 @@ Inspired by VS Code's extension marketplace, VoxCore is designed to support comm
 - **[Contributing](CONTRIBUTING.md)** - Development guidelines
 - **[Architecture](docs/development/architecture.md)** - System design
 - **[Versioning](docs/development/versioning.md)** - Releases and version management
-- **[Release Guide](docs/development/RELEASE_GUIDE.md)** - Complete release process
+- **[Release Guide](docs/development/release.md)** - Complete release process
 
 ## FAQ
 
