@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v0.6.2). Must already exist.'
+        required: true
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,9 +21,13 @@ permissions:
 jobs:
   artifacts:
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -33,7 +43,7 @@ jobs:
       - name: Compute tarball sha256 for Homebrew formula
         id: sha
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          TAG="${RELEASE_TAG}"
           URL="https://github.com/${{ github.repository }}/archive/refs/tags/${TAG}.tar.gz"
           echo "Downloading $URL"
           curl -L "$URL" -o source.tar.gz
@@ -43,13 +53,13 @@ jobs:
 
       - name: Build quickstart zip
         run: |
-          zip -r quickstart-${GITHUB_REF_NAME}.zip hammerspoon scripts/setup/install.sh LICENSE README.md
+          zip -r "quickstart-${RELEASE_TAG}.zip" hammerspoon scripts/setup/install.sh LICENSE README.md
 
       - name: Generate Release Notes
         id: release_notes
         run: |
           # Extract version from tag (v0.5.0 -> 0.5.0)
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${RELEASE_TAG#v}"
           
           # Extract changes for this version from CHANGELOG
           if [ -f CHANGELOG.md ]; then
@@ -81,23 +91,24 @@ brew install cliffmin/tap/voxcore
 `${{ steps.sha.outputs.sha256 }}`
 
 ### Manual Install
-Download `quickstart-${GITHUB_REF_NAME}.zip` or `whisper-post.jar` from the assets below.
+Download the quickstart zip or `whisper-post.jar` from the assets below.
 EOF
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: release-artifacts-${{ github.ref_name }}
+          name: release-artifacts-${{ env.RELEASE_TAG }}
           path: |
             formula-sha256.txt
-            quickstart-${{ github.ref_name }}.zip
+            quickstart-${{ env.RELEASE_TAG }}.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           body_path: release_notes.md
           files: |
-            quickstart-${{ github.ref_name }}.zip
+            quickstart-${{ env.RELEASE_TAG }}.zip
             whisper-post-processor/dist/whisper-post.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
