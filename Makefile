@@ -34,7 +34,7 @@ help:
 # Install dependencies and setup
 install:
 	@echo "Installing VoxCore..."
-	@bash scripts/install.sh
+	@bash scripts/setup/install.sh
 
 # Run all tests
 test: test-smoke test-java-all test-plugin-contract
@@ -53,7 +53,7 @@ test-smoke:
 # Build Java post-processor
 build-java:
 	@echo "Building Java post-processor..."
-	@cd whisper-post-processor && gradle clean shadowJar buildExecutable --no-daemon -q
+	@cd whisper-post-processor && ./gradlew clean shadowJar --no-daemon -q
 	@echo "Java processor built successfully!"
 
 # Run Java unit tests
@@ -139,19 +139,13 @@ compare-versions:
 
 # Development helpers
 
-# Local dev install: build, restart daemon, reload Hammerspoon
+# Local dev install: build JAR + reload Hammerspoon
 dev-install:
 	@echo "=== Local Dev Install ==="
 	@echo "1. Building JAR..."
 	@cd whisper-post-processor && ./gradlew shadowJar --no-daemon -q
-	@echo "2. Stopping daemon..."
-	@pkill -f "PTTServiceDaemon" 2>/dev/null || true
-	@sleep 0.5
-	@echo "3. Reloading Hammerspoon (will auto-start daemon)..."
-	@hs -c "hs.reload()" 2>/dev/null || echo "Hammerspoon not running"
-	@sleep 1
-	@echo "4. Checking daemon health..."
-	@curl -s http://127.0.0.1:8765/health | grep -q '"status":"ok"' && echo "✓ Daemon running" || echo "✗ Daemon not responding (will start on first use)"
+	@echo "2. Reloading Hammerspoon..."
+	@hs -c "hs.reload()" 2>/dev/null || echo "Hammerspoon not running - reload manually (Cmd+Opt+Ctrl+R)"
 	@echo ""
 	@echo "Done! Test with a recording."
 

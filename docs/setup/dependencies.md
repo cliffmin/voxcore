@@ -1,173 +1,51 @@
-# Dependencies and Architecture
+# Dependencies
 
-## Overview
+## Required
 
-VoxCore is a hybrid application with a clear separation of concerns:
-- **Core**: Lua (Hammerspoon) for macOS automation
-- **Post-processing**: Java for transcript cleaning
-- **Optional Tools**: Python via pipx for transcription (optional)
+| Dependency | Purpose | Install |
+|-----------|---------|---------|
+| [Hammerspoon](https://www.hammerspoon.org/) | macOS automation (hotkeys, recording, paste) | `brew install --cask hammerspoon` |
+| [ffmpeg](https://ffmpeg.org/) | Audio recording (avfoundation capture) | `brew install ffmpeg` |
+| [whisper-cpp](https://github.com/ggerganov/whisper.cpp) | Local speech-to-text transcription | `brew install whisper-cpp` |
+| [OpenJDK 17](https://openjdk.org/) | Java runtime for VoxCore CLI and post-processor | `brew install openjdk@17` |
 
-## Dependency Management
+## Optional
 
-### Lua/Hammerspoon (Core)
-- **Installation**: Via Homebrew (`brew install --cask hammerspoon`)
-- **Location**: System application
-- **Config**: `~/.hammerspoon/`
-- **No package management needed** - Hammerspoon provides all necessary APIs
+| Dependency | Purpose | Install |
+|-----------|---------|---------|
+| [VoxCompose](https://github.com/cliffmin/voxcompose) | ML-powered transcript refinement | `brew install voxcompose` |
+| [Ollama](https://ollama.ai/) | Local LLM (required by VoxCompose) | `brew install ollama` |
 
-### Java Post-Processor
-- **Installation**: Via gradle (self-contained in `whisper-post-processor/`)
-- **Build**: `gradle shadowJar` creates fat JAR with all dependencies
-- **Runtime**: Requires Java 17+ (via `brew install openjdk`)
-- **Dependencies**: Managed by Gradle, bundled in JAR
+## Whisper Models
 
-### Python Tools (Optional, Isolated)
+After installing `whisper-cpp`, download the model files:
 
-**Important**: Python tools are NOT installed globally. They use **pipx** which creates isolated virtual environments for each tool.
-
-#### Architecture
-```
-~/.local/pipx/
-├── venvs/
-│   ├── openai-whisper/        # Isolated venv for whisper
-│   │   └── bin/python          # Used by push_to_talk.lua
-└── bin/
-    ├── whisper                 # Executable symlink
-```
-
-#### Current Python Dependencies
-
-1. **openai-whisper** (Being phased out)
-   - Purpose: Speech-to-text transcription
-   - Installation: `pipx install openai-whisper`
-   - Isolation: Runs in `~/.local/pipx/venvs/openai-whisper/`
-   - Status: Being replaced by whisper-cpp for 5-10x speed improvement
-
-
-### System Dependencies
-
-Installed via Homebrew:
 ```bash
-brew install ffmpeg          # Audio recording
-brew install whisper-cpp     # Fast transcription (recommended)
-brew install openjdk         # Java runtime for post-processor
-```
-
-**Important:** After installing `whisper-cpp`, you must download model files separately:
-```bash
-# Download base.en model (required)
+# Required: base.en (fast, ~150MB)
+# Used for short recordings (<21s)
 ./scripts/setup/download_whisper_models.sh base
 
-# Optional: Download medium.en for longer recordings
+# Recommended: medium.en (more accurate, ~500MB)
+# Used for longer recordings (>=21s)
 ./scripts/setup/download_whisper_models.sh medium
 ```
 
-See [Whisper Models Setup](whisper-models.md) for details.
+Models are stored at `/opt/homebrew/share/whisper-cpp/`. See [Whisper Models Setup](whisper-models.md) for details.
 
-## Dependency Isolation
+## Architecture
 
-### Why pipx?
-- **Isolation**: Each Python tool gets its own virtual environment
-- **No conflicts**: Dependencies don't interfere with system Python or each other
-- **Clean uninstall**: `pipx uninstall <package>` removes everything
-- **User-level**: Installed in `~/.local/`, not system-wide
-- **PATH management**: Automatically adds executables to PATH
-
-### Project-local venv (Not Used)
-This project does **not** use a project-local virtual environment (`.venv/`) because:
-1. No Python source code in the project
-2. Python tools are utilities, not project dependencies
-3. pipx provides better isolation for standalone tools
-
-The `.venv/` entry in `.gitignore` is defensive - preventing accidental commits if someone creates a local venv for testing.
-
-## Installation Guide
-
-### Minimal Setup (Recommended)
-```bash
-# Core dependencies only
-brew install --cask hammerspoon
-brew install ffmpeg whisper-cpp
-
-# Java for post-processor
-brew install openjdk
+```
+Hammerspoon (Lua)
+  └── push_to_talk_v2.lua    ← macOS glue: hotkeys, recording, paste
+        │
+        │ calls: voxcore transcribe <audio.wav> --model base.en
+        ▼
+VoxCore CLI (Java 17)
+  └── whisper-post.jar        ← config, whisper invocation, post-processing
+        │
+        │ calls: whisper-cli -m <model> -f <audio> --prompt <vocabulary>
+        ▼
+whisper-cpp (C++)              ← on-device transcription
 ```
 
-### Full Setup (With Optional Python Tools)
-```bash
-# Core dependencies
-brew install --cask hammerspoon
-brew install ffmpeg whisper-cpp openjdk
-
-# Python tools via pipx (optional)
-brew install pipx
-pipx ensurepath
-pipx install openai-whisper              # Fallback transcription
-```
-
-## Migration Path
-
-The project is transitioning away from Python dependencies:
-
-| Component | Current | Future | Status |
-|-----------|---------|---------|--------|
-| Transcription | openai-whisper (Python) | whisper-cpp (C++) | ✅ In Progress |
-| Post-processing | Java | Java | ✅ Complete |
-| Punctuation | Java | Java | ✅ Complete |
-
-## Testing Dependencies
-
-For development and testing:
-```bash
-# Install test dependencies
-pip install --user pytest  # Or use pipx install pytest
-
-# Run tests
-make test
-```
-
-## CI/CD Dependencies
-
-GitHub Actions workflow uses:
-- Python 3.11 (for CI environment setup)
-- pipx (for installing whisper during tests)
-- No production Python code
-
-## Troubleshooting
-
-### Python Tools Not Found
-If `whisper` or punctuation tools aren't found:
-```bash
-# Check pipx installations
-pipx list
-
-# Reinstall if needed
-pipx reinstall openai-whisper
-```
-
-### Verify Isolation
-```bash
-# Check that tools are using pipx venvs, not system Python
-which whisper
-# Should show: ~/.local/bin/whisper
-
-ls -la ~/.local/bin/whisper
-# Should be symlink to pipx installation
-```
-
-### Clean Uninstall
-```bash
-# Remove Python tools completely
-pipx uninstall openai-whisper
-
-# Remove pipx itself if desired
-pip uninstall pipx
-rm -rf ~/.local/pipx
-```
-
-## Summary
-
-- **Core functionality**: No Python required (Lua + Java)
-- **Python tools**: Optional, isolated via pipx
-- **No global Python packages**: Everything is contained
-- **Migration in progress**: Moving to compiled solutions for better performance
+No Python dependencies. No network access. Everything runs locally.

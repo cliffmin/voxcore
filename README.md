@@ -335,7 +335,7 @@ graph LR
 
 | Repository | Purpose | Status |
 |------------|---------|--------|
-| **[VoxCore](https://github.com/cliffmin/voxcore)** | Core push-to-talk transcription engine | v0.6.0 |
+| **[VoxCore](https://github.com/cliffmin/voxcore)** | Core push-to-talk transcription engine | v0.7.0 |
 | **[VoxCompose](https://github.com/cliffmin/voxcompose)** | Optional ML-based transcript refinement via local LLMs | v1.0.0 |
 | **[homebrew-tap](https://github.com/cliffmin/homebrew-tap)** | Homebrew formulae for easy installation | Active |
 
@@ -381,21 +381,22 @@ A: Yes. Edit `~/.hammerspoon/ptt_config.lua`.
 
 ## Roadmap
 
-**Current (v0.6.0):**
+**Current (v0.7.0):**
 - [x] Fast offline transcription (whisper-cpp)
 - [x] Universal paste (works everywhere)
 - [x] 100% private (never uploads)
 - [x] WAV backup (always saved)
 - [x] Smart post-processing (Java pipeline)
-- [x] Custom dictionaries and vocabulary
-- [x] Version tracking and performance analysis
-- [x] Plugin architecture (VoxCompose integration)
+- [x] Dynamic model selection (base.en for speed, medium.en for accuracy)
+- [x] VoxCompose vocabulary integration (auto-refresh)
+- [x] Robust audio device detection (name-based, handles macOS Continuity)
 - [x] Standalone CLI (`voxcore transcribe`)
+- [x] Plugin architecture (VoxCompose integration)
 
-**Next (v0.7.0):**
-- [ ] Robust audio device detection (name-based, handles macOS Continuity)
+**Next (v0.8.0):**
 - [ ] Streaming transcription (real-time feedback)
-- [ ] Enhanced vocabulary learning from corrections
+- [ ] Integration testing (E2E)
+- [ ] Log rotation and observability improvements
 
 **Future:**
 - [ ] Multi-mode plugins (journal, email, meeting modes)
