@@ -2,25 +2,33 @@
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-02-06
+
 ### Added
 - Golden test audio fixtures (25 synthetic WAV files) for accuracy testing
 - CI/CD install and upgrade test workflows (runs on PRs and main branch)
 - Plugin contract tests and mock plugin for verifying plugin integration
 - Performance baseline establishment and comparison scripts
 - VoxCompose version filtering support in `compare_versions.py` (exclude/include by version)
-- Plugin testing strategy documentation (docs/development/PLUGIN_TESTING_STRATEGY.md)
+- Ecosystem section in README linking VoxCore, VoxCompose, and homebrew-tap
 
 ### Changed
 - build: adopt Gradle Version Catalog for whisper-post-processor dependencies (internal; no user-visible changes)
 - `compare_versions.py`: Now excludes VoxCompose recordings by default for clean VoxCore metrics (use `--include-voxcompose` to include)
+- Consolidated testing documentation into single docs/development/testing.md
+- Dependabot: monthly cadence, grouped updates, auto-merge for minor/patch
 
 ### Fixed
 - Hammerspoon push-to-talk visual indicator: Replaced broken frame modification animation with smooth ripple effect (expanding rings that fade out)
 - Audio device detection: Now resolves microphone by name instead of index, preventing iPhone Continuity from hijacking recordings when connected (macOS 15+ issue)
+- Gradle Shadow plugin compatibility (downgraded to 8.3.9 for Gradle 8.5)
+- CI test memory footprint (removed 500MB allocation in WhisperServiceTest)
 
 ### Removed
 - Deprecated Python punctuation script (scripts/utilities/punctuate.py) and documentation references; Java PunctuationProcessor is the supported path.
 - ContextProcessor has been removed from VoxCore (daemon streaming pipeline), aligning with a stateless core. Adaptive/contextual casing moves to VoxCompose. No behavior change to the default CLI path.
+- Removed AI tool configuration files (.cursor/, .claude/) from repository tracking
+- Archived deprecated documentation: daemon API reference, PTT daemon docs, security checklist
 
 ## [0.6.0] - 2025-12-11 (Phase 1: Java CLI + Vocabulary Integration)
 ### Highlights
