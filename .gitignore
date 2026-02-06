@@ -65,3 +65,6 @@ whisper-post-processor/tests/
 
 # Golden test fixtures (personal audio)
 tests/fixtures/golden-features/
+
+# Performance baselines (local data)
+tests/fixtures/baselines/

@@ -57,14 +57,14 @@ jobs:
         
         echo ""
         echo "=== Verify Hammerspoon integration ==="
-        test -L "$HOME/.hammerspoon/push_to_talk.lua" && echo "✓ push_to_talk.lua symlinked" || exit 1
+        test -L "$HOME/.hammerspoon/push_to_talk_v2.lua" && echo "✓ push_to_talk_v2.lua symlinked" || exit 1
         test -f "$HOME/.hammerspoon/ptt_config.lua" && echo "✓ ptt_config.lua created" || exit 1
     
     - name: Verify files exist
       run: |
         echo "=== Verify installed files ==="
         BREW_PREFIX=$(brew --prefix)
-        test -f "$BREW_PREFIX/opt/voxcore/libexec/hammerspoon/push_to_talk.lua" && echo "✓ Lua files" || exit 1
+        test -f "$BREW_PREFIX/opt/voxcore/libexec/hammerspoon/push_to_talk_v2.lua" && echo "✓ Lua files" || exit 1
         test -f "$BREW_PREFIX/opt/voxcore/libexec/whisper-post-processor/build/libs/whisper-post.jar" && echo "✓ JAR file" || exit 1
     
     - name: Test whisper-post CLI
@@ -159,7 +159,7 @@ jobs:
         fi
         
         # Verify symlinks updated
-        test -L "$HOME/.hammerspoon/push_to_talk.lua" && echo "✓ Symlinks updated" || exit 1
+        test -L "$HOME/.hammerspoon/push_to_talk_v2.lua" && echo "✓ Symlinks updated" || exit 1
         
         # Re-run voxcore-install to ensure it works
         voxcore-install && echo "✓ voxcore-install works after upgrade" || exit 1
