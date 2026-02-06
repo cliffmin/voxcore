@@ -8,7 +8,7 @@ Thanks for your interest in improving VoxCore.
 - Keep diffs focused; avoid broad refactors
 
 ## Development quickstart
-- Edit hammerspoon/push_to_talk.lua and reload Hammerspoon (menu → Reload Config)
+- Edit hammerspoon/push_to_talk_v2.lua and reload Hammerspoon (menu → Reload Config)
 - Short smoke: record a 2–4s clip and a 10–15s clip; confirm paste and artifacts
 - Logs: tail -f ~/Documents/VoiceNotes/tx_logs/tx-$(date +%F).jsonl
 
