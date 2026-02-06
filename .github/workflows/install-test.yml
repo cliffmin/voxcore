@@ -72,7 +72,7 @@ jobs:
         echo ""
         echo "Checking Hammerspoon modules..."
         HS_PATH="$(brew --prefix)/opt/voxcore/libexec/hammerspoon"
-        test -f "$HS_PATH/push_to_talk.lua" && echo "✓ push_to_talk.lua" || echo "✗ push_to_talk.lua missing"
+        test -f "$HS_PATH/push_to_talk_v2.lua" && echo "✓ push_to_talk_v2.lua" || echo "✗ push_to_talk_v2.lua missing"
         test -f "$HS_PATH/ptt_config.lua" && echo "✓ ptt_config.lua" || echo "✗ ptt_config.lua missing"
         
         echo ""

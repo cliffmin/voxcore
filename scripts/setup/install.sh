@@ -24,7 +24,9 @@ pipx install --include-deps openai-whisper || pipx reinstall openai-whisper
 if [ -e "$HOME/.hammerspoon/push_to_talk.lua" ] && [ ! -L "$HOME/.hammerspoon/push_to_talk.lua" ]; then
   mv "$HOME/.hammerspoon/push_to_talk.lua" "$HOME/.hammerspoon/push_to_talk.lua.bak-$TS"
 fi
-ln -sf "$REPO_DIR/hammerspoon/push_to_talk.lua" "$HOME/.hammerspoon/push_to_talk.lua"
+# Remove old v1 symlink if present
+rm -f "$HOME/.hammerspoon/push_to_talk.lua"
+ln -sf "$REPO_DIR/hammerspoon/push_to_talk_v2.lua" "$HOME/.hammerspoon/push_to_talk_v2.lua"
 
 # Copy sample config on first install
 if [ ! -f "$HOME/.hammerspoon/ptt_config.lua" ]; then

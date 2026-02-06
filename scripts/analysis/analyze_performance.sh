@@ -106,7 +106,7 @@ else
 fi
 
 # Check which one is being used
-CURRENT_WHISPER=$(grep "WHISPER = " "$HOME/code/voxcore/hammerspoon/push_to_talk.lua" 2>/dev/null | head -1 || echo "")
+CURRENT_WHISPER=$(grep "WHISPER = " "$HOME/code/voxcore/hammerspoon/push_to_talk_v2.lua" 2>/dev/null | head -1 || echo "")
 if [[ "$CURRENT_WHISPER" == *"whisper-cpp"* ]]; then
     echo -e "${GREEN}Currently using: whisper-cpp (fast)${NC}"
     USING_FAST=true

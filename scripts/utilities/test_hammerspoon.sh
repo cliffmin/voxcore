@@ -14,18 +14,12 @@ if ! pgrep -q Hammerspoon; then
 fi
 echo "✅ Hammerspoon is running"
 
-# Check if push_to_talk.lua is linked
-if [ -L "$HOME/.hammerspoon/push_to_talk.lua" ]; then
-  TARGET=$(readlink "$HOME/.hammerspoon/push_to_talk.lua")
-  echo "✅ push_to_talk.lua is linked to: $TARGET"
-
-  if [[ "$TARGET" == *"push_to_talk_v2.lua"* ]]; then
-    echo "✅ Using v2 (CLI wrapper)"
-  else
-    echo "⚠️  Using old version (not v2)"
-  fi
+# Check if push_to_talk_v2.lua is linked
+if [ -L "$HOME/.hammerspoon/push_to_talk_v2.lua" ]; then
+  TARGET=$(readlink "$HOME/.hammerspoon/push_to_talk_v2.lua")
+  echo "✅ push_to_talk_v2.lua is linked to: $TARGET"
 else
-  echo "⚠️  push_to_talk.lua is not a symlink"
+  echo "⚠️  push_to_talk_v2.lua is not a symlink"
 fi
 
 # Check if voxcore CLI exists
