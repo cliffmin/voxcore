@@ -1,0 +1,12 @@
+{
+  "version": "0.7.0",
+  "timestamp": "2026-02-11T21:54:13Z",
+  "golden_dir": "tests/fixtures/golden-public",
+  "total_tests": 12,
+  "exact_matches": 2,
+  "exact_match_pct": 16,
+  "avg_accuracy_pct": 59,
+  "avg_time_ms": 1083,
+  "total_time_ms": 13000,
+  "notes": "Run locally with VoxCompose vocabulary hints (189 chars). CI runs without VoxCompose, so CI accuracy may differ."
+}

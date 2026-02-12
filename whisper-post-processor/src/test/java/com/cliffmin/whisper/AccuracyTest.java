@@ -23,11 +23,17 @@ class AccuracyTest {
     
     @BeforeAll
     static void setUp() throws IOException {
-        // Set up the pipeline
+        // Full production pipeline (10 processors, same order as RegressionTest)
         pipeline = new ProcessingPipeline()
+            .addProcessor(new ReflowProcessor())
+            .addProcessor(new DisfluencyProcessor())
+            .addProcessor(new ContractionNormalizer())
+            .addProcessor(new ConjunctionFollowerSplitter())
             .addProcessor(new MergedWordProcessor())
             .addProcessor(new SentenceBoundaryProcessor())
             .addProcessor(new CapitalizationProcessor())
+            .addProcessor(new PunctuationProcessor())
+            .addProcessor(new DictionaryProcessor())
             .addProcessor(new PunctuationNormalizer());
         
         // Load golden dataset
@@ -175,9 +181,9 @@ class AccuracyTest {
         System.out.printf("Average processing time: %.2f ms%n", avgTimeMs);
         System.out.printf("Throughput: %.0f ops/sec%n", 1000.0 / avgTimeMs);
         
-        // Assert performance threshold
+        // Assert performance threshold (full 10-processor pipeline)
         assertThat(avgTimeMs)
-            .as("Processing should take less than 100ms on average")
-            .isLessThan(100.0);
+            .as("Processing should take less than 500ms on average")
+            .isLessThan(500.0);
     }
 }
