@@ -37,9 +37,11 @@ jobs:
 
       - name: Create voxcore CLI wrapper
         run: |
-          cat > /tmp/voxcore <<'EOF'
+          VOXJAR=$(ls "$GITHUB_WORKSPACE/whisper-post-processor/build/libs/voxcore"*.jar 2>/dev/null | head -1)
+          if [ -z "$VOXJAR" ]; then echo "voxcore JAR not found"; exit 1; fi
+          cat > /tmp/voxcore << EOF
           #!/usr/bin/env bash
-          exec java -jar $GITHUB_WORKSPACE/whisper-post-processor/build/libs/voxcore.jar "$@"
+          exec java -jar "$VOXJAR" "\$@"
           EOF
           chmod +x /tmp/voxcore
 
