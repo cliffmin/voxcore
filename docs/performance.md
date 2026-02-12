@@ -1,6 +1,6 @@
 # Performance Benchmarks
 
-VoxCore has undergone significant performance improvements across major versions. This document tracks real-world performance metrics and improvements.
+VoxCore performance has improved significantly across versions, from multi-second Python transcriptions to sub-second local processing with whisper-cpp.
 
 ## Summary
 
@@ -9,323 +9,152 @@ VoxCore has undergone significant performance improvements across major versions
 | **0.1.0** | 5-8 seconds | Initial release (openai-whisper) | Baseline |
 | **0.2.0** | 3-5 seconds | Added punctuation restoration | ~40% faster |
 | **0.3.0** | <1 second | **whisper-cpp integration** | **5-10x faster** |
-| **0.4.0** | <1 second | Java service (warm start, reduced first-word truncation) | Maintained speed |
-| **0.4.3** | <1 second | Smart post-processing, version tracking | Maintained speed |
-| **0.5.0** | <1 second | Accuracy bump (~+2% on tests), new boundary/merged-word processors | Maintained speed |
+| **0.5.0** | <1 second | Accuracy bump, new processors | Maintained speed |
+| **0.6.0** | <1 second | Java CLI architecture | Maintained speed |
+| **0.7.0** | <1s (short), ~1s (medium) | Dynamic model selection, vocabulary hints | Accuracy improvement |
 
-## Major Performance Milestones
+## Current Architecture (v0.7.0)
 
-### v0.3.0: The whisper-cpp Revolution (Sept 2024)
-
-**Biggest performance jump in VoxCore history.**
-
-**Before (v0.2.0 - Python openai-whisper):**
-- Average transcription: 3-5 seconds
-- Cold start penalty: +2-3 seconds
-- CPU-bound, single-threaded
-
-**After (v0.3.0 - whisper-cpp):**
-- Average transcription: <1 second
-- Warm service (v0.4.0+): No cold start
-- Optimized C++, multi-threaded
-
-**Performance Improvement: 5-10x faster**
-
-### v0.4.0: Daemon Architecture (Sept 2024)
-
-**Focus: Reliability and first-word capture.**
-
-**Key Changes:**
-- Long-running Java service (no per-request JVM cold start)
-- HTTP/WebSocket endpoints
-- Warm whisper-cpp service
-- Reduced first-word truncation
-
-**Performance Improvement:**
-- Maintained <1s transcription speed
-- Eliminated cold-start delays
-- Improved start-of-speech capture
-- More consistent performance
-
-### v0.4.3: Smart Post-Processing (Current)
-
-**Focus: Quality without sacrificing speed.**
-
-**Added:**
-- Version tracking (metadata overhead: <5ms)
-- Enhanced post-processing pipeline
-- Automatic model selection refinements
-
-**Performance:**
-- Still <1 second for typical prompts (5-15 seconds of audio)
-- Smart model switching at 21-second threshold
-- Post-processing overhead: 50-100ms
-
-### v0.5.0: Post-Processing Quality (Maintained Speed)
-
-**Focus: Better text boundaries and merged-word handling at the same latency.**
-
-- SentenceBoundaryProcessor keeps sentences intact (no stray splits like `the. Project. Vox. Core`).
-- MergedWordProcessor expands patterns for common splits (`willbe`, `shouldbe`, `kindof`, `sortof`, etc.).
-- DictionaryProcessor keeps Vox ecosystem terms together and properly cased (`VoxCore`, `VoxCompose`, `Hammerspoon`, `Whisper`).
-
-**Performance & accuracy:**
-- Automated post-processor tests show ~+2% accuracy vs 0.4.3.
-- Post-processing still <100 ms; end-to-end transcription remains <1s for short clips.
-- Reproduce on your data: `scripts/analysis/compare_versions.py -v 0.4.3 0.5.0 --metrics transcription_time duration chars`.
-
-## Detailed Benchmarks
-
-### Typical Use Cases (Real-World)
-
-Based on actual recordings from daily use:
-
-#### Short Prompts (2-10 seconds)
 ```
-Audio Duration: 5 seconds
-Model: base.en
-Transcription Time: 450-800ms
-Processing Overhead: ~50ms
-Total Time: ~0.5-0.9 seconds
-
-Example: "How do I fix this React rendering issue?"
-Result: Instant feedback, feels native
+Hammerspoon (hotkey, recording)
+  → ffmpeg (16kHz mono WAV capture)
+  → voxcore transcribe (Java CLI)
+    → whisper-cpp (on-device STT)
+    → 10-stage post-processing pipeline
+  → paste to cursor
 ```
 
-#### Medium Prompts (10-21 seconds)
+All processing is local. Zero network dependencies.
+
+## Benchmark Results (v0.7.0)
+
+### End-to-End Pipeline (Synthetic Golden Dataset)
+
+From `tests/results/baselines/v0.7.0-golden-public.json`, run against 12 synthetic fixtures:
+
+| Metric | Value |
+|--------|-------|
+| Total tests | 12 |
+| Exact matches | 2 (16%) |
+| Average word accuracy | 59% |
+| Average transcription time | 1,083ms |
+| Total time (12 fixtures) | 13s |
+
+**Notes:**
+- These are synthetic (macOS `say`) fixtures testing the full pipeline end-to-end.
+- Word accuracy measures normalized word-by-word matching after removing punctuation and casing.
+- Exact match rate is low because whisper-cpp introduces minor variations (hyphenation, number formatting, CamelCase splitting) that are correct but differ from the literal TTS script.
+- Real-world accuracy with natural speech is typically higher than synthetic benchmarks for common phrases.
+
+### Post-Processing Pipeline (Unit Tests)
+
+From `AccuracyTest.java`, the 10-processor pipeline against 29 golden text cases:
+
+| Metric | Value |
+|--------|-------|
+| Exact match accuracy | 100% (29/29) |
+| Word Error Rate (WER) | 0.0% |
+| Performance | <500ms for 100 iterations of long text |
+
+Categories tested: merged words, sentence boundaries, capitalization, punctuation, vocabulary, disfluency removal, contractions, mixed patterns.
+
+## Dynamic Model Selection (v0.7.0)
+
+VoxCore automatically selects the whisper model based on recording duration:
+
+| Duration | Model | Typical Speed | Trade-off |
+|----------|-------|---------------|-----------|
+| <21s | base.en | ~500ms | Fast, slightly lower accuracy |
+| ≥21s | medium.en | ~1-2s | Slower, better accuracy |
+
+The threshold and model names are configurable in `ptt_config.lua`:
+
+```lua
+DYNAMIC_MODEL = true           -- Enable/disable
+MODEL_THRESHOLD_SEC = 21       -- Duration threshold
+SHORT_MODEL = "base.en"        -- Fast model
+LONG_MODEL = "medium.en"       -- Accurate model
 ```
-Audio Duration: 15 seconds  
-Model: base.en
-Transcription Time: 1.2-1.8 seconds
-Processing Overhead: ~75ms
-Total Time: ~1.3-1.9 seconds
 
-Example: Explaining a bug in detail
-Result: Fast enough for interactive use
-```
+## Vocabulary Hints (v0.7.0)
 
-#### Long-Form (>21 seconds)
-```
-Audio Duration: 60 seconds
-Model: medium.en (automatic switch)
-Transcription Time: 4-6 seconds
-Processing Overhead: ~100ms
-Total Time: ~4-6 seconds
+When VoxCompose is installed, learned vocabulary is automatically passed to whisper-cpp as prompt hints. This improves recognition of technical terms and proper nouns without affecting speed.
 
-Example: Dictating meeting notes
-Result: Slower but accurate, worth the wait
-```
+Without VoxCompose, a static prompt (`"Um, uh, like, you know."`) is used. Transcription works either way.
 
-### Baseline Comparisons
+## Typical Use Cases
 
-From tests/fixtures/baselines (September 2024):
-
-**Short recordings (5-10s audio):**
-- Mean transcription time: 650ms
-- 95th percentile: 850ms
+### Short Prompts (2-10 seconds)
 - Model: base.en
+- Transcription: 400-800ms
+- Post-processing: ~50ms
+- Example: "How do I fix this React rendering issue?"
 
-**Medium recordings (10-21s audio):**
-- Mean transcription time: 1.5s
-- 95th percentile: 2.1s
+### Medium Prompts (10-21 seconds)
 - Model: base.en
+- Transcription: 1.0-1.8s
+- Post-processing: ~75ms
+- Example: Explaining a bug in detail
 
-**Long recordings (>21s audio):**
-- Mean transcription time: 5.2s
-- 95th percentile: 7.8s
-- Model: medium.en (better accuracy)
+### Long-Form (>21 seconds)
+- Model: medium.en (automatic switch)
+- Transcription: 4-6s
+- Post-processing: ~100ms
+- Example: Dictating meeting notes
 
-## Performance vs. Competitors
+## Hardware Performance
 
-### Cloud Services Comparison
+| Mac | Short (5s) | Medium (15s) | Long (60s) |
+|-----|-----------|-------------|------------|
+| M1 (base) | 400-600ms | 1.0-1.5s | 3-5s |
+| M2 Pro | 300-500ms | 0.8-1.2s | 2.5-4s |
+| Intel i7 (2019) | 800-1200ms | 2-3s | 6-9s |
 
-| Service | Short (5s) | Medium (15s) | Long (60s) | Offline |
-|---------|------------|--------------|------------|---------|
-| **VoxCore** | 0.5-0.8s | 1.3-1.9s | 4-6s | ✅ Yes |
-| ChatGPT Voice | 1-2s | 2-3s | 8-12s | ❌ Cloud only |
-| Cursor | 2-3s | 3-4s | 10-15s | ❌ API required |
-| macOS Dictation | 3-5s | 5-8s | 15-25s | ❌ Cloud required |
-
-**Key Advantage:** VoxCore is often faster than cloud services due to zero network latency.
-
-### Local Competitors
-
-| Tool | Speed | Setup | Use Case |
-|------|-------|-------|----------|
-| **VoxCore** | <1s | 5 min | Quick transcription |
-| Talon | <1s | Hours | Full voice control |
-| Dragon | <1s | Hours | Professional dictation |
-
-**VoxCore sweet spot:** Fast to set up, fast to use, perfect for quick transcription.
-
-## System Requirements Impact
-
-### Hardware Performance
-
-Tested on various Macs:
-
-**M1 Mac (base):**
-- Short: 400-600ms
-- Medium: 1.0-1.5s
-- Long: 3-5s
-
-**Intel i7 (2019):**
-- Short: 800-1200ms
-- Medium: 2-3s
-- Long: 6-9s
-
-**M2 Pro:**
-- Short: 300-500ms
-- Medium: 0.8-1.2s
-- Long: 2.5-4s
-
-**Recommendation:** Any Mac from 2018+ works well. Apple Silicon provides best performance.
-
-## Performance Optimizations
-
-### Automatic Model Selection
-
-VoxCore automatically selects models based on audio duration:
-
-**base.en (faster):**
-- Used for: <21 seconds
-- Speed: ~50-80ms per second of audio
-- Accuracy: ~93-95%
-
-**medium.en (more accurate):**
-- Used for: ≥21 seconds
-- Speed: ~80-120ms per second of audio
-- Accuracy: ~96-98%
-
-This ensures optimal speed/accuracy trade-off automatically.
-
-### Processing Pipeline
-
-**Transcription stages:**
-1. Audio normalization: ~10ms
-2. Whisper transcription: 400-800ms (short), 1-2s (medium)
-3. Post-processing: 50-100ms
-   - Reflow: ~20ms
-   - Disfluency removal: ~15ms
-   - Punctuation: ~20ms
-   - Dictionary: ~5ms
-   - Capitalization: ~10ms
-
-**Total overhead from post-processing: ~70ms**
-
-The post-processing is worth it—removes "um"s, fixes punctuation, and capitalizes technical terms.
+Any Mac from 2018+ works. Apple Silicon provides best performance.
 
 ## Performance Tracking
 
-### How We Measure
+### Transaction Logs
 
-Every transcription logs performance metrics:
+Every transcription logs metrics to `~/Documents/VoiceNotes/tx_logs/tx-YYYY-MM-DD.jsonl`:
 
 ```json
 {
-  "ts": "2025-11-15T19:30:00Z",
+  "ts": "2026-02-06T19:30:00Z",
   "kind": "success",
   "model": "base.en",
   "duration_sec": 6.1,
   "tx_ms": 580,
   "transcript_chars": 67,
-  "voxcore_version": "0.4.3"
+  "voxcore_version": "0.7.0"
 }
 ```
 
-Logs stored in: `~/Documents/VoiceNotes/tx_logs/tx-YYYY-MM-DD.jsonl`
-
-### Analyzing Your Performance
+### Benchmarking
 
 ```bash
-# View recent performance
-tail -f ~/Documents/VoiceNotes/tx_logs/tx-$(date +%F).jsonl
+# Run benchmark against public golden fixtures
+scripts/utilities/benchmark_cli.sh
 
-# Analyze performance trends
-python scripts/analysis/analyze_logs.py
+# Run against private golden fixtures (local only)
+GOLDEN_DIR=tests/fixtures/golden scripts/utilities/benchmark_cli.sh
 
-# Compare across versions (after organizing)
-make compare-versions
+# Save results as JSON
+BENCHMARK_OUTPUT=results.json scripts/utilities/benchmark_cli.sh
+
+# Run Java accuracy tests
+cd whisper-post-processor && ./gradlew integrationTest
 ```
 
-## Known Performance Considerations
+### Regression Testing
 
-### First Transcription
+The CI workflow (`benchmark-regression.yml`) runs benchmarks on every PR:
+- Accuracy threshold: ≥50%
+- Speed threshold: ≤2,000ms average
+- Results posted as PR comment and uploaded as artifact
 
-**Slower on first use (one-time):**
-- Model loading: +500-800ms
-- System setup: +200-300ms
-
-**Subsequent transcriptions:** Full speed (<1s)
-
-**Solution:** Models stay loaded in memory after first use.
-
-### Network Bandwidth
-
-**VoxCore uses zero network bandwidth for transcription.**
-
-This means:
-- No latency from WiFi/cellular
-- No bandwidth caps
-- No throttling from ISP
-- Works on planes/trains
-- Consistent performance everywhere
-
-### Disk I/O
-
-**WAV file saving:** ~50-100ms
-- Asynchronous, doesn't block transcription
-- Minimal impact on performance
-
-**Benefit:** You get recordings as backup for free, with negligible overhead.
-
-## Future Performance Goals
-
-### Planned Optimizations
-
-- **Streaming transcription:** Real-time partial results (<100ms latency)
-- **GPU acceleration:** Leverage Apple Neural Engine on M-series chips
-- **Model quantization:** Smaller models, same accuracy, 2x faster
-- **Cache layer:** Re-use results for similar audio patterns
-
-### Target Metrics (v0.5.0+)
-
-- Short prompts: <300ms (50% faster)
-- Medium prompts: <1s (30% faster)
-- Long-form: <3s for 60s audio (40% faster)
-- First transcription: <500ms total (eliminate cold start)
-
-## Benchmark Reproduction
-
-Want to verify these numbers yourself?
-
-```bash
-# Run smoke benchmarks
-make benchmark-smoke
-
-# Full benchmark suite
-make test-java-integration
-
-# Custom benchmark on your recordings
-python tests/integration/benchmark_against_baseline.py
-```
-
-## Conclusion
-
-**VoxCore is fast because:**
-1. **Local processing** - No network latency
-2. **whisper-cpp** - Optimized C++ implementation
-3. **Smart model selection** - Right tool for the job
-4. **Warm service** - No cold starts
-5. **Efficient pipeline** - Minimal post-processing overhead
-
-**Result: Sub-second transcription that feels instant.**
+Historical baselines are committed in `tests/results/baselines/`.
 
 ---
 
-**Performance data tracked in:**
-- `tests/fixtures/baselines/` - Historical baseline data
-- `tests/results/` - Benchmark results
-- `~/Documents/VoiceNotes/tx_logs/` - Your actual usage metrics
-
-**Last updated:** v0.4.3 (November 2024)
+**Last updated:** v0.7.0 (February 2026)

@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Development
+- Benchmark framework: 12 synthetic golden-public WAV fixtures (4 short, 4 medium, 4 long) committed for CI regression testing
+- Golden dataset expanded from 10 to 29 test cases covering vocabulary, disfluency, contractions, merged words, sentence boundaries, and mixed patterns
+- AccuracyTest updated to use full 10-processor production pipeline (was 4)
+- CI benchmark workflow now runs against committed fixtures instead of silently skipping
+- Accuracy threshold raised from 38% to 50%, speed threshold set to 2,000ms
+- v0.7.0 baseline committed: 59% word accuracy, 1,083ms average time
+- Performance documentation updated to v0.7.0 with current metrics and benchmark instructions
+
 ## [0.7.0] - 2026-02-06
 
 ### Added
