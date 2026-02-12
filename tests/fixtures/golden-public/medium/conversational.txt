@@ -1,0 +1,1 @@
+I think the best approach is to start with the basic implementation and then iterate. We should focus on getting the core functionality working first. Once that is stable we can add the additional features like vocabulary integration and debug logging. The important thing is to maintain backward compatibility throughout the process.

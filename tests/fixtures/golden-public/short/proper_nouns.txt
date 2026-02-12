@@ -1,0 +1,1 @@
+I worked on the VoxCore project using GitHub and Hammerspoon on macOS.

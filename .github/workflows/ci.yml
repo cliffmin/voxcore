@@ -208,10 +208,11 @@ jobs:
     - name: Check for large files
       run: |
         echo "=== Checking for large files (>1MB) ==="
+        # Exclude test fixture audio (golden and golden-public)
         large_files=$(find . -type f -size +1M -not -path "./.git/*" \
                       -not -path "./whisper-post-processor/build/*" \
-                      -not -path "./tests/fixtures/golden/**" \
-                      -not -path "./assets/**" \
+                      -not -path "*tests/fixtures/golden*" \
+                      -not -path "./assets/*" \
                       -not -name "*.jar" | head -10)
         if [ -n "$large_files" ]; then
           echo "Large files found:"

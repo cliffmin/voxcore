@@ -1,0 +1,1 @@
+The transcription engine uses whisper cpp for on device speech recognition. Audio is captured at sixteen kilohertz mono through ffmpeg. The Java post processor handles text cleanup including merged word separation, sentence boundary detection, and capitalization. All processing happens locally without any network access.
