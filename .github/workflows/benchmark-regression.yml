@@ -65,8 +65,8 @@ jobs:
           AVG_ACCURACY=${{ steps.benchmark.outputs.avg_accuracy }}
           AVG_TIME=${{ steps.benchmark.outputs.avg_time }}
 
-          # Baseline thresholds (v0.7.0: 59% accuracy, 1083ms avg)
-          MIN_ACCURACY=50  # Must not drop below 50%
+          # Baseline thresholds (v0.7.0 local with vocab: 59%, 1083ms; CI runs without VoxCompose)
+          MIN_ACCURACY=38  # Must not drop below 38% (CI has no vocabulary hints)
           MAX_TIME=2000    # Must not exceed 2000ms
 
           echo "=== Regression Check ==="
@@ -116,11 +116,11 @@ jobs:
             const body = [
               '## Benchmark Results',
               '',
-              '**Baseline Performance (v0.7.0: 59% / 1083ms):**',
-              `- Accuracy: ${accuracy}% (threshold: >=50%)`,
+              '**Baseline (v0.7.0 local: 59% / 1083ms; CI runs without VoxCompose):**',
+              `- Accuracy: ${accuracy}% (threshold: >=38%)`,
               `- Speed: ${time}ms (threshold: <=2000ms)`,
               '',
-              Number(accuracy) >= 50 && Number(time) <= 2000
+              Number(accuracy) >= 38 && Number(time) <= 2000
                 ? 'All regression checks passed.'
                 : 'Performance regression detected.',
               '',
