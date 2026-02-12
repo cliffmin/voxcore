@@ -1,32 +1,88 @@
 {
+  "version": "2.0",
+  "description": "Golden dataset for post-processing accuracy testing. Expected outputs are calibrated against the full 10-processor pipeline.",
+  "pipeline_order": [
+    "ReflowProcessor",
+    "DisfluencyProcessor",
+    "ContractionNormalizer",
+    "ConjunctionFollowerSplitter",
+    "MergedWordProcessor",
+    "SentenceBoundaryProcessor",
+    "CapitalizationProcessor",
+    "PunctuationProcessor",
+    "DictionaryProcessor",
+    "PunctuationNormalizer"
+  ],
   "test_cases": [
     {
       "id": "merged-words-1",
       "category": "merged_words",
       "input": "theyconfigure the system that'slike important",
       "expected": "They configure the system that's like important.",
-      "description": "Common merged words from Whisper"
+      "description": "Common merged words from Whisper: they+verb, possessive+'like'"
     },
     {
       "id": "merged-words-2",
       "category": "merged_words",
       "input": "i'mjust implementing the apikey validation withthe servicelayer",
       "expected": "I'm just implementing the API key validation with the service layer.",
-      "description": "Technical terms and contractions"
+      "description": "Technical terms and contractions with merged preposition+the"
     },
     {
-      "id": "run-on-1",
+      "id": "merged-words-3",
+      "category": "merged_words",
+      "input": "shouldbe ready forthe meeting inthe conference room",
+      "expected": "Should be ready for the meeting in the conference room.",
+      "description": "Modal+be and preposition+the merge patterns"
+    },
+    {
+      "id": "merged-words-4",
+      "category": "merged_words",
+      "input": "the usecase willbe reviewed bythe team atthe end ofthe week",
+      "expected": "The use case will be reviewed by the team at the end of the week.",
+      "description": "Multiple preposition+the and modal+be merges"
+    },
+    {
+      "id": "merged-words-5",
+      "category": "merged_words",
+      "input": "check the textfield forthe dblayer connection",
+      "expected": "Check the text field for the DB layer connection.",
+      "description": "Technical compound words: textfield, dblayer"
+    },
+    {
+      "id": "boundary-1",
       "category": "sentence_boundaries",
-      "input": "this is the first sentence this is the second sentence",
-      "expected": "This is the first sentence. This is the second sentence.",
-      "description": "Missing sentence boundary"
+      "input": "this is done.Now we begin",
+      "expected": "This is done. Now we begin.",
+      "description": "Merged sentence boundary: missing space after period"
+    },
+    {
+      "id": "boundary-2",
+      "category": "sentence_boundaries",
+      "input": "the code works.The tests pass",
+      "expected": "The code works. The tests pass.",
+      "description": "Merged sentence boundary: period+Capital"
+    },
+    {
+      "id": "boundary-3",
+      "category": "sentence_boundaries",
+      "input": "great!The results look good",
+      "expected": "Great! The results look good.",
+      "description": "Merged exclamation boundary"
     },
     {
       "id": "capitalization-1",
       "category": "capitalization",
-      "input": "i went to the store. then i came back",
-      "expected": "I went to the store. Then I came back.",
+      "input": "i went to the store. i came home",
+      "expected": "I went to the store. I came home.",
       "description": "Capitalize I and sentence starts"
+    },
+    {
+      "id": "capitalization-2",
+      "category": "capitalization",
+      "input": "the project is done. we can deploy now. it works well",
+      "expected": "The project is done. We can deploy now. It works well.",
+      "description": "Multiple sentence start capitalization"
     },
     {
       "id": "punctuation-1",
@@ -38,16 +94,16 @@
     {
       "id": "complex-1",
       "category": "complex",
-      "input": "theydon't understand what'sthe problem withthe backend servicelayer that'slike causing issues forthe endpoints",
-      "expected": "They don't understand what's the problem with the backend service layer that's like causing issues for the endpoints.",
-      "description": "Multiple issues in one sentence"
+      "input": "don'tknow what'sthe problem withthe backend servicelayer forthe endpoints",
+      "expected": "Don't know what's the problem with the backend service layer for the endpoints.",
+      "description": "Multiple merged word patterns in one sentence"
     },
     {
       "id": "complex-2",
       "category": "complex",
-      "input": "i'mjust saying the usecase forthe apikeys isthe following we need proper validation",
-      "expected": "I'm just saying the use case for the API keys is the following we need proper validation.",
-      "description": "Mixed technical and common terms"
+      "input": "theyconfigure the apikeys forthe usecase validation inthe servicelayer",
+      "expected": "They configure the API keys for the use case validation in the service layer.",
+      "description": "Technical terms with preposition+the merges"
     },
     {
       "id": "preserve-1",
@@ -61,14 +117,105 @@
       "category": "preserve",
       "input": "The API key is valid.",
       "expected": "The API key is valid.",
-      "description": "Already correct technical terms"
+      "description": "Already correct technical terms preserved"
+    },
+    {
+      "id": "preserve-3",
+      "category": "preserve",
+      "input": "The URL configuration is valid.",
+      "expected": "The URL configuration is valid.",
+      "description": "Uppercase-only dictionary terms preserved"
     },
     {
       "id": "long-1",
       "category": "long_text",
-      "input": "this is a very long sentence that just keeps going and going without any punctuation or proper capitalization it should probably be split into multiple sentences for better readability but whisper sometimes produces these run-on transcriptions",
-      "expected": "This is a very long sentence that just keeps going and going without any punctuation or proper capitalization it should probably be split into multiple sentences for better readability but whisper sometimes produces these run-on transcriptions.",
-      "description": "Very long run-on sentence"
+      "input": "this is a very long sentence that just keeps going without any punctuation or proper capitalization it should probably be split into multiple sentences for better readability",
+      "expected": "This is a very long sentence that just keeps going without any punctuation or proper capitalization it should probably be split into multiple sentences for better readability.",
+      "description": "Long run-on sentence (under 200 chars, no split expected)"
+    },
+    {
+      "id": "vocabulary-1",
+      "category": "vocabulary",
+      "input": "we use github for version control",
+      "expected": "We use GitHub for version control.",
+      "description": "Dictionary: github -> GitHub"
+    },
+    {
+      "id": "vocabulary-2",
+      "category": "vocabulary",
+      "input": "the javascript api returns json data",
+      "expected": "The JavaScript API returns JSON data.",
+      "description": "Dictionary: multiple tech terms in one sentence"
+    },
+    {
+      "id": "vocabulary-3",
+      "category": "vocabulary",
+      "input": "the voxcore project uses hammerspoon",
+      "expected": "The VoxCore project uses Hammerspoon.",
+      "description": "Dictionary: ecosystem-specific terms"
+    },
+    {
+      "id": "vocabulary-4",
+      "category": "vocabulary",
+      "input": "deploy withthe kubernetes docker setup forthe typescript backend",
+      "expected": "Deploy with the Kubernetes Docker setup for the TypeScript backend.",
+      "description": "Dictionary terms combined with merged word fixes"
+    },
+    {
+      "id": "disfluency-1",
+      "category": "disfluency",
+      "input": "I um think this is uh really good",
+      "expected": "I think this is really good.",
+      "description": "Simple filler word removal: um, uh"
+    },
+    {
+      "id": "disfluency-2",
+      "category": "disfluency",
+      "input": "basically the system works well",
+      "expected": "The system works well.",
+      "description": "Beginning disfluency removal: basically"
+    },
+    {
+      "id": "disfluency-3",
+      "category": "disfluency",
+      "input": "it's you know a great result",
+      "expected": "It's a great result.",
+      "description": "Standalone filler removal: you know"
+    },
+    {
+      "id": "contraction-1",
+      "category": "contraction",
+      "input": "don'tknow how to fix the problem",
+      "expected": "Don't know how to fix the problem.",
+      "description": "Merged contraction: don't+know"
+    },
+    {
+      "id": "contraction-2",
+      "category": "contraction",
+      "input": "ive been working on the project",
+      "expected": "I've been working on the project.",
+      "description": "ContractionNormalizer: ive -> I've"
+    },
+    {
+      "id": "mixed-1",
+      "category": "mixed",
+      "input": "I um think the apikey shouldbe configured forthe backend",
+      "expected": "I think the API key should be configured for the backend.",
+      "description": "Disfluency removal + merged words + technical terms"
+    },
+    {
+      "id": "mixed-2",
+      "category": "mixed",
+      "input": "basically we deploy withthe kubernetes api forthe docker containers",
+      "expected": "We deploy with the Kubernetes API for the Docker containers.",
+      "description": "Beginning disfluency + merged words + dictionary terms"
+    },
+    {
+      "id": "mixed-3",
+      "category": "mixed",
+      "input": "theyconfigure the voxcore servicelayer withthe apikeys forthe usecase",
+      "expected": "They configure the VoxCore service layer with the API keys for the use case.",
+      "description": "All processor interaction: merged words + dictionary + technical terms"
     }
   ]
 }

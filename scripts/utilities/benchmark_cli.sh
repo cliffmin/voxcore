@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-GOLDEN_DIR="$REPO_ROOT/tests/fixtures/golden"
+GOLDEN_DIR="${GOLDEN_DIR:-$REPO_ROOT/tests/fixtures/golden-public}"
 VOXCORE_CLI="${VOXCORE_CLI:-/opt/homebrew/bin/voxcore}"
 
 if [[ ! -x "$VOXCORE_CLI" ]]; then
@@ -88,10 +88,33 @@ while IFS= read -r wav; do
   fi
 done < <(find "$GOLDEN_DIR" -name "*.wav" | sort)
 
+avg_accuracy=$(( total > 0 ? total_word_accuracy / total : 0 ))
+avg_time=$(( total > 0 ? total_time_ms / total : 0 ))
+exact_pct=$(( total > 0 ? total_exact_matches * 100 / total : 0 ))
+
 echo ""
 echo "=== Benchmark Results ==="
 echo "Total tests:    $total"
-echo "Exact matches:  $total_exact_matches ($(( total > 0 ? total_exact_matches * 100 / total : 0 ))%)"
-echo "Avg accuracy:   $(( total > 0 ? total_word_accuracy / total : 0 ))%"
-echo "Avg time:       $(( total > 0 ? total_time_ms / total : 0 ))ms"
+echo "Exact matches:  $total_exact_matches (${exact_pct}%)"
+echo "Avg accuracy:   ${avg_accuracy}%"
+echo "Avg time:       ${avg_time}ms"
 echo "Total time:     ${total_time_ms}ms"
+
+# Write JSON results if output file specified
+if [[ -n "${BENCHMARK_OUTPUT:-}" ]]; then
+  cat > "$BENCHMARK_OUTPUT" <<JSONEOF
+{
+  "version": "$(cd "$REPO_ROOT/whisper-post-processor" && ./gradlew properties -q 2>/dev/null | grep '^version:' | awk '{print $2}' || echo 'unknown')",
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "golden_dir": "$GOLDEN_DIR",
+  "total_tests": $total,
+  "exact_matches": $total_exact_matches,
+  "exact_match_pct": $exact_pct,
+  "avg_accuracy_pct": $avg_accuracy,
+  "avg_time_ms": $avg_time,
+  "total_time_ms": $total_time_ms
+}
+JSONEOF
+  echo ""
+  echo "Results saved to: $BENCHMARK_OUTPUT"
+fi

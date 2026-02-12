@@ -1,0 +1,1 @@
+VoxCore version zero point seven introduced dynamic model selection. Short recordings under twenty one seconds use the base english model for faster processing around five hundred milliseconds. Longer recordings automatically switch to the medium english model which provides better accuracy. Users can configure the threshold in their config file.

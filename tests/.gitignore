@@ -1,5 +1,6 @@
 # Test results and personal data
-results/
+results/*
+!results/baselines/
 fixtures/personal/
 fixtures/samples_current/
 *.tmp

@@ -8,7 +8,8 @@ __pycache__/
 
 # Personal data and test results
 tests/fixtures/personal/
-tests/results/
+tests/results/*
+!tests/results/baselines/
 tests/fixtures/samples_current/
 tests/fixtures/golden/
 
@@ -52,6 +53,7 @@ models/
 *.mp3
 *.m4a
 !tests/fixtures/golden/**/*.wav
+!tests/fixtures/golden-public/**/*.wav
 
 # Personal voice notes
 VoiceNotes/

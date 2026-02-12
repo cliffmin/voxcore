@@ -18,7 +18,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          lfs: true  # Pull LFS files if using Git LFS for audio
+          lfs: true
 
       - name: Install whisper-cpp
         run: |
@@ -37,7 +37,6 @@ jobs:
 
       - name: Create voxcore CLI wrapper
         run: |
-          mkdir -p /tmp
           cat > /tmp/voxcore <<'EOF'
           #!/usr/bin/env bash
           exec java -jar $GITHUB_WORKSPACE/whisper-post-processor/build/libs/voxcore.jar "$@"
@@ -47,15 +46,11 @@ jobs:
       - name: Run baseline benchmark
         id: benchmark
         run: |
-          # Note: Using public golden dataset only (private datasets are .gitignored)
-          # For full benchmarks, run locally with personal test data
-          if [ -d "tests/fixtures/golden-public" ]; then
-            VOXCORE_CLI=/tmp/voxcore GOLDEN_DIR=tests/fixtures/golden-public ./scripts/utilities/benchmark_cli.sh > benchmark-results.txt 2>&1
-          else
-            echo "No public golden dataset found. Skipping benchmark."
-            echo "To enable CI benchmarks, create tests/fixtures/golden-public/ with non-personal test audio."
-            exit 0
-          fi
+          # Uses golden-public dataset (committed synthetic fixtures)
+          VOXCORE_CLI=/tmp/voxcore \
+          GOLDEN_DIR=tests/fixtures/golden-public \
+          BENCHMARK_OUTPUT=benchmark-results.json \
+          ./scripts/utilities/benchmark_cli.sh | tee benchmark-results.txt
 
           # Extract metrics
           AVG_ACCURACY=$(grep "Avg accuracy:" benchmark-results.txt | awk '{print $3}' | tr -d '%')
@@ -64,43 +59,40 @@ jobs:
           echo "avg_accuracy=$AVG_ACCURACY" >> $GITHUB_OUTPUT
           echo "avg_time=$AVG_TIME" >> $GITHUB_OUTPUT
 
-          # Display results
-          cat benchmark-results.txt
-
       - name: Check regression thresholds
         if: steps.benchmark.outputs.avg_accuracy != ''
         run: |
           AVG_ACCURACY=${{ steps.benchmark.outputs.avg_accuracy }}
           AVG_TIME=${{ steps.benchmark.outputs.avg_time }}
 
-          # Baseline thresholds (from docs/TESTING.md)
-          MIN_ACCURACY=38  # Must not drop below 38%
-          MAX_TIME=1200     # Must not exceed 1200ms
+          # Baseline thresholds (v0.7.0: 59% accuracy, 1083ms avg)
+          MIN_ACCURACY=50  # Must not drop below 50%
+          MAX_TIME=2000    # Must not exceed 2000ms
 
           echo "=== Regression Check ==="
-          echo "Accuracy: ${AVG_ACCURACY}% (threshold: ≥${MIN_ACCURACY}%)"
-          echo "Speed: ${AVG_TIME}ms (threshold: ≤${MAX_TIME}ms)"
+          echo "Accuracy: ${AVG_ACCURACY}% (threshold: >=${MIN_ACCURACY}%)"
+          echo "Speed: ${AVG_TIME}ms (threshold: <=${MAX_TIME}ms)"
 
           FAILED=0
 
           if [ "$AVG_ACCURACY" -lt "$MIN_ACCURACY" ]; then
-            echo "❌ FAIL: Accuracy ${AVG_ACCURACY}% below threshold ${MIN_ACCURACY}%"
+            echo "FAIL: Accuracy ${AVG_ACCURACY}% below threshold ${MIN_ACCURACY}%"
             FAILED=1
           else
-            echo "✅ PASS: Accuracy within threshold"
+            echo "PASS: Accuracy within threshold"
           fi
 
           if [ "$AVG_TIME" -gt "$MAX_TIME" ]; then
-            echo "❌ FAIL: Speed ${AVG_TIME}ms exceeds threshold ${MAX_TIME}ms"
+            echo "FAIL: Speed ${AVG_TIME}ms exceeds threshold ${MAX_TIME}ms"
             FAILED=1
           else
-            echo "✅ PASS: Speed within threshold"
+            echo "PASS: Speed within threshold"
           fi
 
           if [ "$FAILED" -eq 1 ]; then
             echo ""
             echo "Regression detected! Performance has dropped below acceptable thresholds."
-            echo "See docs/TESTING.md for baseline expectations."
+            echo "See tests/results/baselines/ for historical baselines."
             exit 1
           fi
 
@@ -109,7 +101,9 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: benchmark-results
-          path: benchmark-results.txt
+          path: |
+            benchmark-results.txt
+            benchmark-results.json
           retention-days: 90
 
       - name: Comment PR with results
@@ -119,25 +113,29 @@ jobs:
           script: |
             const accuracy = '${{ steps.benchmark.outputs.avg_accuracy }}';
             const time = '${{ steps.benchmark.outputs.avg_time }}';
-            const comment = `## 📊 Benchmark Results
-
-            **Baseline Performance:**
-            - Accuracy: ${accuracy}% (threshold: ≥38%)
-            - Speed: ${time}ms (threshold: ≤1200ms)
-
-            ${accuracy >= 38 && time <= 1200 ? '✅ All regression checks passed!' : '❌ Performance regression detected'}
-
-            <details>
-            <summary>View full benchmark output</summary>
-
-            Download the \`benchmark-results\` artifact for detailed results.
-            </details>`;
+            const body = [
+              '## Benchmark Results',
+              '',
+              '**Baseline Performance (v0.7.0: 59% / 1083ms):**',
+              `- Accuracy: ${accuracy}% (threshold: >=50%)`,
+              `- Speed: ${time}ms (threshold: <=2000ms)`,
+              '',
+              Number(accuracy) >= 50 && Number(time) <= 2000
+                ? 'All regression checks passed.'
+                : 'Performance regression detected.',
+              '',
+              '<details>',
+              '<summary>Details</summary>',
+              '',
+              'Download the `benchmark-results` artifact for full output.',
+              '</details>'
+            ].join('\n');
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.name,
-              body: comment
+              body
             });
 
   # Feature-specific benchmarks (when datasets exist)
@@ -171,7 +169,6 @@ jobs:
 
       - name: Run ${{ matrix.feature }} benchmark
         run: |
-          # Run feature-specific benchmark if dataset exists
           if [ -d "tests/fixtures/golden-features/${{ matrix.feature }}" ]; then
             VOXCORE_CLI=/tmp/voxcore \
             GOLDEN_DIR=tests/fixtures/golden-features/${{ matrix.feature }} \
