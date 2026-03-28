@@ -72,7 +72,7 @@ jobs:
         
     - name: Setup Gradle
       if: steps.docs_check.outputs.code_changed == 'true'
-      uses: gradle/actions/setup-gradle@v5
+      uses: gradle/actions/setup-gradle@v6
       with:
         gradle-version: ${{ env.GRADLE_VERSION }}
         
@@ -114,7 +114,7 @@ jobs:
         
     - name: Upload test results
       if: always()
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: java-test-results
         path: |
@@ -123,7 +123,7 @@ jobs:
     
     - name: Upload coverage to Codecov
       if: always()
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       with:
         files: ./whisper-post-processor/build/reports/jacoco/test/jacocoTestReport.xml
         token: ${{ secrets.CODECOV_TOKEN }}
@@ -133,7 +133,7 @@ jobs:
         
     - name: Upload JAR artifact
       if: steps.docs_check.outputs.code_changed == 'true'
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: whisper-post-processor
         path: whisper-post-processor/dist/whisper-post.jar
@@ -267,7 +267,7 @@ jobs:
         tar -czf voxcore-release.tar.gz release/
         
     - name: Upload release artifact
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: release-bundle
         path: voxcore-release.tar.gz
