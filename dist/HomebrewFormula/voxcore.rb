@@ -1,10 +1,18 @@
+# Staging formula for CI automation.
+# The canonical formula lives at https://github.com/cliffmin/homebrew-tap/blob/main/Formula/voxcore.rb
+# On each tagged release, .github/workflows/update-formula.yml updates the url and sha256 fields below.
 class Voxcore < Formula
   desc "Offline push-to-talk dictation for macOS with on-device transcription"
   homepage "https://github.com/cliffmin/voxcore"
-  url "https://github.com/cliffmin/voxcore/archive/refs/tags/v0.5.0.tar.gz"
-  sha256 "72f4d1e6524d3d697521ab3f93b4803afb61e8cd017d3649b91958bd205ee66d"
+  url "https://github.com/cliffmin/voxcore/archive/refs/tags/v0.7.0.tar.gz"
+  sha256 "aaca860b5c3862ceade43f1b07a921761f88aa854d5ae9f75804c1f24d0ff6f8"
   license "MIT"
   head "https://github.com/cliffmin/voxcore.git", branch: "main"
+
+  livecheck do
+    url :stable
+    strategy :github_latest
+  end
 
   depends_on "ffmpeg"
   depends_on "openjdk@17"
@@ -34,7 +42,7 @@ class Voxcore < Formula
       mkdir -p "$HOME/.hammerspoon"
 
       # Symlink Lua files
-      for lua_file in push_to_talk.lua whisper_wrapper.lua; do
+      for lua_file in push_to_talk_v2.lua whisper_wrapper.lua; do
         if [ -f "$REPO/hammerspoon/$lua_file" ]; then
           ln -sf "$REPO/hammerspoon/$lua_file" "$HOME/.hammerspoon/$lua_file"
         fi
@@ -43,16 +51,16 @@ class Voxcore < Formula
       # Create config if it doesn't exist
       if [ ! -f "$HOME/.hammerspoon/ptt_config.lua" ]; then
         cp "$REPO/hammerspoon/ptt_config.lua.sample" "$HOME/.hammerspoon/ptt_config.lua"
-        echo "✓ Created config: ~/.hammerspoon/ptt_config.lua"
+        echo "Created config: ~/.hammerspoon/ptt_config.lua"
       else
-        echo "✓ Config exists: ~/.hammerspoon/ptt_config.lua"
+        echo "Config exists: ~/.hammerspoon/ptt_config.lua"
       fi
 
       echo ""
       echo "Next steps:"
-      echo "  1. Reload Hammerspoon (⌘+⌥+⌃+R)"
+      echo "  1. Reload Hammerspoon (Cmd+Opt+Ctrl+R)"
       echo "  2. Grant Microphone and Accessibility permissions"
-      echo "  3. Test: Hold ⌘+⌥+⌃+Space to record"
+      echo "  3. Test: Hold Cmd+Opt+Ctrl+Space to record"
       echo ""
       echo "Optional: Start daemon with 'brew services start voxcore'"
     EOS
@@ -61,8 +69,8 @@ class Voxcore < Formula
     (bin/"voxcore-daemon").write <<~EOS
       #!/usr/bin/env bash
       set -euo pipefail
-      exec "#{Formula["openjdk@17"].opt_bin}/java" \\
-        -cp "#{libexec}/whisper-post-processor/build/libs/whisper-post.jar" \\
+      exec "#{Formula["openjdk@17"].opt_bin}/java" \
+        -cp "#{libexec}/whisper-post-processor/build/libs/whisper-post.jar" \
         com.cliffmin.whisper.daemon.PTTServiceDaemon
     EOS
     chmod "+x", bin/"voxcore-daemon"
@@ -70,7 +78,7 @@ class Voxcore < Formula
     (bin/"whisper-post").write <<~EOS
       #!/usr/bin/env bash
       set -euo pipefail
-      exec "#{Formula["openjdk@17"].opt_bin}/java" \\
+      exec "#{Formula["openjdk@17"].opt_bin}/java" \
         -jar "#{libexec}/whisper-post-processor/build/libs/whisper-post.jar" "$@"
     EOS
     chmod "+x", bin/"whisper-post"
@@ -95,20 +103,20 @@ class Voxcore < Formula
          voxcore-install
 
       2. Grant permissions in System Settings:
-         • Microphone access for Hammerspoon
-         • Accessibility access for Hammerspoon
+         * Microphone access for Hammerspoon
+         * Accessibility access for Hammerspoon
 
       3. Reload Hammerspoon:
-         • Click Hammerspoon menu bar icon → "Reload Config"
-         • Or press: ⌘+⌥+⌃+R
+         * Click Hammerspoon menu bar icon -> "Reload Config"
+         * Or press: Cmd+Opt+Ctrl+R
 
       4. (Optional) Start background daemon for audio padding:
          brew services start voxcore
 
       Usage:
-         • Hold ⌘+⌥+⌃+Space to record
-         • Release to transcribe and paste
-         • Add Shift for toggle mode
+         * Hold Cmd+Opt+Ctrl+Space to record
+         * Release to transcribe and paste
+         * Add Shift for toggle mode
 
       Configuration: ~/.hammerspoon/ptt_config.lua
       Documentation: https://github.com/cliffmin/voxcore
@@ -116,7 +124,7 @@ class Voxcore < Formula
   end
 
   test do
-    assert_path_exists libexec/"hammerspoon/push_to_talk.lua"
+    assert_path_exists libexec/"hammerspoon/push_to_talk_v2.lua"
     assert_path_exists libexec/"whisper-post-processor/build/libs/whisper-post.jar"
     system bin/"whisper-post", "--version"
   end
