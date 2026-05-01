@@ -11,7 +11,7 @@
 # DO NOT use pip directly - pipx provides isolated environments.
 
 # Speech-to-text transcription (fallback, being replaced by whisper-cpp)
-openai-whisper>=20230918
+openai-whisper>=20250625
 
 
 # Note: Do NOT install these with pip directly.
