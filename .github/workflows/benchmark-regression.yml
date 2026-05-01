@@ -110,7 +110,7 @@ jobs:
 
       - name: Comment PR with results
         if: github.event_name == 'pull_request' && steps.benchmark.outputs.avg_accuracy != ''
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const accuracy = '${{ steps.benchmark.outputs.avg_accuracy }}';
