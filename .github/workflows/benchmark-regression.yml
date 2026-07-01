@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           lfs: true
 
@@ -110,7 +110,7 @@ jobs:
 
       - name: Comment PR with results
         if: github.event_name == 'pull_request' && steps.benchmark.outputs.avg_accuracy != ''
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const accuracy = '${{ steps.benchmark.outputs.avg_accuracy }}';
@@ -152,7 +152,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install dependencies
         run: |
