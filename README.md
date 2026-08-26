@@ -1,5 +1,30 @@
 # VoxCore
 
+
+> ## Archived · 2026-08-26
+>
+> **This project is no longer developed.** Work has moved to **SelfTalk** — a rebuild of
+> the same idea (press a key, speak, get your words at the cursor) with a deliberately
+> smaller scope and the lessons this line of work paid for written down as constraints
+> rather than rediscovered.
+>
+> **What carried forward: the measurements and the failures, not the code.** SelfTalk
+> starts from an empty repository. Nothing here is maintained; issues and pull requests
+> will not be answered.
+>
+> **Why this one stopped.** Three failures from this project are now permanent rules
+> elsewhere. A dangling symlink after a directory move killed the hotkey **silently for
+> five weeks** — `require` failed at startup and nothing a user would look at said so.
+> A zero-byte vocabulary file changed decoding by its *presence*, not its contents, and
+> removing it was worth 6.7 points of word error rate. And the benchmark compared two
+> word lists by index, so a single inserted word zeroed everything after it — a transcript
+> whose only defect was `Vox Core` for `VoxCore` scored 0%.
+>
+> The rules those became: fail loudly or not at all; presence is not content; never score
+> by index.
+
+---
+
 [![CI](https://github.com/cliffmin/voxcore/actions/workflows/ci.yml/badge.svg)](https://github.com/cliffmin/voxcore/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/cliffmin/voxcore/branch/main/graph/badge.svg)](https://codecov.io/gh/cliffmin/voxcore) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) ![macOS](https://img.shields.io/badge/macOS-11%2B-blue) ![Java 17+](https://img.shields.io/badge/Java-17%2B-orange)
 
 **Universal voice-to-anything hotkey.** VoxCore captures once and pastes anywhere—ChatGPT, Claude, Cursor, Slack, email—while saving every recording so you never lose work. One hotkey. Zero tokens. Sub-second, on-device, private by default.
