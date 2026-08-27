@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           lfs: true
 
@@ -25,7 +25,7 @@ jobs:
           brew install whisper-cpp
 
       - name: Set up Java 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v5.6.0
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -110,7 +110,7 @@ jobs:
 
       - name: Comment PR with results
         if: github.event_name == 'pull_request' && steps.benchmark.outputs.avg_accuracy != ''
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const accuracy = '${{ steps.benchmark.outputs.avg_accuracy }}';
@@ -152,14 +152,14 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install dependencies
         run: |
           brew install whisper-cpp
 
       - name: Set up Java 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v5.6.0
         with:
           distribution: 'temurin'
           java-version: '17'
